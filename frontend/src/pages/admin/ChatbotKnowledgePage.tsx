@@ -2,7 +2,7 @@ import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { Check, Edit3, Plus, RefreshCw, Trash2, X } from 'lucide-react';
 import { knowledgeApi, type KnowledgeInput } from '../../api/knowledge';
-import { chatIntents, type ChatbotKnowledge, type ChatbotStats, type ChatIntent, type KnowledgeStatus, type RiskLevel } from '../../api/types';
+import { chatIntents, type ChatbotKnowledge, type ChatIntent, type KnowledgeStatus, type RiskLevel } from '../../api/types';
 import '../../styles/chatbot-knowledge.css';
 
 const labels: Record<KnowledgeStatus | '', string> = { '': 'Tất cả', pending_review: 'Pending · Chờ duyệt', approved: 'Approved · Đã duyệt', rejected: 'Rejected · Từ chối' };
@@ -15,7 +15,6 @@ export function ChatbotKnowledgePage() {
   const [page, setPage] = useState(1);
   const [rows, setRows] = useState<ChatbotKnowledge[]>([]);
   const [total, setTotal] = useState(0);
-  const [stats, setStats] = useState<ChatbotStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [revision, setRevision] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -36,11 +35,10 @@ export function ChatbotKnowledgePage() {
     setLoading(true);
     setError('');
     try {
-      const [list, summary] = await Promise.all([knowledgeApi.list(status, page, risk, intent), knowledgeApi.stats()]);
+      const list = await knowledgeApi.list(status, page, risk, intent);
       if (id !== request.current) return;
       setRows(list.data.items);
       setTotal(list.data.total);
-      setStats(summary.data);
       if (page > 1 && !list.data.items.length) setPage(page - 1);
     } catch (value) { if (id === request.current) showError(value); }
     finally { if (id === request.current) setLoading(false); }
@@ -81,17 +79,6 @@ export function ChatbotKnowledgePage() {
         <button className="admin-mini-btn" disabled={busy} onClick={() => edit()}><Plus size={15} /> Tạo FAQ</button>
       </div>
     </div>
-    {stats && <>
-      <div className="admin-grid knowledge-stats">
-        {[
-          ['Tổng câu hỏi', stats.totalQuestions], ['Knowledge hits', stats.knowledgeHits],
-          ['Gemini calls', stats.geminiCalls], ['Knowledge hit rate', `${stats.knowledgeHitRate}%`],
-          ['Small talk', stats.smallTalkHandled], ['Tự duyệt (phiên này)', stats.autoApproved],
-          ['Chờ duyệt (DB)', stats.pendingReview], ['Từ chối (DB)', stats.rejected], ['Gemini usage rate', `${stats.geminiUsageRate}%`],
-        ].map(([label, value]) => <div className="admin-stat-card" key={label}><div><span>{label}</span><strong>{value}</strong></div></div>)}
-      </div>
-      <p className="knowledge-note">Lượt chat tính từ {new Date(stats.since).toLocaleString('vi-VN')}, đặt lại khi khởi động backend (không phải số phiên hội thoại). Chờ duyệt, từ chối và lượt dùng từng câu lấy từ DB. Truy vấn sản phẩm: {stats.productQueries}. Lỗi: {stats.errors}. Lưu thất bại: {stats.pendingSaveFailures}.</p>
-    </>}
     {error && <p className="knowledge-error" role="alert">{error}</p>}
     {notice && <p className="knowledge-notice" role="status">{notice}</p>}
     {form && <form className="admin-panel knowledge-editor" onSubmit={save}>
