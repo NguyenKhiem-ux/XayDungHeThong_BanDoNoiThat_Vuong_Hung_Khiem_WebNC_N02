@@ -8,6 +8,6 @@ export class ChatController {
 
   @Post()
   send(@Body() dto: ChatDto) {
-    return this.chat.send(dto.message);
+    return this.chat.send(dto.message, dto.sessionId);
   }
 }

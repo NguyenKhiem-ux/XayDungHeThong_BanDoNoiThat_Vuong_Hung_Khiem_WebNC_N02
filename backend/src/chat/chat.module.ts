@@ -7,10 +7,13 @@ import { KnowledgeController } from './knowledge.controller';
 import { KnowledgeService } from './knowledge.service';
 import { ChatController } from './chat.controller';
 import { ChatService } from './chat.service';
+import { IntentService } from './intent.service';
+import { SmallTalkService } from './small-talk.service';
+import { GeminiService } from './gemini.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Product, ChatbotKnowledge])],
   controllers: [ChatController, KnowledgeController],
-  providers: [ChatService, ChatProductsService, KnowledgeService],
+  providers: [ChatService, ChatProductsService, KnowledgeService, IntentService, SmallTalkService, GeminiService],
 })
 export class ChatModule {}

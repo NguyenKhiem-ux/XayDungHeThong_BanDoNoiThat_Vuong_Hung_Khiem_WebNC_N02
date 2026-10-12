@@ -23,7 +23,7 @@ export const productApi = {
 };
 
 export const chatApi = {
-  send: (message: string) => api.post<ChatResponse>('/chat', { message }, { timeout: 20_000 }),
+  send: (message: string, sessionId?: string) => api.post<ChatResponse>('/chat', { message, sessionId }, { timeout: 20_000 }),
 };
 
 export const cartApi = {

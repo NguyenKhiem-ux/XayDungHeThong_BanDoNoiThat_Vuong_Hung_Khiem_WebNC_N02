@@ -2,14 +2,16 @@ import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { Check, Edit3, Plus, RefreshCw, Trash2, X } from 'lucide-react';
 import { knowledgeApi, type KnowledgeInput } from '../../api/knowledge';
-import type { ChatbotKnowledge, ChatbotStats, KnowledgeStatus } from '../../api/types';
+import { chatIntents, type ChatbotKnowledge, type ChatbotStats, type ChatIntent, type KnowledgeStatus, type RiskLevel } from '../../api/types';
 import '../../styles/chatbot-knowledge.css';
 
-const labels: Record<KnowledgeStatus, string> = { pending: 'Pending · Chờ duyệt', approved: 'Approved · Đã duyệt', rejected: 'Rejected · Từ chối' };
+const labels: Record<KnowledgeStatus | '', string> = { '': 'Tất cả', pending_review: 'Pending · Chờ duyệt', approved: 'Approved · Đã duyệt', rejected: 'Rejected · Từ chối' };
 const empty: KnowledgeInput = { question: '', answer: '', keywords: '' };
 
 export function ChatbotKnowledgePage() {
-  const [status, setStatus] = useState<KnowledgeStatus>('pending');
+  const [status, setStatus] = useState<KnowledgeStatus | ''>('pending_review');
+  const [risk, setRisk] = useState<RiskLevel | ''>('');
+  const [intent, setIntent] = useState<ChatIntent | ''>('');
   const [page, setPage] = useState(1);
   const [rows, setRows] = useState<ChatbotKnowledge[]>([]);
   const [total, setTotal] = useState(0);
@@ -34,7 +36,7 @@ export function ChatbotKnowledgePage() {
     setLoading(true);
     setError('');
     try {
-      const [list, summary] = await Promise.all([knowledgeApi.list(status, page), knowledgeApi.stats()]);
+      const [list, summary] = await Promise.all([knowledgeApi.list(status, page, risk, intent), knowledgeApi.stats()]);
       if (id !== request.current) return;
       setRows(list.data.items);
       setTotal(list.data.total);
@@ -42,7 +44,7 @@ export function ChatbotKnowledgePage() {
       if (page > 1 && !list.data.items.length) setPage(page - 1);
     } catch (value) { if (id === request.current) showError(value); }
     finally { if (id === request.current) setLoading(false); }
-  }, [status, page]);
+  }, [status, page, risk, intent]);
 
   useEffect(() => { void load(); return () => { request.current++; }; }, [load, revision]);
   useEffect(() => { if (form) questionInput.current?.focus(); }, [editing, !!form]);
@@ -67,7 +69,7 @@ export function ChatbotKnowledgePage() {
       const data = { question: form.question.trim(), answer: form.answer.trim(), keywords: form.keywords.trim() };
       if (editing !== null) await knowledgeApi.update(editing, data);
       else await knowledgeApi.create(data);
-      setForm(null); setEditing(null); setStatus('pending'); setPage(1);
+      setForm(null); setEditing(null); setStatus('pending_review'); setRisk(''); setIntent(''); setPage(1);
     }, 'Đã lưu vào Pending. Hãy kiểm tra nội dung và bấm Approve để cho phép chatbot sử dụng.');
   }
 
@@ -84,9 +86,11 @@ export function ChatbotKnowledgePage() {
         {[
           ['Tổng câu hỏi', stats.totalQuestions], ['Knowledge hits', stats.knowledgeHits],
           ['Gemini calls', stats.geminiCalls], ['Knowledge hit rate', `${stats.knowledgeHitRate}%`],
+          ['Small talk', stats.smallTalkHandled], ['Tự duyệt (phiên này)', stats.autoApproved],
+          ['Chờ duyệt (DB)', stats.pendingReview], ['Từ chối (DB)', stats.rejected], ['Gemini usage rate', `${stats.geminiUsageRate}%`],
         ].map(([label, value]) => <div className="admin-stat-card" key={label}><div><span>{label}</span><strong>{value}</strong></div></div>)}
       </div>
-      <p className="knowledge-note">Thống kê của tiến trình backend từ {new Date(stats.since).toLocaleString('vi-VN')}; đặt lại khi khởi động lại. Lượt dùng từng câu được lưu lâu dài. Truy vấn sản phẩm: {stats.productQueries}. Lỗi: {stats.errors}. Lưu Pending thất bại: {stats.pendingSaveFailures}.</p>
+      <p className="knowledge-note">Lượt chat tính từ {new Date(stats.since).toLocaleString('vi-VN')}, đặt lại khi khởi động backend (không phải số phiên hội thoại). Chờ duyệt, từ chối và lượt dùng từng câu lấy từ DB. Truy vấn sản phẩm: {stats.productQueries}. Lỗi: {stats.errors}. Lưu thất bại: {stats.pendingSaveFailures}.</p>
     </>}
     {error && <p className="knowledge-error" role="alert">{error}</p>}
     {notice && <p className="knowledge-notice" role="status">{notice}</p>}
@@ -99,15 +103,20 @@ export function ChatbotKnowledgePage() {
       <div className="admin-actions"><button className="admin-mini-btn" type="submit" disabled={busy || !form.question.trim() || !form.answer.trim()}>{busy ? 'Đang lưu…' : 'Lưu Pending'}</button><button className="admin-mini-btn" type="button" disabled={busy} onClick={() => setForm(null)}>Hủy</button></div>
     </form>}
     <div className="knowledge-tabs" aria-label="Lọc trạng thái">
-      {(Object.keys(labels) as KnowledgeStatus[]).map(value => <button className="admin-mini-btn" aria-pressed={status === value} disabled={busy} key={value} onClick={() => { setStatus(value); setPage(1); }}>{labels[value]}</button>)}
+      {(Object.keys(labels) as Array<KnowledgeStatus | ''>).map(value => <button className="admin-mini-btn" aria-pressed={status === value} disabled={busy} key={value} onClick={() => { setStatus(value); setPage(1); }}>{labels[value]}</button>)}
+    </div>
+    <div className="knowledge-filters">
+      <label>Rủi ro<select className="admin-input" disabled={busy} value={risk} onChange={e => { setRisk(e.target.value as RiskLevel | ''); setPage(1); }}><option value="">Tất cả mức rủi ro</option>{['LOW', 'MEDIUM', 'HIGH'].map(value => <option key={value}>{value}</option>)}</select></label>
+      <label>Intent<select className="admin-input" disabled={busy} value={intent} onChange={e => { setIntent(e.target.value as ChatIntent | ''); setPage(1); }}><option value="">Tất cả ý định</option>{chatIntents.filter(value => !['small_talk', 'greeting', 'thanks', 'goodbye', 'unknown'].includes(value)).map(value => <option key={value}>{value}</option>)}</select></label>
     </div>
     <div className="admin-panel" aria-busy={loading}>
       {loading ? <p role="status">Đang tải kiến thức…</p> : <div className="table-wrap"><table className="admin-table knowledge-table">
-        <thead><tr><th>Câu hỏi / Câu trả lời</th><th>Trạng thái</th><th>Lượt dùng</th><th>Ngày tạo</th><th>Thao tác</th></tr></thead>
+        <thead><tr><th>Câu hỏi / Câu trả lời</th><th>Phân loại / Nguồn</th><th>Trạng thái</th><th>Lượt dùng</th><th>Ngày tạo / Duyệt</th><th>Thao tác</th></tr></thead>
         <tbody>{rows.map(row => <tr key={row.id}>
           <td><strong>{row.question}</strong><p className="knowledge-answer">{row.answer}</p>{row.contextHash && <small className="knowledge-note">Có dữ liệu sản phẩm; chỉ tái sử dụng khi dữ liệu còn khớp.</small>}</td>
+          <td><div>{row.intent}</div><span className={`admin-status ${row.riskLevel === 'HIGH' ? 'bad' : ''}`}>{row.riskLevel}</span><div className="knowledge-note">Confidence: {row.source === 'gemini' ? `${row.confidenceScore}/100` : '—'}<br />Nguồn: {row.source}</div></td>
           <td><span className={`admin-status ${row.status === 'rejected' ? 'bad' : ''}`}>{labels[row.status]}</span></td>
-          <td>{row.usageCount}</td><td>{new Date(row.createdAt).toLocaleString('vi-VN')}</td>
+          <td>{row.usageCount}</td><td>{new Date(row.createdAt).toLocaleString('vi-VN')}{row.reviewedAt && <p className="knowledge-note">{row.reviewedBy === null ? 'Tự duyệt' : `Admin #${row.reviewedBy}`}<br />{new Date(row.reviewedAt).toLocaleString('vi-VN')}</p>}</td>
           <td><div className="admin-actions">
             {row.status !== 'approved' && <button className="admin-mini-btn" disabled={busy} onClick={() => void act(() => knowledgeApi.approve(row.id), 'Đã duyệt. Chatbot có thể dùng câu trả lời này.')}><Check size={14} /> Approve</button>}
             {row.status !== 'rejected' && <button className="admin-mini-btn" disabled={busy} onClick={() => void act(() => knowledgeApi.reject(row.id), 'Đã từ chối. Chatbot sẽ không sử dụng câu trả lời này.')}><X size={14} /> Reject</button>}

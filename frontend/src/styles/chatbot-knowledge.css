@@ -3,6 +3,8 @@
 .knowledge-page .knowledge-editor { margin: 20px 0; }
 .knowledge-page .knowledge-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 20px 0 12px; }
 .knowledge-page .knowledge-tabs [aria-pressed="true"] { color: #fff; background: #2563eb; border-color: #2563eb; }
+.knowledge-page .knowledge-filters { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 16px; }
+.knowledge-page .knowledge-filters label { display: grid; gap: 6px; font-size: 13px; }
 .knowledge-page .knowledge-table { min-width: 800px; }
 .knowledge-page .knowledge-table td { vertical-align: top; }
 .knowledge-page .knowledge-table td:first-child { width: 48%; min-width: 300px; overflow-wrap: anywhere; }

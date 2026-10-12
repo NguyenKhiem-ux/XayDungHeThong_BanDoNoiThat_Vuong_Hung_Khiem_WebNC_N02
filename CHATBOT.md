@@ -1,13 +1,158 @@
-# Chatbot Knowledge Base
+# Chatbot: nâng cấp Knowledge Base có kiểm soát
 
-## Vận hành
+## 1. File đã sửa
 
-Yêu cầu Node.js >= 20.12 (máy hiện tại dùng 22.8). Dùng lại `@google/genai`, TypeORM, MySQL, JWT, Axios; không cài dependency mới.
+- `backend/src/chat/chat.service.ts`: điều phối small talk → Knowledge → sản phẩm → Gemini/draft.
+- `backend/src/chat/chat.module.ts`: đăng ký các service bổ sung.
+- `backend/src/chat/chat-products.service.ts`: trả dữ liệu thật bằng template; hỏi lại nếu chưa biết sản phẩm; tra cả sản phẩm hết hàng khi hỏi tồn kho.
+- `backend/src/chat/knowledge.service.ts`: lọc giá trị, metadata, tự duyệt có điều kiện, chống trùng, thống kê DB, kiểm tra freshness sản phẩm, audit duyệt.
+- `backend/src/chat/knowledge.controller.ts`: người duyệt lấy từ JWT hiện tại.
+- `backend/src/chat/dto/knowledge.dto.ts`: filter trạng thái/risk/intent và tương thích query status cũ.
+- `backend/src/database/entities/chatbot-knowledge.entity.ts`: bổ sung metadata, tách bảng chatbot khỏi synchronize tự động.
+- `backend/src/chat/chat.spec.ts`: cập nhật bộ test HTTP, phân loại, SQL, phân quyền và các lỗi.
+- `backend/scripts/setup-chatbot.cjs`: migration bổ sung, chạy lại an toàn, đối chiếu fingerprint dữ liệu.
+- `backend/scripts/verify-chatbot.cjs`: test MySQL thật, migration bằng bảng tạm và tùy chọn Gemini thật.
+- `database/chatbot_knowledge.sql`: schema cho cài đặt mới.
+- `frontend/src/api/types.ts`, `frontend/src/api/knowledge.ts`: metadata, response, filter.
+- `frontend/src/pages/admin/ChatbotKnowledgePage.tsx`, `frontend/src/styles/chatbot-knowledge.css`: nâng cấp trang Admin đang có.
+- `CHATBOT.md`: báo cáo và cách vận hành.
 
-Trong `backend/.env`, đặt `GEMINI_API_KEY=...` rồi khởi động lại backend. Key chỉ đọc ở backend; `.env` vẫn được gitignore. Giữ model hiện có `gemini-3.5-flash-lite`.
+Không sửa Authentication/User/Product/Cart/Order/Payment/Coupon/Forgot password, API nghiệp vụ, widget khách hàng hoặc bố cục website.
+
+## 2. File mới và package
+
+Bốn file mới, đều thuộc ChatModule hiện có:
+
+- `backend/src/chat/chat.types.ts`
+- `backend/src/chat/intent.service.ts`
+- `backend/src/chat/small-talk.service.ts`
+- `backend/src/chat/gemini.service.ts`
+
+Không thêm dependency. Tận dụng `@google/genai`, NestJS, TypeORM, MySQL, JWT, Axios và công cụ test đã cài. Theo nguyên tắc Ponytail, không thêm classifier AI, vector database, Redis, hàng đợi, bảng hội thoại, training hoặc fine-tuning.
+
+## 3. Database migration
+
+Dùng lại bảng `chatbot_knowledge`; không tạo hệ thống/bảng Knowledge thứ hai.
+
+Bổ sung `normalized_question`, `intent`, `confidence_score`, `risk_level`, `source`, `should_store`, `reviewed_by`, `reviewed_at`. Giữ khóa unique `(question_key, context_hash)`, question/answer/keywords/usage/timestamps cũ.
+
+Migration mở rộng enum trước, chuyển `pending` → `pending_review`, rồi thu enum về `pending_review|approved|rejected`. Không xóa bản ghi. Nội dung không hữu ích có sẵn được giữ nhưng đặt `should_store=false`, không hiển thị trong danh sách Admin và không tái sử dụng. Không gán giả người/ngày duyệt cho dữ liệu cũ; nguồn cũ không xác định là `system`, confidence 0.
+
+Chỉ entity chatbot dùng `synchronize:false`, ngăn TypeORM tự ép enum trước migration. Cấu hình synchronize và schema các bảng khác không thay đổi.
+
+Đã chạy trên DB hiện tại ngày 29/09/2026: backfill 1 bản ghi; fingerprint xác nhận câu hỏi, câu trả lời, khóa, lượt dùng và timestamps không đổi. Lần chạy thứ hai: backfill 0, dữ liệu giữ nguyên. Cũng đã kiểm thử pending/approved/rejected và small talk cũ trên bảng TEMPORARY riêng của kết nối; không tạo bảng test tồn tại lâu dài.
+
+Khi deploy: dừng backend phiên bản cũ, backup DB theo quy trình vận hành, build rồi chạy migration, sau đó khởi động bản mới. MySQL DDL không có rollback transaction đầy đủ; script idempotent cho phép chạy lại nếu gián đoạn.
+
+## 4. Flow mới
+
+`POST /api/chat → trim/chuẩn hóa → rule intent/risk/value → nhánh xử lý`
+
+| Nhánh | Phản hồi | Gọi Gemini / lưu Knowledge |
+| --- | --- | --- |
+| Small talk/greeting/thanks/goodbye | Template tiếng Việt | Không / không |
+| Ngoài phạm vi, spam, thông tin riêng | Chuyển hướng lịch sự/an toàn | Không / không |
+| Approved Knowledge khớp | Nội dung đã duyệt, tăng usage_count | Không / không tạo mới |
+| Sản phẩm | Query MySQL, template từ dữ liệu thật | Không / không lưu snapshot dư thừa |
+| General LOW thuộc allowlist | Gemini JSON, qua kiểm tra nội dung | Một lần / approved hoặc pending_review |
+| Chính sách/HIGH chưa có Knowledge | Chỉ thông báo an toàn cho khách | Một lần tạo draft / pending_review |
+| Câu đã pending/rejected cùng khóa | Thông báo chờ xác minh, không dùng answer cũ | Không / không tạo trùng |
+
+Kiến thức sản phẩm chỉ tái dùng sau khi hash dữ liệu hiện tại khớp. Với nhánh cần Gemini, tối đa 3 mục Knowledge đã duyệt được truy hồi và nhúng vào payload `context`; nội dung được đánh dấu là dữ liệu tham khảo, không phải chỉ dẫn. Tìm kiếm sản phẩm giới hạn 5 kết quả, SQL parameterized. Ngân sách “dưới 2 triệu” dùng trần <= 2.000.000 theo yêu cầu mới. Không biết tên/loại sản phẩm thì hỏi lại, không tự chọn một sản phẩm bất kỳ. Khi không có kết quả, nói rõ chưa tìm thấy.
+
+## 5. Small talk
+
+`SmallTalkService` dùng regex toàn câu và template cho haha/hihi/hehe/kkkk/lol, chào/cảm ơn/tạm biệt, thời tiết, buồn ngủ, đói, cà phê, emoji và sticker đơn giản. Nhánh này không truy cập DB, không gọi Gemini, không tạo pending.
+
+Không dùng độ dài câu để phân loại. “Có ship không?” là shipping HIGH; “Giá bao nhiêu?” là product_price và cần xác định sản phẩm. Lời chào kèm câu hỏi kinh doanh không bị nuốt thành small talk.
+
+## 6. Intent và lọc giá trị
+
+Danh sách: small_talk/greeting/thanks/goodbye; product_search/detail/recommendation/comparison/price/stock/category; shipping/payment/promotion/warranty/return/refund/order/complaint/account/password/legal; general_store_question/general_question/unknown.
+
+Rule xác định intent trước Gemini. Phân loại của model không được ghi đè intent/risk phía server để hạ rủi ro.
+
+Không lưu xã giao, spam lặp, link spam, câu ngoài phạm vi hoặc câu chứa email/số điện thoại/mã đơn/mật khẩu/OTP theo các mẫu nhận diện. Câu hỏi cá nhân về đơn hàng được hướng về tài khoản/đơn hàng/hỗ trợ; không làm Knowledge dùng chung. Bộ lọc rule không phải hệ thống DLP hoàn chỉnh: không nên gửi bí mật qua chatbot.
+
+Admin tạo/sửa FAQ cũng phải đi qua bộ lọc này. Khả năng nhận diện vẫn là rule tiếng Việt có giới hạn, chưa phải hiểu ngữ nghĩa mọi cách diễn đạt.
+
+## 7. Confidence
+
+Gemini phải trả JSON gồm `answer`, `intent`, `confidence_score` (số nguyên 0–100), `risk_level`, `should_auto_approve`.
+
+Backend kiểm tra schema, kiểu/giá trị và nội dung trả về; JSON rỗng/sai/không đầy đủ bị từ chối với lỗi 503 thân thiện, không lưu dữ liệu lỗi. Confidence là tự đánh giá của model, không phải xác suất đúng đã hiệu chuẩn.
+
+## 8. Risk
+
+- LOW: xã giao và một allowlist hẹp về phối màu/bố trí/trang trí nhà.
+- MEDIUM: tìm kiếm, thông tin, tư vấn và so sánh sản phẩm.
+- HIGH: chính sách, thanh toán, shipping, bảo hành, đổi trả/hoàn tiền, order, account/password, khiếu nại, pháp lý, cam kết; giá/tồn kho cần xác minh.
+
+Giá/tồn kho HIGH vẫn được trả trực tiếp khi đã có dữ liệu MySQL. Với draft mới, risk có thể tăng theo kết quả model/nội dung, không được giảm so với rule. Nội dung có cam kết, giá, kho, thông tin thiếu xác minh bị giữ lại để duyệt.
+
+## 9. Khi gọi Gemini
+
+Chỉ khi câu có giá trị, chưa có Knowledge hợp lệ, không thể trả bằng template/DB, và chưa có bản ghi pending/rejected cùng khóa.
+
+Giữ model `gemini-3.5-flash-lite` hiện có. Model được Google liệt kê với Free Tier; quota thực tế phụ thuộc dự án. Nguồn: [bảng giá Google](https://ai.google.dev/gemini-api/docs/pricing#gemini-3.5-flash-lite).
+
+Dùng structured output của SDK đã cài, giới hạn 900 token đầu ra, timeout 15 giây, một lần thử mỗi request, không retry vô hạn. Gemini nhận tối đa 3 approved Knowledge context đã cắt độ dài trước khi gửi. [Tài liệu JSON schema](https://ai.google.dev/gemini-api/docs/structured-output).
+
+## 10. Khi lưu Knowledge
+
+Lưu draft Gemini hợp lệ của câu có giá trị, hoặc FAQ do Admin tạo. Không lưu các phản hồi template và kết quả SQL động chỉ để tạo thêm việc duyệt.
+
+Cùng question_key/context_hash không ghi đè nội dung/quyết định Admin. Sửa câu trả lời đưa về pending_review, xóa audit duyệt cũ và chuyển source thành admin. Approve/reject ghi reviewed_by từ JWT, reviewed_at từ server.
+
+Khách không nhận draft HIGH. Chỉ thông báo “đã ghi nhận” khi việc lưu thành công/đã tồn tại bản ghi; nếu DB write lỗi thì nói rõ chưa lưu được.
+
+## 11. Auto approve
+
+Tất cả điều kiện phải đúng:
+
+- Rule: should_store=true, intent=general_question trong allowlist, risk LOW.
+- Gemini: đúng intent general_question, risk LOW, confidence >=85, should_auto_approve=true.
+- Câu trả lời qua bộ lọc: không chính sách/cam kết/giá/tồn kho/brand/model, không số liệu cần xác minh hoặc thông báo thiếu dữ liệu.
+
+Đây là cổng duyệt bảo thủ, không phải chứng minh AI luôn đúng. Ví dụ general decor có số thứ tự hoặc con số cũng có thể bị giữ để review. HIGH không tự duyệt kể cả confidence=99.
+
+## 12. Pending review và Admin
+
+HIGH/business luôn draft-only nếu chưa có approved Knowledge. General không đủ tiêu chuẩn tự duyệt cũng vào pending; câu trả lời LOW an toàn có thể được hiển thị lần đầu, nhưng pending/rejected không được dùng lại cho khách.
+
+Admin giữ trang `/admin/chatbot/knowledge`: All/Pending/Approved/Rejected, lọc Risk/Intent; hiển thị question, answer, intent, confidence, risk, source, status, usage, created/reviewed dates. Giữ Create/Edit/Approve/Reject/Delete và JWT/ADMIN hiện tại. Delete vẫn là thao tác xóa vĩnh viễn do Admin xác nhận.
+
+Thống kê totalQuestions/knowledgeHits/geminiCalls/smallTalkHandled/autoApproved/productQueries/errors tính theo tiến trình kể từ since, reset khi restart. totalQuestions là số tin nhắn hợp lệ, không phải số hội thoại riêng biệt. pendingReview/rejected và usage_count lấy từ DB. Hai tỷ lệ dùng totalQuestions làm mẫu số; Gemini calls tính cả lần gọi lỗi.
+
+## 13. Giảm Gemini token
+
+Rule và template chạy trước; Knowledge approved tái dùng có kiểm tra; giá/kho/sản phẩm trả bằng SQL, không qua Gemini. Câu pending/rejected lặp không tạo draft mới. Chỉ gửi tối đa 3 mục Knowledge liên quan, không gửi toàn bộ catalog/KB/lịch sử chat. Không có embeddings hoặc semantic cache; context phiên sản phẩm vẫn là cache RAM có giới hạn; reject/edit/delete có tác dụng ở các request sau.
+
+Bộ so khớp giữ exact/normalized hash và lexical similarity >=0.9, giới hạn 100 ứng viên; giữ số tiền, phủ định và ràng buộc địa điểm/so sánh để tránh gộp nhầm. Đây không phải semantic search. Chưa có chống trùng lần gọi AI giữa các request đồng thời trước khi draft đầu tiên được lưu; unique DB vẫn chống tạo bản ghi trùng.
+
+## 14. Kết quả build/test và chạy thử
+
+- Backend build + TypeScript: PASS.
+- Frontend build + TypeScript: PASS; còn cảnh báo Vite CJS deprecation có sẵn.
+- `npm.cmd run test:chat`: 22 tests PASS, có đủ 12 tình huống yêu cầu.
+- MySQL thật: PASS cho pending/approve/lookup/usage_count và truy vấn giá/tồn kho.
+- Migration bảng tạm: PASS bảo toàn nội dung, chuyển status, ẩn small talk và chạy lại.
+- AppModule thật với DB synchronize tắt riêng trong phép thử: `POST /api/chat` small talk PASS; 3 route Admin từng báo Cannot GET trả 401 khi không có JWT, không phải 404. ADMIN 200 / USER 403 được kiểm tra trong bộ HTTP test.
+- Gemini thật: endpoint metadata xác nhận model tồn tại, nhưng generateContent trả 504 ngày 29/09/2026, cả JSON lẫn text thuần; phép thử tối đa 40 giây cũng timeout. Vì vậy chưa xác nhận được lượt sinh trả lời thật thành công ở lần chạy này. Giữ timeout 15 giây, không đổi model hay tăng retry để che lỗi provider. Tất cả Knowledge kiểm thử đã rollback.
+
+### Cấu hình và chạy
+
+Key chỉ đặt trong `backend/.env`:
+
+```dotenv
+GEMINI_API_KEY=your_google_ai_studio_key
+```
+
+Không đưa key vào React hoặc biến VITE_*. `.env` đang bị gitignore; không sửa/commit key.
 
 ```powershell
 cd backend
+npm.cmd run build
 npm.cmd run db:chatbot
 npm.cmd run start:dev
 ```
@@ -19,106 +164,34 @@ cd frontend
 npm.cmd run dev
 ```
 
-Repo chưa có TypeORM migration runner; cấu hình database hiện tại dùng `synchronize: true` và được giữ nguyên. `db:chatbot` là script SQL bổ sung, chạy `CREATE TABLE IF NOT EXISTS chatbot_knowledge`, không sửa các bảng khác. Đã chạy trên database hiện tại. Khi triển khai production, chạy script này trong quy trình quản lý schema của môi trường; script không bật synchronize. File SQL: `database/chatbot_knowledge.sql`.
+Dùng `start:dev`, không dùng `npm run start dev` khi cần watch/reload. Prefix toàn cục vẫn `api`; controller không thêm prefix lần hai. Nếu vẫn Cannot GET, kiểm tra tiến trình backend cũ và VITE_API_URL (mặc định `http://localhost:3000/api`).
 
-## Luồng xử lý
-
-1. Chuẩn hóa câu hỏi, tra khóa SHA-256 có index trong MySQL; chỉ chọn `approved`. Nhận diện đồng nghĩa như “ship hàng” / “giao hàng”.
-2. Nếu chưa có exact match, lấy tối đa 100 ứng viên bằng keywords và tính độ trùng từ với ngưỡng 0.9; không dùng kết quả mơ hồ. Số tiền, phủ định và các từ so sánh được giữ riêng để tránh gộp nhầm câu hỏi. Đây là lexical similarity, chưa phải embeddings. `chat-matching.ts` là nơi có thể thay cách tính điểm sau này.
-3. Knowledge tổng quát khớp thì trả ngay, tăng `usage_count` bằng phép tăng nguyên tử, không gọi Gemini.
-4. Với câu hỏi sản phẩm, query MySQL theo các trường hiện có, giới hạn giá/tồn kho, tối đa 5 sản phẩm. Tên/brand/category/description là các trường tìm kiếm; mô tả/thông số gửi đi được giới hạn độ dài. Chỉ các mẫu giá đã nhận diện được mới trở thành bộ lọc SQL. Cách hỏi không nhận diện đầy đủ có thể cho ít kết quả, không đảm bảo tìm kiếm ngữ nghĩa mọi cách diễn đạt.
-5. Knowledge có dữ liệu sản phẩm chỉ được tái dùng nếu hash dữ liệu hiện tại còn khớp. Giá, tồn kho hoặc kết quả truy vấn thay đổi sẽ làm bản trả lời cũ không còn hợp lệ. Câu trả lời sản phẩm chỉ exact match, không fuzzy match giữa các nhu cầu khác nhau.
-6. Chưa có câu hợp lệ thì gọi Gemini một lần, truyền câu hỏi và tối đa 5 sản phẩm liên quan; không truyền toàn bộ KB/catalog. Giới hạn đầu ra 600 token, timeout 15 giây, tắt retry tự động của SDK.
-7. Lưu Q&A mới ở `pending`. Khóa unique `(question_key, context_hash)` chống lưu trùng và không ghi đè quyết định duyệt/từ chối. Sửa nội dung đưa về Pending; phải duyệt lại. Nếu lưu thất bại, người dùng vẫn nhận câu trả lời, backend ghi bộ đếm lỗi lưu để admin biết.
-
-MySQL chính là bộ nhớ trả lời lâu dài. Không có cache RAM cho nội dung nên reject/edit/delete có hiệu lực ở các request tiếp theo. Chưa cần Redis, vector database hoặc fine-tune.
-
-## Quản trị
-
-Đăng nhập tài khoản ADMIN hiện có → menu **Chatbot Knowledge** tại `/admin/chatbot/knowledge`.
-
-- Pending: xem và chỉnh câu hỏi/câu trả lời, sau đó **Approve**.
-- Approved: chatbot được phép dùng; **Reject** để ngừng sử dụng.
-- **Tạo FAQ**: nhập câu hỏi, câu trả lời, từ khóa tùy chọn; lưu Pending rồi Approve.
-- **Edit**: lưu sửa đổi đưa về Pending. Với sản phẩm cần kiểm tra lại thông tin hiện tại trước khi duyệt.
-- **Delete**: có xác nhận trên giao diện; xóa bản ghi vĩnh viễn.
-
-Không có FAQ chính sách cửa hàng được tự động tạo/duyệt sẵn. Admin chịu trách nhiệm xác nhận câu trả lời trước khi cho tái sử dụng.
-
-Thống kê `totalQuestions`, `knowledgeHits`, `geminiCalls`, `productQueries`, `knowledgeHitRate`, `errors`, `pendingSaveFailures` tính trong một tiến trình kể từ `since`; reset khi backend restart. `productQueries` đếm lượt chat có ngữ cảnh sản phẩm. `geminiCalls` tính cả lần gọi lỗi, kể cả câu trả lời `source=product`. `usage_count` từng knowledge được lưu trong MySQL, không reset khi restart.
-
-## API
-
-Prefix toàn cục vẫn là `/api`; API mới dùng JWT + RolesGuard hiện tại, chỉ cho ADMIN:
-
-| Method | Endpoint | Nội dung |
-| --- | --- | --- |
-| GET | `/api/admin/chatbot/knowledge?status=pending&page=1&limit=20` | Danh sách phân trang; status có thể bỏ qua |
-| GET | `/api/admin/chatbot/knowledge/:id` | Chi tiết |
-| POST | `/api/admin/chatbot/knowledge` | Tạo Pending: `{ "question": "...", "answer": "...", "keywords": "..." }` |
-| PATCH | `/api/admin/chatbot/knowledge/:id` | Sửa question/answer/keywords, đưa về Pending |
-| PATCH | `/api/admin/chatbot/knowledge/:id/approve` | Duyệt |
-| PATCH | `/api/admin/chatbot/knowledge/:id/reject` | Từ chối |
-| DELETE | `/api/admin/chatbot/knowledge/:id` | Xóa |
-| GET | `/api/admin/chatbot/stats` | Thống kê tiến trình |
-
-`POST /api/chat` giữ request `{ "message": "..." }` (1–1000 ký tự sau trim), bổ sung `source` và `knowledgeId` khi trả từ knowledge:
+### API và test
 
 ```json
-{ "message": "...", "source": "knowledge", "knowledgeId": 12 }
+POST /api/chat
+{ "message": "Xin chào" }
+
+{ "message": "...", "source": "small_talk", "intent": "greeting", "cached": false }
 ```
 
-`source=product`: câu trả lời Gemini dựa trên kết quả tra sản phẩm. `source=gemini`: trả lời mới không kèm sản phẩm. Widget khách hàng vẫn chỉ hiển thị message.
+source: knowledge/gemini/product/small_talk/system. Chỉ knowledge có cached=true và knowledgeId. Khách không nhận confidence/risk/prompt/key. Widget hiện có vẫn chỉ hiển thị message.
 
-Lỗi: validation 400, chưa đăng nhập 401, thiếu quyền 403, trùng/đã đổi dữ liệu 409, Gemini rate-limit 429, lỗi ngoài dự kiến 500, thiếu key/DB hoặc Gemini unavailable 503, timeout 504. Không trả lỗi thô/credentials về frontend và không ghi key/token/nội dung chat vào log.
+Giữ các route Admin:
 
-## Kiểm thử
+- GET `/api/admin/chatbot/stats`
+- GET `/api/admin/chatbot/knowledge?status=pending_review&risk=HIGH&intent=shipping&page=1&limit=20`
+- GET/POST/PATCH/DELETE knowledge như cũ; PATCH `:id/approve`, `:id/reject`.
+- Query `status=pending` cũ được chuyển thành pending_review; response dùng tên status mới.
 
 ```powershell
 cd backend
 npm.cmd run test:chat
-npm.cmd run build
-node.exe scripts/verify-chatbot.cjs
-# Tùy chọn: thêm một request Gemini thật, dùng key từ backend/.env
+node.exe scripts/verify-chatbot.cjs --migration
+# Một lượt Gemini thật; chỉ chạy lại khi dịch vụ sẵn sàng:
 node.exe scripts/verify-chatbot.cjs --gemini
 ```
 
-```powershell
-cd frontend
-npm.cmd run build
-```
+Mở widget: thử Xin chào/haha/emoji (không AI), câu ghế 2 triệu (DB), shipping/refund (draft-only nếu AI sẵn sàng). Đăng nhập Admin → Chatbot Knowledge → sửa/xác nhận draft rồi Approve; hỏi lại bằng “ship hàng” để kiểm tra source=knowledge trong Network.
 
-`test:chat` dùng node:test và Nest TestingModule sẵn có. Kiểm thử HTTP với JWT/roles thật; kho dữ liệu và Gemini giả lập để không tốn quota. Bao phủ lời chào, FAQ/ship, câu hỏi lặp trước/sau approve, câu mới lưu pending, query giá/tồn kho, thay đổi dữ liệu sản phẩm, CRUD, phân quyền 401/403, input sai/quá dài, thiếu key, 429/503/504/500 và lỗi lưu DB. Kiểm tra SQL được TypeORM tạo với bound parameters và LIMIT.
-
-`verify-chatbot.cjs` dùng MySQL thật, `synchronize:false`; mọi knowledge kiểm thử nằm trong transaction và được rollback. `--gemini` kiểm tra câu trả lời thật → pending → approve → hỏi lại; assert hai câu hỏi chỉ gọi Gemini một lần. Không sửa products.
-
-## File thay đổi
-
-Tạo mới:
-
-- `backend/src/database/entities/chatbot-knowledge.entity.ts`
-- `backend/src/chat/chat-matching.ts`
-- `backend/src/chat/chat-products.service.ts`
-- `backend/src/chat/knowledge.service.ts`
-- `backend/src/chat/knowledge.controller.ts`
-- `backend/src/chat/dto/knowledge.dto.ts`
-- `backend/src/chat/chat.spec.ts`
-- `backend/scripts/setup-chatbot.cjs`
-- `backend/scripts/verify-chatbot.cjs`
-- `database/chatbot_knowledge.sql`
-- `frontend/src/api/knowledge.ts`
-- `frontend/src/pages/admin/ChatbotKnowledgePage.tsx`
-- `frontend/src/styles/chatbot-knowledge.css`
-- `CHATBOT.md`
-
-Sửa:
-
-- `backend/package.json`: lệnh test và setup bảng.
-- `backend/src/chat/chat.module.ts`: đăng ký repository/services/controllers.
-- `backend/src/chat/chat.service.ts`: flow knowledge → sản phẩm → Gemini → Pending.
-- `backend/src/database/entities.ts` và `entities/index.ts`: đăng ký entity mới.
-- `frontend/src/api/types.ts`: kiểu response/knowledge/stats.
-- `frontend/src/App.tsx`: route quản lý.
-- `frontend/src/layouts/AdminLayout.tsx`: menu quản lý.
-
-Không thêm package. Không sửa `.env`, model đang dùng, widget khách hàng, authentication hoặc các module nghiệp vụ hiện tại.
+Lỗi an toàn: 400 validation; 401/403 auth; 409 trùng/stale sản phẩm; 429 quota; 503 thiếu key/DB/JSON invalid/unavailable; 504 timeout; 500 lỗi khác. Không trả lỗi provider/DB thô về khách. Không log key hoặc nội dung chat.
