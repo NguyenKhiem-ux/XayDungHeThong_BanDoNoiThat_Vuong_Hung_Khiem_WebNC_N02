@@ -1,5 +1,5 @@
 // file khai báo các api endpoint của chức năng auth và nhận request từ frontend.
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Patch, Post, UseGuards } from '@nestjs/common';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { AuthUser } from '../common/types/auth-user.type';
@@ -50,5 +50,11 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   me(@CurrentUser() user: AuthUser) {
     return this.auth.getProfile(user.id);
+  }
+
+  @Patch('me')
+  @UseGuards(JwtAuthGuard)
+  updateMe(@CurrentUser() user: AuthUser, @Body() body: { fullName?: string; phone?: string | null; birthDate?: string | null; address?: string | null; gender?: string }) {
+    return this.auth.updateProfile(user.id, body);
   }
 }

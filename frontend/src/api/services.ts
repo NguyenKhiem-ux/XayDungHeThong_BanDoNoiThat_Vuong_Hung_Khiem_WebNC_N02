@@ -10,6 +10,7 @@ export const authApi = {
   resetPassword: (email: string, otp: string, newPassword: string) => api.post<{ message: string }>('/auth/reset-password', { email, otp, newPassword }),
   changePassword: (currentPassword: string, newPassword: string, confirmPassword: string) => api.post<{ message: string }>('/auth/change-password', { currentPassword, newPassword, confirmPassword }),
   me: () => api.get<User>('/auth/me'),
+  updateProfile: (data: { fullName: string; phone: string; birthDate: string; address: string; gender: string }) => api.patch<User>('/auth/me', data),
 };
 
 export const productApi = {
@@ -57,7 +58,11 @@ export const addressApi = {
 
 export const couponApi = {
   list: () => api.get<Coupon[]>('/coupons'),
+  adminList: () => api.get<Coupon[]>('/coupons/admin/list'),
   validate: (code: string, orderAmount: number) => api.post<{ valid: boolean; coupon: Coupon; discountAmount: number; finalAmount: number }>('/coupons/validate', { code, orderAmount }),
+  create: (data: Partial<Coupon>) => api.post<Coupon>('/coupons', data),
+  update: (id: number, data: Partial<Coupon>) => api.patch<Coupon>(`/coupons/${id}`, data),
+  remove: (id: number) => api.delete(`/coupons/${id}`),
 };
 
 export const paymentApi = {

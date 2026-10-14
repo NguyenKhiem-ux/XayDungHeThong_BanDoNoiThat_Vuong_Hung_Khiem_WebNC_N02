@@ -24,6 +24,15 @@ export class User {
   @Column({ type: 'varchar', length: 15, nullable: true })
   phone: string | null;
 
+  @Column({ name: 'birth_date', type: 'date', nullable: true })
+  birthDate: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  address: string | null;
+
+  @Column({ type: 'varchar', length: 10, default: 'male' })
+  gender: string;
+
   @Column({ type: 'enum', enum: UserRole, default: UserRole.USER })
   role: UserRole;
 

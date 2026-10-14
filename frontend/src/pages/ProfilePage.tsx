@@ -1,8 +1,8 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+﻿import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronDown, Save } from 'lucide-react';
 import { formatVnd, imageUrl } from '../api/client';
-import { addressApi, couponApi, favoriteApi, orderApi } from '../api/services';
+import { addressApi, authApi, couponApi, favoriteApi, orderApi } from '../api/services';
 import type { Coupon, Favorite, Order, UserAddress } from '../api/types';
 import { ProductCard } from '../components/ProductCard';
 import { useAuth } from '../context/AuthContext';
@@ -19,7 +19,7 @@ type ProfileForm = {
 type CouponCard = Pick<Coupon, 'code' | 'description' | 'discountType' | 'discountValue' | 'minOrderAmount'> & {
   id: number | string;
   endDate?: string;
-  demo?: boolean;
+  freeShipping?: boolean;
 };
 
 const statusLabels: Record<Order['status'], string> = {
@@ -38,19 +38,6 @@ const emptyForm: ProfileForm = {
   address: '',
 };
 
-const demoCoupons: CouponCard[] = [
-  { id: 'demo-1', code: 'GIADUNG10', description: 'Giảm cho đơn từ 500.000đ', discountType: 'percentage', discountValue: 10, minOrderAmount: 500000, demo: true },
-  { id: 'demo-2', code: 'FREESHIP', description: 'Miễn phí giao hàng nội thành', discountType: 'fixed', discountValue: 30000, minOrderAmount: 300000, demo: true },
-];
-
-function readProfile(userId: number): Partial<ProfileForm> {
-  try {
-    return JSON.parse(localStorage.getItem(`giadung_profile_${userId}`) || '{}');
-  } catch {
-    return {};
-  }
-}
-
 function couponValue(coupon: CouponCard) {
   const value = Number(coupon.discountValue);
   return coupon.discountType === 'percentage' ? `${value}%` : formatVnd(value);
@@ -62,7 +49,6 @@ function toast(message: string) {
 
 export function ProfilePage() {
   const { user, logout } = useAuth();
-  const [editing, setEditing] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [favorites, setFavorites] = useState<Favorite[]>([]);
@@ -74,18 +60,17 @@ export function ProfilePage() {
   const activeCoupons = useMemo(() => coupons
     .filter(c => c.isActive && new Date(c.endDate).getTime() >= Date.now())
     .slice(0, 3), [coupons]);
-  const couponCards: CouponCard[] = activeCoupons.length ? activeCoupons : demoCoupons;
+  const couponCards: CouponCard[] = activeCoupons;
 
   useEffect(() => {
     if (!user) return;
-    const saved = readProfile(user.id);
     setForm({
-      fullName: saved.fullName || user.fullName || user.username || '',
+      fullName: user.fullName || user.username || '',
       email: user.email,
-      phone: saved.phone || user.phone || '',
-      birthDate: saved.birthDate || '',
-      gender: saved.gender || 'male',
-      address: saved.address || defaultAddress?.address || '',
+      phone: user.phone || '',
+      birthDate: user.birthDate?.slice(0, 10) || '',
+      gender: (user.gender as Gender) || 'male',
+      address: user.address || defaultAddress?.address || '',
     });
   }, [user, defaultAddress?.address]);
 
@@ -105,11 +90,15 @@ export function ProfilePage() {
   const orderItems = orders.reduce((total, order) => total + order.items.reduce((sum, item) => sum + item.quantity, 0), 0);
 
   const update = (key: keyof ProfileForm, value: string) => setForm(current => ({ ...current, [key]: value }));
-  const save = (e: FormEvent) => {
+  const save = async (e: FormEvent) => {
     e.preventDefault();
-    localStorage.setItem(`giadung_profile_${user.id}`, JSON.stringify(form));
-    setEditing(false);
-    toast('Đã lưu tạm hồ sơ trên trình duyệt');
+    try {
+      const { data } = await authApi.updateProfile(form);
+      setForm(current => ({ ...current, fullName: data.fullName, phone: data.phone || '', address: data.address || '', birthDate: data.birthDate?.slice(0, 10) || '', gender: (data.gender as Gender) || 'male' }));
+      toast('Đã lưu hồ sơ');
+    } catch {
+      toast('Không thể lưu hồ sơ. Vui lòng thử lại.');
+    }
   };
 
   return <section className="profile-shell">
@@ -140,15 +129,9 @@ export function ProfilePage() {
             <h1>Hồ sơ cá nhân</h1>
             <p>Quản lý thông tin tài khoản và cập nhật địa chỉ nhận hàng.</p>
           </div>
-          {!editing ? (
-            <button type="button" className="profile-mini-btn" onClick={() => setEditing(true)}>
-              <i className="fa-solid fa-pen" /> Chỉnh sửa
-            </button>
-          ) : (
-            <button type="submit" className="profile-mini-btn primary">
-              <i className="fa-solid fa-floppy-disk" /> Lưu thay đổi
-            </button>
-          )}
+          <button type="submit" className="profile-mini-btn primary">
+            <i className="fa-solid fa-floppy-disk" /> Lưu thay đổi
+          </button>
         </div>
 
         <div className="profile-form-grid">
@@ -157,16 +140,16 @@ export function ProfilePage() {
             <span>Ảnh đại diện</span>
           </div>
           <label>Họ và tên
-            <input autoComplete="name" value={form.fullName} onChange={e => update('fullName', e.target.value)} readOnly={!editing} />
+            <input autoComplete="name" value={form.fullName} onChange={e => update('fullName', e.target.value)} />
           </label>
           <label>Email
             <input value={form.email} readOnly />
           </label>
           <label>Số điện thoại
-            <input type="tel" autoComplete="tel" value={form.phone} onChange={e => update('phone', e.target.value)} readOnly={!editing} />
+            <input type="tel" autoComplete="tel" value={form.phone} onChange={e => update('phone', e.target.value)} />
           </label>
           <label>Ngày sinh
-            <input type="date" value={form.birthDate} onChange={e => update('birthDate', e.target.value)} disabled={!editing} />
+            <input type="date" value={form.birthDate} onChange={e => update('birthDate', e.target.value)} />
           </label>
           <fieldset className="profile-gender">
             <legend>Giới tính</legend>
@@ -175,15 +158,15 @@ export function ProfilePage() {
               ['female', 'Nữ'],
               ['other', 'Khác'],
             ].map(([value, label]) => <label key={value}>
-              <input type="radio" name="gender" value={value} checked={form.gender === value} disabled={!editing} onChange={e => update('gender', e.target.value)} />
+              <input type="radio" name="gender" value={value} checked={form.gender === value} onChange={e => update('gender', e.target.value)} />
               {label}
             </label>)}
           </fieldset>
           <label>Địa chỉ mặc định
-            <textarea rows={2} autoComplete="street-address" value={form.address} onChange={e => update('address', e.target.value)} readOnly={!editing} />
+            <textarea rows={2} autoComplete="street-address" value={form.address} onChange={e => update('address', e.target.value)} />
           </label>
         </div>
-        {editing && <button type="submit" className="profile-mobile-save profile-mini-btn primary"><Save size={18} aria-hidden="true" /> Lưu thay đổi</button>}
+        <button type="submit" className="profile-mobile-save profile-mini-btn primary"><Save size={18} aria-hidden="true" /> Lưu thay đổi</button>
       </form>
 
       <div className="profile-stats">
@@ -214,11 +197,12 @@ export function ProfilePage() {
             <Link to="/products">Dùng ngay <i className="fa-solid fa-angle-right" /></Link>
           </div>
           <div className="profile-coupon-list">
-            {couponCards.map(coupon => <article className={`profile-coupon ${coupon.demo ? 'demo' : ''}`} key={coupon.id}>
+            {couponCards.map(coupon => <article className="profile-coupon" key={coupon.id}>
               <div className="coupon-icon"><i className="fa-solid fa-ticket" /></div>
               <div>
                 <strong>{coupon.code}</strong>
                 <span>{coupon.description || `Giảm ${couponValue(coupon)} cho đơn từ ${formatVnd(Number(coupon.minOrderAmount))}`}</span>
+                {coupon.freeShipping && <small>Miễn phí vận chuyển · </small>}
                 {coupon.endDate && <small>Hết hạn {new Date(coupon.endDate).toLocaleDateString('vi-VN')}</small>}
               </div>
               <b>{couponValue(coupon)}</b>
