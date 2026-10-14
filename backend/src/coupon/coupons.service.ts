@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import {
   Coupon,
   CouponDiscountType,
@@ -17,12 +17,17 @@ export class CouponsService {
     private readonly couponRepository: Repository<Coupon>,
   ) {}
 
-  async findAll(): Promise<Coupon[]> {
+  async findAll(userId?: number): Promise<Coupon[]> {
     return this.couponRepository.find({
+      where: userId === undefined ? {} : [{ userId }, { userId: IsNull() }],
       order: {
         createdAt: 'DESC',
       },
     });
+  }
+
+  async findAllAdmin(): Promise<Coupon[]> {
+    return this.couponRepository.find({ order: { createdAt: 'DESC' } });
   }
 
   async findOne(id: number): Promise<Coupon> {
@@ -91,6 +96,7 @@ export class CouponsService {
   async validateCoupon(
     code: string,
     orderAmount: number,
+    userId?: number,
   ): Promise<{
     valid: boolean;
     coupon: Coupon;
@@ -110,6 +116,7 @@ export class CouponsService {
     if (!coupon.isActive) {
       throw new BadRequestException('Mã giảm giá đã bị vô hiệu hóa');
     }
+    if (coupon.userId !== null && coupon.userId !== userId) throw new BadRequestException('Mã giảm giá không thuộc tài khoản của bạn');
 
     const now = new Date();
 

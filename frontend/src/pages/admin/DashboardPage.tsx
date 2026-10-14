@@ -127,7 +127,7 @@ export function AdminDashboardPage() {
   return <div className="admin-page-shell">
     <div className="admin-page-header"><div><div className="eyebrow">TODAY OVERVIEW</div><h1>Dashboard</h1></div></div>
     <div className="admin-grid">
-      <div className="admin-stat-card"><DollarSign/><div><span>Giá trị đơn chưa hủy</span><strong>{formatVnd(data.revenue)}</strong></div></div>
+      <div className="admin-stat-card"><DollarSign/><div><span>Giá trị đơn hàng</span><strong>{formatVnd(data.revenue)}</strong></div></div>
       <div className="admin-stat-card"><Receipt/><div><span>Tổng đơn hàng</span><strong>{data.orders}</strong></div></div>
       <div className="admin-stat-card"><Clock3/><div><span>Chờ xử lý</span><strong>{data.pendingOrders}</strong></div></div>
       <div className="admin-stat-card"><Boxes/><div><span>Sản phẩm</span><strong>{data.products}</strong></div></div>

@@ -57,6 +57,16 @@ export class AuthService {
     return this.publicUser(user);
   }
 
+  async updateProfile(userId: number, data: { fullName?: string; phone?: string | null; birthDate?: string | null; address?: string | null; gender?: string }) {
+    const user = await this.users.findOneByOrFail({ id: userId });
+    if (data.fullName !== undefined) user.fullName = data.fullName.trim();
+    if (data.phone !== undefined) user.phone = data.phone?.trim() || null;
+    if (data.birthDate !== undefined) user.birthDate = data.birthDate || null;
+    if (data.address !== undefined) user.address = data.address?.trim() || null;
+    if (data.gender !== undefined) user.gender = data.gender;
+    return this.publicUser(await this.users.save(user));
+  }
+
   async forgotPassword(rawEmail: string) {
     const email = rawEmail.trim().toLowerCase();
     const user = await this.users.findOne({ where: { email } });
@@ -146,6 +156,9 @@ export class AuthService {
       username: user.username,
       email: user.email,
       phone: user.phone,
+      birthDate: user.birthDate,
+      address: user.address,
+      gender: user.gender,
       role: user.role,
     };
   }
