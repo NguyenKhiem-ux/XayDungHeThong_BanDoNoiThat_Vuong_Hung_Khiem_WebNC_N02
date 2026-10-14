@@ -5,6 +5,7 @@ import { productApi } from '../api/services';
 import { formatVnd, imageUrl } from '../api/client';
 import type { Product } from '../api/types';
 import { useCart } from '../context/CartContext';
+import { FavoriteButton } from '../components/FavoriteButton';
 
 export function ProductDetailPage() {
   const { id } = useParams();
@@ -39,6 +40,7 @@ export function ProductDetailPage() {
         <div className="detail-heading">
           <span className="product-category">{product.category || 'Gia dụng'}</span>
           <h1>{product.name}</h1>
+          <FavoriteButton productId={product.id} className="detail-favorite-button" />
           {product.brand && <p className="detail-brand">Thương hiệu: <strong>{product.brand}</strong></p>}
         </div>
         <div className="price-stock-row">

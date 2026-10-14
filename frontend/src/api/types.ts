@@ -21,6 +21,7 @@ export interface User {
   birthDate?: string | null;
   address?: string | null;
   gender?: string;
+  avatarUrl?: string | null;
   role: Role;
 }
 

@@ -67,6 +67,12 @@ export class AuthService {
     return this.publicUser(await this.users.save(user));
   }
 
+  async updateAvatar(userId: number, avatarUrl: string) {
+    const user = await this.users.findOneByOrFail({ id: userId });
+    user.avatarUrl = avatarUrl;
+    return this.publicUser(await this.users.save(user));
+  }
+
   async forgotPassword(rawEmail: string) {
     const email = rawEmail.trim().toLowerCase();
     const user = await this.users.findOne({ where: { email } });
@@ -158,6 +164,7 @@ export class AuthService {
       phone: user.phone,
       birthDate: user.birthDate,
       address: user.address,
+      avatarUrl: user.avatarUrl,
       gender: user.gender,
       role: user.role,
     };
