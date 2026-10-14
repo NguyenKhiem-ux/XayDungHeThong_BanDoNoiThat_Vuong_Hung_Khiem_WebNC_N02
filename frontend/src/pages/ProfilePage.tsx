@@ -60,6 +60,7 @@ export function ProfilePage() {
   const [showAllCoupons, setShowAllCoupons] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState('');
   const [avatarBusy, setAvatarBusy] = useState(false);
+  const [mapAddress, setMapAddress] = useState('');
 
   const defaultAddress = useMemo(() => addresses.find(a => a.isDefault) || addresses[0], [addresses]);
   const activeCoupons = useMemo(() => coupons
@@ -80,6 +81,11 @@ export function ProfilePage() {
       address: user.address || defaultAddress?.address || '',
     });
   }, [user, defaultAddress?.address]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setMapAddress(form.address.trim()), 700);
+    return () => window.clearTimeout(timer);
+  }, [form.address]);
 
   useEffect(() => {
     let live = true;
@@ -248,8 +254,18 @@ export function ProfilePage() {
       <section className="profile-panel" id="profile-addresses">
         <div className="profile-section-head">
           <h2>Địa chỉ giao hàng</h2>
-          <span>{addresses.length} địa chỉ</span>
+          <span>{addresses.length || (form.address.trim() ? 1 : 0)} địa chỉ</span>
         </div>
+        {mapAddress && <div className="profile-map-wrap">
+          <iframe
+            title={`Bản đồ vị trí: ${mapAddress}`}
+            src={`https://maps.google.com/maps?q=${encodeURIComponent(mapAddress)}&output=embed`}
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+            allowFullScreen
+          />
+          <small>Bản đồ Google Maps cập nhật theo địa chỉ bạn nhập.</small>
+        </div>}
         {addresses.length ? <div className="profile-address-list">
           {addresses.map(address => <article className="profile-address" key={address.id}>
             <div>
@@ -259,7 +275,7 @@ export function ProfilePage() {
             </div>
             {address.isDefault && <em>Mặc định</em>}
           </article>)}
-        </div> : <div className="profile-empty"><i className="fa-solid fa-location-dot" /> Chưa có địa chỉ giao hàng.</div>}
+        </div> : form.address.trim() ? <div className="profile-address-list"><article className="profile-address"><div><strong>Địa chỉ mặc định</strong><p>{form.address}</p></div><em>Mặc định</em></article></div> : <div className="profile-empty"><i className="fa-solid fa-location-dot" /> Chưa có địa chỉ giao hàng.</div>}
       </section>
 
       <section className="profile-panel profile-orders">
