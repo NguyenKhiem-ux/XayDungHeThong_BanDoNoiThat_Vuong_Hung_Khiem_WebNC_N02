@@ -494,6 +494,7 @@ main { min-height: 65vh; }
   gap: 14px;
 }
 .product-card {
+  position: relative;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -504,6 +505,24 @@ main { min-height: 65vh; }
   box-shadow: 0 8px 24px rgba(24,31,28,.08);
   transition: transform .28s var(--ease), box-shadow .28s var(--ease), border-color .28s var(--ease);
 }
+.favorite-button {
+  width: 40px;
+  height: 40px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  color: var(--brand);
+  background: rgba(255,255,255,.95);
+  box-shadow: 0 3px 12px rgba(24,31,28,.14);
+  cursor: pointer;
+  transition: transform .2s var(--ease), color .2s var(--ease), background .2s var(--ease);
+}
+.favorite-button:hover { transform: scale(1.08); }
+.favorite-button.is-saved { color: #c0394a; }
+.favorite-button:disabled { opacity: .55; cursor: wait; }
+.product-favorite-button { position: absolute; z-index: 3; top: 10px; right: 10px; }
+.detail-favorite-button { margin-top: 8px; }
 .product-card:hover {
   transform: translateY(-6px);
   border-color: rgba(15,79,63,.32);
@@ -1436,6 +1455,21 @@ main { min-height: 65vh; }
   font-size: 12px;
   overflow-wrap: anywhere;
 }
+.avatar-change-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0 11px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--brand);
+  background: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.avatar-change-button input { display: none; }
 
 .profile-menu {
   display: grid;
@@ -1512,12 +1546,14 @@ main { min-height: 65vh; }
 }
 
 .profile-section-head a,
+.profile-link-button,
 .profile-section-head span {
   color: var(--brand);
   font-size: 13px;
   font-weight: 800;
   white-space: nowrap;
 }
+.profile-link-button { display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; background: transparent; cursor: pointer; }
 
 .profile-mini-btn {
   display: inline-flex;
@@ -1880,6 +1916,7 @@ main { min-height: 65vh; }
   .profile-avatar-card img { grid-row: span 2; width: 56px; height: 56px; border-width: 2px; box-shadow: none; }
   .profile-avatar-card strong { align-self: end; overflow-wrap: anywhere; }
   .profile-avatar-card span { align-self: start; font-size: 13px; }
+  .profile-avatar-card .avatar-change-button { grid-column: 2; justify-self: start; }
   .profile-menu-toggle {
     display: flex;
     align-items: center;

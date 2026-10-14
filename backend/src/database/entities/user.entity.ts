@@ -30,6 +30,9 @@ export class User {
   @Column({ type: 'text', nullable: true })
   address: string | null;
 
+  @Column({ name: 'avatar_url', type: 'varchar', length: 500, nullable: true })
+  avatarUrl: string | null;
+
   @Column({ type: 'varchar', length: 10, default: 'male' })
   gender: string;
 

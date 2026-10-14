@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { imageUrl, formatVnd } from '../api/client';
 import type { Product } from '../api/types';
 import { useCart } from '../context/CartContext';
+import { FavoriteButton } from './FavoriteButton';
 
 export function ProductCard({ product, home = false, index = 0 }: { product: Product; home?: boolean; index?: number }) {
   const { add } = useCart();
@@ -24,6 +25,7 @@ export function ProductCard({ product, home = false, index = 0 }: { product: Pro
       {product.isFeatured && <span className="badge">Nổi bật</span>}
       {!product.isFeatured && soldOut && <span className="badge muted">Hết hàng</span>}
     </Link>
+    <FavoriteButton productId={product.id} className="product-favorite-button" />
     <div className="product-info">
       <span className="product-category">{product.category || 'Gia dụng'}</span>
       <h3><Link to={`/products/${product.id}`}>{product.name}</Link></h3>
