@@ -66,6 +66,7 @@ export function ChatWidget() {
       setError(typeof serverMessage === 'string' ? serverMessage : 'Chatbot đang bận. Bạn vui lòng thử lại sau.');
     } finally {
       setLoading(false);
+      window.setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 0);
     }
   };
 
