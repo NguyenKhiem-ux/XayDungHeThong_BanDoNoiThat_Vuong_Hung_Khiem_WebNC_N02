@@ -17,6 +17,12 @@ export class Coupon {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @Column({ name: 'user_id', type: 'bigint', nullable: true })
+  userId: number | null;
+
+  @Column({ name: 'free_shipping', default: false })
+  freeShipping: boolean;
+
   @Column({ unique: true, length: 50 })
   code: string;
 

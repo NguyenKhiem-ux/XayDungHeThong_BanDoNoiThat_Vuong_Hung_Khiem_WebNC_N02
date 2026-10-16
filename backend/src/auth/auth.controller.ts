@@ -1,5 +1,8 @@
 // file khai báo các api endpoint của chức năng auth và nhận request từ frontend.
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Patch, Post, UploadedFile, UseGuards, UseInterceptors, BadRequestException } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { AuthUser } from '../common/types/auth-user.type';
@@ -10,6 +13,11 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { VerifyResetOtpDto } from './dto/verify-reset-otp.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+
+const avatarStorage = diskStorage({
+  destination: './uploads/avatars',
+  filename: (_req, file, cb) => cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}${extname(file.originalname).toLowerCase()}`),
+});
 
 @Controller('auth')
 export class AuthController {
@@ -50,5 +58,23 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   me(@CurrentUser() user: AuthUser) {
     return this.auth.getProfile(user.id);
+  }
+
+  @Patch('me')
+  @UseGuards(JwtAuthGuard)
+  updateMe(@CurrentUser() user: AuthUser, @Body() body: { fullName?: string; phone?: string | null; birthDate?: string | null; address?: string | null; gender?: string }) {
+    return this.auth.updateProfile(user.id, body);
+  }
+
+  @Post('me/avatar')
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(FileInterceptor('avatar', {
+    storage: avatarStorage,
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: (_req, file, cb) => file.mimetype.startsWith('image/') ? cb(null, true) : cb(new BadRequestException('Chỉ chấp nhận tệp hình ảnh'), false),
+  }))
+  updateAvatar(@CurrentUser() user: AuthUser, @UploadedFile() file?: Express.Multer.File) {
+    if (!file) throw new BadRequestException('Vui lòng chọn ảnh đại diện');
+    return this.auth.updateAvatar(user.id, `/uploads/avatars/${file.filename}`);
   }
 }

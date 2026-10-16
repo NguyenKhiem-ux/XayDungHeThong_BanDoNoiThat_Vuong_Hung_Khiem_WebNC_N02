@@ -28,6 +28,7 @@ import { ProductAdminPage } from './pages/admin/ProductAdminPage';
 import { RevenueAdminPage } from './pages/admin/RevenueAdminPage';
 import { UsersAdminPage } from './pages/admin/UsersAdminPage';
 import { ChatbotKnowledgePage } from './pages/admin/ChatbotKnowledgePage';
+import { CouponsAdminPage } from './pages/admin/CouponsAdminPage';
 
 export function App() {
   return <BrowserRouter>
@@ -38,6 +39,7 @@ export function App() {
           <Route index element={<AdminDashboardPage />} />
           <Route path="products" element={<ProductAdminPage />} />
           <Route path="orders" element={<OrdersAdminPage />} />
+          <Route path="coupons" element={<CouponsAdminPage />} />
           <Route path="users" element={<UsersAdminPage />} />
           <Route path="messages" element={<MessagesAdminPage />} />
           <Route path="revenue" element={<RevenueAdminPage />} />

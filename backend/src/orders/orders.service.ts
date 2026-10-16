@@ -51,6 +51,7 @@ export class OrdersService {
           lock: { mode: 'pessimistic_write' },
         });
         if (!appliedCoupon) throw new BadRequestException('Mã giảm giá không tồn tại');
+        if (appliedCoupon.userId !== null && appliedCoupon.userId !== userId) throw new BadRequestException('Mã giảm giá không thuộc tài khoản của bạn');
         const now = new Date();
         if (!appliedCoupon.isActive) throw new BadRequestException('Mã giảm giá đã bị vô hiệu hóa');
         if (now < appliedCoupon.startDate) throw new BadRequestException('Mã giảm giá chưa bắt đầu sử dụng');
@@ -144,6 +145,7 @@ export class OrdersService {
   async adminUpdateStatus(id: number, dto: UpdateOrderStatusDto) {
     const order = await this.orders.findOne({ where: { id } });
     if (!order) throw new NotFoundException('Không tìm thấy đơn hàng');
+    const previousStatus = order.status;
     order.status = dto.status;
     if (dto.status === OrderStatus.DELIVERED && order.paymentMethod === PaymentMethod.CASH) {
       order.paymentStatus = PaymentStatus.PAID;
@@ -154,7 +156,38 @@ export class OrdersService {
         await this.payments.save(payment);
       }
     }
-    return this.serialize(await this.orders.save(order));
+    const saved = await this.orders.save(order);
+    if (dto.status === OrderStatus.CONFIRMED && previousStatus !== OrderStatus.CONFIRMED) {
+      await this.issueRewardCoupon(saved);
+    }
+    return this.serialize(saved);
+  }
+
+  private async issueRewardCoupon(order: Order) {
+    const amount = Number(order.subtotalAmount || order.totalAmount);
+    if (amount < 1_000_000) return;
+    const discountValue = amount < 5_000_000
+      ? 10 + Math.floor(Math.random() * 11)
+      : 30 + Math.floor(Math.random() * 11);
+    const code = `DON${order.id}`;
+    const coupons = this.dataSource.getRepository(Coupon);
+    if (await coupons.exists({ where: { code } })) return;
+    const now = new Date();
+    await coupons.save(coupons.create({
+      userId: order.userId,
+      code,
+      description: `Quà tri ân đơn hàng #${order.id}: giảm ${discountValue}% và miễn phí vận chuyển`,
+      discountType: CouponDiscountType.PERCENTAGE,
+      discountValue,
+      minOrderAmount: 0,
+      maxDiscountAmount: null,
+      usageLimit: 1,
+      usedCount: 0,
+      startDate: now,
+      endDate: new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000),
+      isActive: true,
+      freeShipping: true,
+    }));
   }
  
   async dashboardSummary() {

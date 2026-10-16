@@ -18,6 +18,10 @@ export interface User {
   username: string | null;
   email: string;
   phone: string | null;
+  birthDate?: string | null;
+  address?: string | null;
+  gender?: string;
+  avatarUrl?: string | null;
   role: Role;
 }
 
@@ -68,6 +72,8 @@ export interface Coupon {
   startDate: string;
   endDate: string;
   isActive: boolean;
+  userId: number | null;
+  freeShipping: boolean;
   createdAt: string;
   updatedAt: string;
 }

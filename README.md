@@ -25,3 +25,7 @@ cập nhật giao diện thông tin đơn hàng
 cập nhật thah toán cash
 
 có hỗ trợ chatbot
+
+tạo mã giảm giá trong admin
+
+them bản đồ vào phần địa chỉ

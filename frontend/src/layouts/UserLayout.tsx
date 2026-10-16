@@ -69,7 +69,7 @@ export function UserLayout() {
         <nav className="navbar" id="mainNav">
           <Link className="brand" to="/" aria-label="Hung Gia dụng Shop">
             <span className="brand-mark"><i className="fa-solid fa-bolt" /></span>
-            <span className="brand-copy">Hung<span>Gia dụng</span></span>
+            <span className="brand-copy">Hung Vuong<span>Gia dụng</span></span>
           </Link>
 
           <form className="nav-search" role="search" onSubmit={search}>
