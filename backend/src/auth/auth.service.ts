@@ -12,6 +12,7 @@ import { PasswordResetToken } from '../database/entities/password-reset-token.en
 import { EmailService } from '../email/email.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @Injectable()
 export class AuthService {
@@ -55,6 +56,15 @@ export class AuthService {
   async getProfile(userId: number) {
     const user = await this.users.findOneByOrFail({ id: userId });
     return this.publicUser(user);
+  }
+
+  async updateProfile(userId: number, dto: UpdateProfileDto) {
+    const user = await this.users.findOneByOrFail({ id: userId });
+    if (dto.fullName !== undefined) user.fullName = dto.fullName.trim();
+    if (dto.phone !== undefined) user.phone = dto.phone?.trim() || null;
+    if (dto.birthDate !== undefined) user.birthDate = dto.birthDate;
+    if (dto.gender !== undefined) user.gender = dto.gender;
+    return this.publicUser(await this.users.save(user));
   }
 
   async forgotPassword(rawEmail: string) {
@@ -146,6 +156,8 @@ export class AuthService {
       username: user.username,
       email: user.email,
       phone: user.phone,
+      birthDate: user.birthDate,
+      gender: user.gender,
       role: user.role,
     };
   }
