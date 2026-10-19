@@ -10,6 +10,7 @@ export const authApi = {
   resetPassword: (email: string, otp: string, newPassword: string) => api.post<{ message: string }>('/auth/reset-password', { email, otp, newPassword }),
   changePassword: (currentPassword: string, newPassword: string, confirmPassword: string) => api.post<{ message: string }>('/auth/change-password', { currentPassword, newPassword, confirmPassword }),
   me: () => api.get<User>('/auth/me'),
+  updateProfile: (data: Pick<User, 'fullName' | 'phone' | 'birthDate' | 'gender'>) => api.patch<User>('/auth/me', data),
 };
 
 export const productApi = {
@@ -49,6 +50,8 @@ export const favoriteApi = {
 
 export const addressApi = {
   list: () => api.get<UserAddress[]>('/addresses'),
+  create: (data: Pick<UserAddress, 'fullName' | 'phone' | 'address' | 'isDefault'>) => api.post<UserAddress>('/addresses', data),
+  update: (id: number, data: Partial<Pick<UserAddress, 'fullName' | 'phone' | 'address' | 'isDefault'>>) => api.patch<UserAddress>(`/addresses/${id}`, data),
 };
 
 export const couponApi = {

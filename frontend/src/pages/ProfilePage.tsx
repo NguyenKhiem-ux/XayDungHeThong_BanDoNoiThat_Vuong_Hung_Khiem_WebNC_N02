@@ -1,13 +1,13 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { isAxiosError } from 'axios';
 import { Link } from 'react-router-dom';
 import { ChevronDown, Save } from 'lucide-react';
 import { formatVnd, imageUrl } from '../api/client';
-import { addressApi, couponApi, favoriteApi, orderApi } from '../api/services';
-import type { Coupon, Favorite, Order, UserAddress } from '../api/types';
+import { addressApi, authApi, couponApi, favoriteApi, orderApi } from '../api/services';
+import type { Coupon, Favorite, Gender, Order, UserAddress } from '../api/types';
 import { ProductCard } from '../components/ProductCard';
 import { useAuth } from '../context/AuthContext';
 
-type Gender = 'male' | 'female' | 'other';
 type ProfileForm = {
   fullName: string;
   email: string;
@@ -43,14 +43,6 @@ const demoCoupons: CouponCard[] = [
   { id: 'demo-2', code: 'FREESHIP', description: 'Miễn phí giao hàng nội thành', discountType: 'fixed', discountValue: 30000, minOrderAmount: 300000, demo: true },
 ];
 
-function readProfile(userId: number): Partial<ProfileForm> {
-  try {
-    return JSON.parse(localStorage.getItem(`giadung_profile_${userId}`) || '{}');
-  } catch {
-    return {};
-  }
-}
-
 function couponValue(coupon: CouponCard) {
   const value = Number(coupon.discountValue);
   return coupon.discountType === 'percentage' ? `${value}%` : formatVnd(value);
@@ -60,9 +52,16 @@ function toast(message: string) {
   window.dispatchEvent(new CustomEvent('toast', { detail: message }));
 }
 
+function apiError(error: unknown, fallback: string) {
+  if (!isAxiosError(error)) return fallback;
+  const message = error.response?.data?.message;
+  return Array.isArray(message) ? message.join(', ') : typeof message === 'string' ? message : fallback;
+}
+
 export function ProfilePage() {
-  const { user, logout } = useAuth();
+  const { user, logout, refresh } = useAuth();
   const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [favorites, setFavorites] = useState<Favorite[]>([]);
@@ -77,17 +76,16 @@ export function ProfilePage() {
   const couponCards: CouponCard[] = activeCoupons.length ? activeCoupons : demoCoupons;
 
   useEffect(() => {
-    if (!user) return;
-    const saved = readProfile(user.id);
+    if (!user || editing) return;
     setForm({
-      fullName: saved.fullName || user.fullName || user.username || '',
+      fullName: user.fullName || user.username || '',
       email: user.email,
-      phone: saved.phone || user.phone || '',
-      birthDate: saved.birthDate || '',
-      gender: saved.gender || 'male',
-      address: saved.address || defaultAddress?.address || '',
+      phone: user.phone || '',
+      birthDate: user.birthDate || '',
+      gender: user.gender || 'male',
+      address: defaultAddress?.address || '',
     });
-  }, [user, defaultAddress?.address]);
+  }, [user, defaultAddress?.address, editing]);
 
   useEffect(() => {
     let live = true;
@@ -104,12 +102,51 @@ export function ProfilePage() {
   const displayName = form.fullName || user.fullName || user.username || 'Khách hàng';
   const orderItems = orders.reduce((total, order) => total + order.items.reduce((sum, item) => sum + item.quantity, 0), 0);
 
-  const update = (key: keyof ProfileForm, value: string) => setForm(current => ({ ...current, [key]: value }));
-  const save = (e: FormEvent) => {
+  const update = (key: keyof ProfileForm, value: string) => {
+    setEditing(true);
+    setForm(current => ({ ...current, [key]: value }));
+  };
+  const save = async (e: FormEvent) => {
     e.preventDefault();
-    localStorage.setItem(`giadung_profile_${user.id}`, JSON.stringify(form));
-    setEditing(false);
-    toast('Đã lưu tạm hồ sơ trên trình duyệt');
+    const fullName = form.fullName.trim();
+    const phone = form.phone.trim();
+    const address = form.address.trim();
+    if (!fullName) return toast('Họ và tên không được để trống');
+    if (address !== (defaultAddress?.address || '') && (!address || !phone)) {
+      return toast(!address ? 'Địa chỉ không được để trống' : 'Cần số điện thoại để lưu địa chỉ');
+    }
+
+    setSaving(true);
+    try {
+      await authApi.updateProfile({
+        fullName,
+        phone: phone || null,
+        birthDate: form.birthDate || null,
+        gender: form.gender,
+      });
+      await refresh();
+    } catch (error) {
+      toast(apiError(error, 'Không thể lưu hồ sơ. Vui lòng thử lại.'));
+      setSaving(false);
+      return;
+    }
+
+    try {
+      if (address !== (defaultAddress?.address || '')) {
+        const response = defaultAddress
+          ? await addressApi.update(defaultAddress.id, { address, isDefault: true })
+          : await addressApi.create({ fullName, phone, address, isDefault: true });
+        setAddresses(current => defaultAddress
+          ? current.map(item => item.id === response.data.id ? response.data : { ...item, isDefault: false })
+          : [response.data, ...current]);
+      }
+      setEditing(false);
+      toast('Đã lưu hồ sơ thành công');
+    } catch (error) {
+      toast(`Hồ sơ đã lưu nhưng địa chỉ chưa được cập nhật: ${apiError(error, 'Vui lòng thử lại.')}`);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return <section className="profile-shell">
@@ -145,8 +182,8 @@ export function ProfilePage() {
               <i className="fa-solid fa-pen" /> Chỉnh sửa
             </button>
           ) : (
-            <button type="submit" className="profile-mini-btn primary">
-              <i className="fa-solid fa-floppy-disk" /> Lưu thay đổi
+            <button type="submit" className="profile-mini-btn primary" disabled={saving}>
+              <i className="fa-solid fa-floppy-disk" /> {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
             </button>
           )}
         </div>
@@ -157,16 +194,16 @@ export function ProfilePage() {
             <span>Ảnh đại diện</span>
           </div>
           <label>Họ và tên
-            <input autoComplete="name" value={form.fullName} onChange={e => update('fullName', e.target.value)} readOnly={!editing} />
+            <input autoComplete="name" value={form.fullName} onChange={e => update('fullName', e.target.value)} disabled={saving} />
           </label>
-          <label>Email
+          <label>Email (không thể thay đổi)
             <input value={form.email} readOnly />
           </label>
           <label>Số điện thoại
-            <input type="tel" autoComplete="tel" value={form.phone} onChange={e => update('phone', e.target.value)} readOnly={!editing} />
+            <input type="tel" autoComplete="tel" value={form.phone} onChange={e => update('phone', e.target.value)} disabled={saving} />
           </label>
           <label>Ngày sinh
-            <input type="date" value={form.birthDate} onChange={e => update('birthDate', e.target.value)} disabled={!editing} />
+            <input type="date" value={form.birthDate} onChange={e => update('birthDate', e.target.value)} disabled={saving} />
           </label>
           <fieldset className="profile-gender">
             <legend>Giới tính</legend>
@@ -175,15 +212,15 @@ export function ProfilePage() {
               ['female', 'Nữ'],
               ['other', 'Khác'],
             ].map(([value, label]) => <label key={value}>
-              <input type="radio" name="gender" value={value} checked={form.gender === value} disabled={!editing} onChange={e => update('gender', e.target.value)} />
+              <input type="radio" name="gender" value={value} checked={form.gender === value} disabled={saving} onChange={e => update('gender', e.target.value)} />
               {label}
             </label>)}
           </fieldset>
           <label>Địa chỉ mặc định
-            <textarea rows={2} autoComplete="street-address" value={form.address} onChange={e => update('address', e.target.value)} readOnly={!editing} />
+            <textarea rows={2} autoComplete="street-address" value={form.address} onChange={e => update('address', e.target.value)} disabled={saving} />
           </label>
         </div>
-        {editing && <button type="submit" className="profile-mobile-save profile-mini-btn primary"><Save size={18} aria-hidden="true" /> Lưu thay đổi</button>}
+        {editing && <button type="submit" className="profile-mobile-save profile-mini-btn primary" disabled={saving}><Save size={18} aria-hidden="true" /> {saving ? 'Đang lưu...' : 'Lưu thay đổi'}</button>}
       </form>
 
       <div className="profile-stats">
