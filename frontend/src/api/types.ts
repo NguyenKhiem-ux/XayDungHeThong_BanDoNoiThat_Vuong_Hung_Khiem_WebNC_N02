@@ -149,11 +149,20 @@ export interface ContactMessage {
 
 export interface ChatResponse {
   message: string;
-  source: 'knowledge' | 'gemini' | 'product';
+  source: 'knowledge' | 'gemini' | 'product' | 'small_talk' | 'system';
+  intent: ChatIntent;
+  cached: boolean;
+  products?: Product[];
   knowledgeId?: number;
 }
 
-export type KnowledgeStatus = 'pending' | 'approved' | 'rejected';
+export type KnowledgeStatus = 'pending_review' | 'approved' | 'rejected';
+export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH';
+export const chatIntents = ['small_talk', 'greeting', 'thanks', 'goodbye', 'product_search', 'product_detail',
+  'product_recommendation', 'product_comparison', 'product_price', 'product_stock', 'product_category',
+  'shipping', 'payment', 'promotion', 'warranty', 'return', 'refund', 'order', 'complaint', 'account',
+  'password', 'legal', 'general_store_question', 'general_question', 'unknown'] as const;
+export type ChatIntent = typeof chatIntents[number];
 
 export interface ChatbotKnowledge {
   id: number;
@@ -161,6 +170,14 @@ export interface ChatbotKnowledge {
   answer: string;
   keywords: string;
   contextHash: string;
+  normalizedQuestion: string;
+  intent: ChatIntent;
+  confidenceScore: number;
+  riskLevel: RiskLevel;
+  source: 'gemini' | 'admin' | 'system';
+  shouldStore: boolean;
+  reviewedBy: number | null;
+  reviewedAt: string | null;
   status: KnowledgeStatus;
   usageCount: number;
   createdAt: string;
@@ -176,4 +193,9 @@ export interface ChatbotStats {
   knowledgeHitRate: number;
   errors: number;
   pendingSaveFailures: number;
+  smallTalkHandled: number;
+  autoApproved: number;
+  pendingReview: number;
+  rejected: number;
+  geminiUsageRate: number;
 }

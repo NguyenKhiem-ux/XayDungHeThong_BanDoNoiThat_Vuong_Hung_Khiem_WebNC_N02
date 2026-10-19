@@ -85,6 +85,24 @@ main { min-height: 65vh; }
 
 .site-header.scrolled { box-shadow: 0 16px 40px rgba(17, 27, 23, 0.08); }
 
+.scroll-top {
+  position: fixed;
+  right: 24px;
+  bottom: 96px;
+  z-index: 95;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(216, 255, 95, .55);
+  border-radius: 50%;
+  color: #10241f;
+  background: var(--accent, #d8ff5f);
+  box-shadow: 0 10px 24px rgba(15, 79, 63, .2);
+}
+.scroll-top:hover { transform: translateY(-2px); }
+.scroll-top:focus-visible { outline: 3px solid rgba(216, 255, 95, .7); outline-offset: 3px; }
+
 .brand {
   display: inline-flex;
   align-items: center;

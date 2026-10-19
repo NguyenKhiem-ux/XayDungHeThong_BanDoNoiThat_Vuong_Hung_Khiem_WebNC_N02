@@ -1,5 +1,6 @@
 // file định nghĩa layout user dùng để tạo khung giao diện chung cho các trang.
 import { FormEvent, useEffect, useState } from 'react';
+import { ArrowUp } from 'lucide-react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
@@ -14,6 +15,7 @@ export function UserLayout() {
   const [keyword, setKeyword] = useState('');
   const [categories, setCategories] = useState<string[]>([]);
   const [mobileCategoriesOpen, setMobileCategoriesOpen] = useState(false);
+  const [showTopButton, setShowTopButton] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const selectedCategory = new URLSearchParams(location.search).get('category');
@@ -32,8 +34,15 @@ export function UserLayout() {
   }, [location.pathname]);
 
   useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [location.pathname, location.search]);
+
+  useEffect(() => {
     const header = document.querySelector('.site-header');
-    const sync = () => header?.classList.toggle('scrolled', window.scrollY > 12);
+    const sync = () => {
+      header?.classList.toggle('scrolled', window.scrollY > 12);
+      setShowTopButton(window.scrollY > 400);
+    };
     sync();
     window.addEventListener('scroll', sync, { passive: true });
     return () => window.removeEventListener('scroll', sync);
@@ -182,6 +191,7 @@ export function UserLayout() {
           <span>Thẻ, chuyển khoản & thanh toán khi nhận hàng</span>
         </div>
       </footer>
+      {showTopButton && <button type="button" className="scroll-top" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} aria-label="Lên đầu trang" title="Lên đầu trang"><ArrowUp size={18} /></button>}
       <ChatWidget />
     </div>
   );
