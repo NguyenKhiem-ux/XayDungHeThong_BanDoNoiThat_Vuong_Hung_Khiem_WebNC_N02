@@ -12,6 +12,7 @@ import { PasswordResetToken } from '../database/entities/password-reset-token.en
 import { EmailService } from '../email/email.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { UpdateCardProfileDto } from './dto/update-card-profile.dto';
 
 @Injectable()
 export class AuthService {
@@ -64,6 +65,33 @@ export class AuthService {
     if (data.birthDate !== undefined) user.birthDate = data.birthDate || null;
     if (data.address !== undefined) user.address = data.address?.trim() || null;
     if (data.gender !== undefined) user.gender = data.gender;
+    return this.publicUser(await this.users.save(user));
+  }
+
+  async updateCardProfile(userId: number, data: UpdateCardProfileDto) {
+    const user = await this.users.findOneByOrFail({ id: userId });
+    const holder = data.holder.trim();
+    if (!holder) throw new BadRequestException('Vui lòng nhập tên chủ thẻ.');
+    const allowedProviders = data.type === 'DOMESTIC'
+      ? ['NAPAS', 'VIETCOMBANK', 'BIDV', 'TECHCOMBANK', 'MB', 'ACB']
+      : ['VISA', 'MASTERCARD', 'JCB', 'AMEX'];
+    if (!allowedProviders.includes(data.provider)) throw new BadRequestException('Ngân hàng hoặc tổ chức thẻ không khớp với loại thẻ.');
+    if (data.expYear === new Date().getFullYear() && data.expMonth < new Date().getMonth() + 1) {
+      throw new BadRequestException('Thẻ đã hết hạn.');
+    }
+    if (!user.transactionPinHash && !data.pin) {
+      throw new BadRequestException('Hãy tạo PIN thanh toán gồm 6 chữ số cho thẻ.');
+    }
+
+    user.cardHolder = holder;
+    user.cardType = data.type;
+    user.cardProvider = data.provider;
+    user.cardLast4 = data.last4;
+    user.cardExpMonth = data.expMonth;
+    user.cardExpYear = data.expYear;
+    if (data.pin) user.transactionPinHash = await bcrypt.hash(data.pin, 10);
+    user.transactionPinFailedAttempts = 0;
+    user.transactionPinLockedUntil = null;
     return this.publicUser(await this.users.save(user));
   }
 
@@ -167,6 +195,15 @@ export class AuthService {
       avatarUrl: user.avatarUrl,
       gender: user.gender,
       role: user.role,
+      savedCard: user.cardHolder ? {
+        holder: user.cardHolder,
+        type: user.cardType,
+        provider: user.cardProvider,
+        last4: user.cardLast4,
+        expMonth: user.cardExpMonth,
+        expYear: user.cardExpYear,
+      } : null,
+      hasTransactionPin: Boolean(user.transactionPinHash),
     };
   }
 }

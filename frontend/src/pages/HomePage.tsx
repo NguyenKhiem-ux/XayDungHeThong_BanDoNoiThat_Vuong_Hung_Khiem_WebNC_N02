@@ -83,7 +83,7 @@ export function HomePage() {
         </div>
         <div className="hero-overlay" />
         <div className="hero-copy">
-          <span className="eyebrow">Hung Gia dụng</span>
+          <span className="eyebrow">Hung Vuong Gia dụng</span>
           <h1>Thiết bị gia dụng</h1>
           <p className="hero-subtitle">Chăm chút từng góc nhà.</p>
           <p>Nồi cơm điện, máy xay, nồi chiên và thiết bị chăm sóc nhà cửa chính hãng cho cuộc sống mỗi ngày.</p>

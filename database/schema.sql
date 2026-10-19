@@ -19,6 +19,15 @@ CREATE TABLE IF NOT EXISTS users (
     password    VARCHAR(255) NOT NULL,
     phone       VARCHAR(15),
     role        ENUM('USER', 'ADMIN') NOT NULL DEFAULT 'USER',
+    card_holder VARCHAR(100),
+    card_type VARCHAR(20),
+    card_provider VARCHAR(40),
+    card_last4 CHAR(4),
+    card_exp_month TINYINT UNSIGNED,
+    card_exp_year SMALLINT UNSIGNED,
+    transaction_pin_hash VARCHAR(255),
+    transaction_pin_failed_attempts TINYINT UNSIGNED NOT NULL DEFAULT 0,
+    transaction_pin_locked_until DATETIME,
     created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

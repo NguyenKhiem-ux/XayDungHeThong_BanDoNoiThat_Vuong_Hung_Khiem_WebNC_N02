@@ -67,7 +67,7 @@ export function UserLayout() {
         </div>
 
         <nav className="navbar" id="mainNav">
-          <Link className="brand" to="/" aria-label="Hung Gia dụng Shop">
+          <Link className="brand" to="/" aria-label="Hung Vuong Gia dụng">
             <span className="brand-mark"><i className="fa-solid fa-bolt" /></span>
             <span className="brand-copy">Hung Vuong<span>Gia dụng</span></span>
           </Link>
@@ -152,7 +152,7 @@ export function UserLayout() {
           <div className="footer-brand">
             <Link className="brand" to="/">
               <span className="brand-mark"><i className="fa-solid fa-bolt" /></span>
-              <span className="brand-copy">Hung<span>Gia dụng</span></span>
+              <span className="brand-copy">Hung Vuong<span>Gia dụng</span></span>
             </Link>
             <p>Shop thương mại điện tử chuyên đồ gia dụng, thiết bị nhà bếp và thiết bị chăm sóc nhà cửa chính hãng.</p>
             <div className="socials">
@@ -174,9 +174,9 @@ export function UserLayout() {
             <h3>Hỗ trợ</h3>
             <Link to="/about">Về chúng tôi</Link>
             <Link to="/contact">Liên hệ</Link>
-            <a href="#warranty">Chính sách bảo hành</a>
-            <a href="#returns">Đổi trả 7 ngày</a>
-            <a href="#guide">Hướng dẫn mua hàng</a>
+            <Link to="/policies">Chính sách giao hàng</Link>
+            <Link to="/policies">Chính sách đổi trả</Link>
+            <Link to="/policies">Chính sách bảo hành & thanh toán</Link>
           </div>
           <div>
             <h3>Liên hệ</h3>
@@ -187,7 +187,7 @@ export function UserLayout() {
           </div>
         </div>
         <div className="footer-bottom">
-          <span>© 2026 Hung Gia dụng Shop. All rights reserved.</span>
+          <span>© 2026 Hung Vuong Gia dụng. All rights reserved.</span>
           <span>Thẻ, chuyển khoản & thanh toán khi nhận hàng</span>
         </div>
       </footer>

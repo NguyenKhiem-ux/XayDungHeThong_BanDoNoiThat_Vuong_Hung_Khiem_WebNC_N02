@@ -18,9 +18,6 @@ type CheckoutForm = {
   note: string;
 };
 
-type CardType = 'DOMESTIC' | 'INTERNATIONAL';
-type CardDetails = { holder: string; type: CardType; provider: string };
-
 export function CheckoutPage() {
   const { cart, refresh } = useCart();
   const { user } = useAuth();
@@ -38,12 +35,8 @@ export function CheckoutPage() {
   });
   const [step, setStep] = useState(loc.pathname.endsWith('/payment') ? 2 : loc.pathname.endsWith('/invoice') ? 3 : 1);
   const [busy, setBusy] = useState(false);
-  const [cardDetails, setCardDetails] = useState<CardDetails>(() => {
-    try {
-      const saved = sessionStorage.getItem('giadung_checkout_card_demo');
-      return saved ? JSON.parse(saved) as CardDetails : { holder: '', type: 'DOMESTIC', provider: 'NAPAS' };
-    } catch { return { holder: '', type: 'DOMESTIC', provider: 'NAPAS' }; }
-  });
+  const [cardPin, setCardPin] = useState('');
+  const [pendingOrderId, setPendingOrderId] = useState<number | null>(null);
   const [couponCode, setCouponCode] = useState(() => sessionStorage.getItem('giadung_checkout_coupon') || '');
   const [appliedCoupon, setAppliedCoupon] = useState<{ coupon: Coupon; discountAmount: number; finalAmount: number } | null>(null);
   const [availableCoupons, setAvailableCoupons] = useState<Coupon[]>([]);
@@ -54,6 +47,7 @@ export function CheckoutPage() {
   const [orderError, setOrderError] = useState('');
 
   useEffect(() => { couponApi.list().then((response) => setAvailableCoupons(response.data)).catch(() => setAvailableCoupons([])); }, []);
+  useEffect(() => { sessionStorage.removeItem('giadung_checkout_card_demo'); }, []);
 
   useEffect(() => {
     try {
@@ -68,8 +62,6 @@ export function CheckoutPage() {
   useEffect(() => {
     sessionStorage.setItem('giadung_checkout', JSON.stringify(form));
   }, [form]);
-
-  useEffect(() => { sessionStorage.setItem('giadung_checkout_card_demo', JSON.stringify(cardDetails)); }, [cardDetails]);
 
   useEffect(() => {
     if (!cart?.items?.length) nav('/cart');
@@ -176,17 +168,27 @@ export function CheckoutPage() {
         note: form.note,
         couponCode: appliedCoupon?.coupon.code,
       });
-      await refresh();
-      sessionStorage.removeItem('giadung_checkout');
-      sessionStorage.removeItem('giadung_checkout_card_demo');
-      sessionStorage.removeItem('giadung_checkout_coupon');
-      sessionStorage.removeItem('giadung_checkout_coupon_applied');
+      setPendingOrderId(order.id);
 
       if (form.paymentMethod === 'QR' || form.paymentMethod === 'PAYOS') {
+        await refresh();
+        sessionStorage.removeItem('giadung_checkout');
+        sessionStorage.removeItem('giadung_checkout_coupon');
+        sessionStorage.removeItem('giadung_checkout_coupon_applied');
         const { data } = await paymentApi.createPayOSPaymentLink(order.id);
         window.location.href = data.checkoutUrl;
         return;
       }
+
+      if (form.paymentMethod === 'CARD') {
+        await paymentApi.confirmCardPayment(order.id, cardPin);
+        await refresh();
+      } else {
+        await refresh();
+      }
+      sessionStorage.removeItem('giadung_checkout');
+      sessionStorage.removeItem('giadung_checkout_coupon');
+      sessionStorage.removeItem('giadung_checkout_coupon_applied');
 
       nav(`/checkout/success/${order.id}`, { replace: true });
     } catch (error) {
@@ -280,32 +282,10 @@ export function CheckoutPage() {
             </div>
           </div>}
           {form.paymentMethod === 'CARD' && <div className="method-detail active">
-            <div className="card-demo-notice"><i className="fa-solid fa-flask" /><div><strong>Chế độ mô phỏng phát triển</strong><span>Chưa kết nối ngân hàng và không phát sinh giao dịch thật. Không nhập số thẻ, ngày hết hạn hoặc mã CVV thật. Thông tin bên dưới chỉ dùng để xem trước đơn.</span></div></div>
-            <div className="card-demo-preview"><div><span>HUNG GIA DỤNG</span><b>{cardDetails.type === 'DOMESTIC' ? 'NỘI ĐỊA' : 'QUỐC TẾ'}</b></div><strong>••••　••••　••••　4242</strong><small>THẺ MÔ PHỎNG · KHÔNG THU TIỀN</small></div>
-            <div className="card-demo-form">
-              <Field label="Tên chủ thẻ (mô phỏng)" hint="Nhập tên bất kỳ để hoàn tất bước thử nghiệm" autoComplete="off" value={cardDetails.holder} set={(holder) => setCardDetails((current) => ({ ...current, holder }))} required full />
-              <div className="field">
-                <label htmlFor="demo-card-type">Loại thẻ <span className="required">*</span></label>
-                <select id="demo-card-type" className="form-select" required value={cardDetails.type} onChange={(event) => {
-                  const type = event.target.value as CardType;
-                  setCardDetails({ holder: cardDetails.holder, type, provider: type === 'DOMESTIC' ? 'NAPAS' : 'VISA' });
-                }}>
-                  <option value="DOMESTIC">Thẻ nội địa</option>
-                  <option value="INTERNATIONAL">Thẻ quốc tế</option>
-                </select>
-              </div>
-              <div className="field">
-                <label htmlFor="demo-card-provider">Ngân hàng / tổ chức thẻ <span className="required">*</span></label>
-                <select id="demo-card-provider" className="form-select" required value={cardDetails.provider} onChange={(event) => setCardDetails((current) => ({ ...current, provider: event.target.value }))}>
-                  {(cardDetails.type === 'DOMESTIC'
-                    ? [['NAPAS', 'NAPAS'], ['VIETCOMBANK', 'Vietcombank'], ['BIDV', 'BIDV'], ['TECHCOMBANK', 'Techcombank'], ['MB', 'MB Bank'], ['ACB', 'ACB']]
-                    : [['VISA', 'Visa'], ['MASTERCARD', 'Mastercard'], ['JCB', 'JCB'], ['AMEX', 'American Express']]
-                  ).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                </select>
-              </div>
-            </div>
+            <div className="card-demo-notice"><i className="fa-solid fa-shield-halved" /><div><strong>Thẻ thanh toán đã lưu · chế độ mô phỏng</strong><span>Không kết nối ngân hàng và không thu tiền thật. PIN bên dưới là PIN riêng của website, không phải PIN thẻ ngân hàng.</span></div></div>
+            {user?.savedCard ? <div className="card-demo-preview"><div><span>{user.savedCard.holder}</span><b>{user.savedCard.type === 'DOMESTIC' ? 'NỘI ĐỊA' : 'QUỐC TẾ'}</b></div><strong>••••　••••　••••　{user.savedCard.last4}</strong><small>{user.savedCard.provider} · HẾT HẠN {String(user.savedCard.expMonth).padStart(2, '0')}/{user.savedCard.expYear} · MÔ PHỎNG</small></div> : <div className="cash-box"><i className="fa-solid fa-credit-card" /><div><h3>Chưa có thẻ được lưu</h3><p>Thêm thông tin thẻ mô phỏng và tạo PIN 6 số trong <a href="/profile">Hồ sơ cá nhân</a> trước khi tiếp tục.</p></div></div>}
           </div>}
-          <button className="btn btn-primary btn-wide" style={{ marginTop: 24 }}>
+          <button className="btn btn-primary btn-wide" style={{ marginTop: 24 }} disabled={form.paymentMethod === 'CARD' && (!user?.savedCard || !user?.hasTransactionPin)}>
             <i className="fa-solid fa-file-invoice" /> {form.paymentMethod === 'CARD' ? 'Tiếp tục xem đơn mô phỏng' : 'Xem hóa đơn xác nhận'}
           </button>
           <button type="button" className="btn btn-ghost btn-wide" style={{ marginTop: 10 }} onClick={() => go(1)}>
@@ -318,12 +298,12 @@ export function CheckoutPage() {
 
     {step === 3 && <div className="invoice-container">
       <div className="invoice-header">
-        <span className="eyebrow dark">HUNG GIA DỤNG · ĐƠN HÀNG</span>
+        <span className="eyebrow dark">HUNG VUONG GIA DỤNG · ĐƠN HÀNG</span>
         <h1><i className="fa-solid fa-file-invoice" /> Hóa Đơn Xác Nhận</h1>
         <p>Kiểm tra đầy đủ thông tin giao hàng, sản phẩm và thanh toán trước khi đặt hàng.</p>
       </div>
       <form className="invoice-box" onSubmit={confirm}>
-        <div className="invoice-brand-row"><div><strong>HUNG GIA DỤNG</strong><span>Hóa đơn tạm tính · Mã đơn sẽ được tạo sau khi xác nhận</span></div><span className="invoice-status"><i className="fa-solid fa-circle-check" /> Chờ xác nhận</span></div>
+        <div className="invoice-brand-row"><div><strong>HUNG VUONG GIA DỤNG</strong><span>Hóa đơn tạm tính · Mã đơn sẽ được tạo sau khi xác nhận</span></div><span className="invoice-status"><i className="fa-solid fa-circle-check" /> Chờ xác nhận</span></div>
         <div className="invoice-section">
           <div className="invoice-section-title">Thông tin giao hàng</div>
           <div className="invoice-info">
@@ -367,16 +347,18 @@ export function CheckoutPage() {
             <div className="invoice-total-amount">{formatVnd(appliedCoupon?.finalAmount ?? cart.total)}</div>
             <div className="payment-method-box">
               <div style={{ fontSize: '.9rem', color: 'var(--muted)' }}>Phương thức thanh toán</div>
-              <div style={{ fontWeight: 600, marginTop: '.5rem' }}>{form.paymentMethod === 'CARD' ? `Mô phỏng ${cardDetails.type === 'DOMESTIC' ? 'thẻ nội địa' : 'thẻ quốc tế'} · ${cardDetails.provider} · ${cardDetails.holder}` : paymentLabel(form.paymentMethod)}</div>
-              {form.paymentMethod === 'CARD' && <small className="invoice-demo-note">Không có giao dịch thật · Không thu tiền</small>}
+              <div style={{ fontWeight: 600, marginTop: '.5rem' }}>{form.paymentMethod === 'CARD' && user?.savedCard ? `${user.savedCard.type === 'DOMESTIC' ? 'Thẻ nội địa' : 'Thẻ quốc tế'} · ${user.savedCard.provider} · ${user.savedCard.holder} · •••• ${user.savedCard.last4}` : paymentLabel(form.paymentMethod)}</div>
+              {form.paymentMethod === 'CARD' && <small className="invoice-demo-note">Thanh toán mô phỏng · Không kết nối ngân hàng · Không thu tiền thật</small>}
             </div>
           </div>
         </div>
+        {form.paymentMethod === 'CARD' && <div className="invoice-section card-pin-section"><label htmlFor="checkout-card-pin">PIN thanh toán 6 số</label><p>Nhập PIN bạn đã tạo trong hồ sơ để xác minh và xác nhận đơn mô phỏng.</p><input id="checkout-card-pin" type="password" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" minLength={6} maxLength={6} required value={cardPin} onChange={event => setCardPin(event.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="••••••" /></div>}
         <p className="invoice-disclaimer">Hóa đơn này là thông tin xác nhận đơn hàng, không thay thế hóa đơn VAT.</p>
         {orderError && <div className="checkout-order-error" role="alert">{orderError}</div>}
+        {pendingOrderId && orderError && <p className="invoice-demo-note">Đơn #{pendingOrderId} đã được tạo nhưng chưa thanh toán. Bạn có thể nhập lại PIN trong <a href={`/orders/${pendingOrderId}`}>chi tiết đơn hàng</a>.</p>}
         <div className="actions">
           <button type="button" className="btn-back invoice-print-button" onClick={() => window.print()}><i className="fa-solid fa-print" /> In hóa đơn</button>
-          <button className="btn-confirm" disabled={busy}><i className="fa-solid fa-check" /> {busy ? 'Đang xác nhận...' : 'Xác nhận đơn hàng'}</button>
+          <button className="btn-confirm" disabled={busy}><i className="fa-solid fa-check" /> {busy ? 'Đang xác nhận...' : form.paymentMethod === 'CARD' ? 'Xác minh PIN và thanh toán mô phỏng' : 'Xác nhận đơn hàng'}</button>
           <button type="button" className="btn-back" onClick={() => go(2)}><i className="fa-solid fa-arrow-left" /> Quay lại</button>
         </div>
       </form>

@@ -2,6 +2,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import '../styles/login-scene.css';
 
 export function LoginPage({ admin = false }: { admin?: boolean }) {
   const { login, logout } = useAuth();
@@ -14,11 +15,12 @@ export function LoginPage({ admin = false }: { admin?: boolean }) {
 
   const submit=async(e:FormEvent)=>{e.preventDefault();setError('');setBusy(true);try{const u=await login(loginId,password);if(admin&&u.role!=='ADMIN'){logout();setError('Tài khoản này không có quyền quản trị');return;}const from=(location.state as {from?:{pathname?:string}}|null)?.from?.pathname;navigate(admin?'/admin':from||'/');}catch{setError('Đăng nhập thất bại. Vui lòng kiểm tra tài khoản và mật khẩu.');}finally{setBusy(false);}};
 
-  if(admin) return <div className="admin-app admin-login-container"><div className="admin-login-form"><div className="admin-login-header"><div className="admin-role-badge">🛡 QUẢN TRỊ VIÊN</div><h1>ĐĂNG NHẬP ADMIN</h1><p>Chỉ dành cho quản trị viên Hung Gia dụng Shop.</p></div>{error&&<div className="admin-error-msg">{error}</div>}<form onSubmit={submit}><label className="admin-form-group">Tên đăng nhập hoặc email<input value={loginId} onChange={e=>setLoginId(e.target.value)} placeholder="admin hoặc admin@shop.com" required /></label><label className="admin-form-group">Mật khẩu<input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="••••••" required /></label><button className="admin-btn-login" disabled={busy} type="submit">{busy?'Đang xử lý...':'↪ Đăng nhập'}</button></form></div></div>;
+  if(admin) return <div className="admin-app admin-login-container"><div className="admin-login-form"><div className="admin-login-header"><div className="admin-role-badge">🛡 QUẢN TRỊ VIÊN</div><h1>ĐĂNG NHẬP ADMIN</h1><p>Chỉ dành cho quản trị viên Hung Vuong Gia dụng.</p></div>{error&&<div className="admin-error-msg">{error}</div>}<form onSubmit={submit}><label className="admin-form-group">Tên đăng nhập hoặc email<input value={loginId} onChange={e=>setLoginId(e.target.value)} placeholder="admin hoặc admin@shop.com" required /></label><label className="admin-form-group">Mật khẩu<input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="••••••" required /></label><button className="admin-btn-login" disabled={busy} type="submit">{busy?'Đang xử lý...':'↪ Đăng nhập'}</button></form></div></div>;
 
-  return <section className="auth-container">
-    <form className="auth-form" onSubmit={submit} autoComplete="on">
-      <div className="auth-header"><h1><i className="fa-solid fa-right-to-bracket" /> Đăng nhập</h1><p>Chào mừng bạn quay lại Hung Gia dụng Shop.</p></div>
+  return <section className="auth-login-scene">
+    <div className="auth-login-glow" aria-hidden="true" />
+    <form className="auth-form auth-login-card" onSubmit={submit} autoComplete="on">
+      <div className="auth-header"><h1><i className="fa-solid fa-right-to-bracket" /> Đăng nhập</h1><p>Chào mừng bạn quay lại Hung Vuong Gia dụng.</p></div>
       {successMessage&&<div className="auth-message success">{successMessage}</div>}
       {error&&<div className="auth-message error">{error}</div>}
       <div className="form-group"><label htmlFor="loginId">Tên đăng nhập hoặc email</label><input id="loginId" value={loginId} onChange={e=>setLoginId(e.target.value)} placeholder="username hoặc your@email.com" required autoComplete="username" /></div>
