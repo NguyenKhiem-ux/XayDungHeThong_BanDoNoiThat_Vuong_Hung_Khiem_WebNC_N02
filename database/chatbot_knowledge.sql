@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS chatbot_knowledge (
   keywords VARCHAR(1000) NOT NULL DEFAULT '',
   question_key CHAR(64) NOT NULL,
   context_hash VARCHAR(64) NOT NULL DEFAULT '',
-  status ENUM('pending', 'approved', 'rejected') NOT NULL DEFAULT 'pending',
+  status ENUM('pending', 'approved', 'rejected', 'pending_review') NOT NULL DEFAULT 'pending',
   usage_count INT UNSIGNED NOT NULL DEFAULT 0,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

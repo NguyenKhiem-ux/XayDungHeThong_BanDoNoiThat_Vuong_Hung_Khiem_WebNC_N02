@@ -5,18 +5,25 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { AuthUser } from '../common/types/auth-user.type';
 import { PaymentService } from './payment.service';
+import { ConfirmDemoCardPaymentDto } from './dto/confirm-demo-card-payment.dto';
 
-@Controller('payment/payos')
+@Controller('payment')
 export class PaymentController {
   constructor(private readonly payment: PaymentService) {}
 
-  @Post('create-link/:orderId')
+  @Post('payos/create-link/:orderId')
   @UseGuards(JwtAuthGuard)
   createPayOSLink(@CurrentUser() user: AuthUser, @Param('orderId', ParseIntPipe) orderId: number) {
     return this.payment.createPayOSLink(user.id, orderId);
   }
 
-  @Post('webhook')
+  @Post('card/confirm/:orderId')
+  @UseGuards(JwtAuthGuard)
+  confirmDemoCardPayment(@CurrentUser() user: AuthUser, @Param('orderId', ParseIntPipe) orderId: number, @Body() dto: ConfirmDemoCardPaymentDto) {
+    return this.payment.confirmDemoCardPayment(user.id, orderId, dto.pin);
+  }
+
+  @Post('payos/webhook')
   handlePayOSWebhook(@Body() body: Webhook) {
     return this.payment.handlePayOSWebhook(body);
   }

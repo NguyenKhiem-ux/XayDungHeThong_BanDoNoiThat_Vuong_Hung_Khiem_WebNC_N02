@@ -1901,3 +1901,21 @@
       .shop-content .price-filter,.shop-content .product-sort { grid-column:1; grid-row:auto; }
     }
   
+/* Saved demo card and transaction PIN */
+.profile-form-grid select {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+}
+.profile-form-grid label small { display: block; margin-top: 3px; color: var(--muted); font-weight: 400; }
+.profile-card-saved { margin: 16px 0 0; color: #17634c; font-size: 14px; font-weight: 600; }
+.profile-card-saved i { margin-right: 7px; }
+.card-pin-section label, .order-card-retry label { display: block; margin-bottom: 6px; color: var(--brand); font-weight: 700; }
+.card-pin-section p, .order-card-retry p { margin: 0 0 12px; color: var(--muted); font-size: 14px; line-height: 1.55; }
+.card-pin-section input, .order-card-retry input { width: min(100%, 280px); min-height: 48px; padding: 0 14px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); font-size: 20px; letter-spacing: .35em; }
+.order-card-retry { display: grid; justify-items: start; gap: 8px; margin: 16px 0; }

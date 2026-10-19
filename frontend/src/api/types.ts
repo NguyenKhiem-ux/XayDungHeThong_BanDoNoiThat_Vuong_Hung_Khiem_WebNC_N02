@@ -12,6 +12,15 @@ export interface DashboardData {
 }
 export type Role = 'USER' | 'ADMIN';
 
+export interface SavedDemoCard {
+  holder: string;
+  type: 'DOMESTIC' | 'INTERNATIONAL';
+  provider: string;
+  last4: string;
+  expMonth: number;
+  expYear: number;
+}
+
 export interface User {
   id: number;
   fullName: string;
@@ -23,6 +32,8 @@ export interface User {
   gender?: string;
   avatarUrl?: string | null;
   role: Role;
+  savedCard?: SavedDemoCard | null;
+  hasTransactionPin?: boolean;
 }
 
 export interface Product {

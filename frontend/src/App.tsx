@@ -29,6 +29,7 @@ import { RevenueAdminPage } from './pages/admin/RevenueAdminPage';
 import { UsersAdminPage } from './pages/admin/UsersAdminPage';
 import { ChatbotKnowledgePage } from './pages/admin/ChatbotKnowledgePage';
 import { CouponsAdminPage } from './pages/admin/CouponsAdminPage';
+import { PoliciesPage } from './pages/PoliciesPage';
 
 export function App() {
   return <BrowserRouter>
@@ -52,6 +53,7 @@ export function App() {
         <Route path="products/:id" element={<ProductDetailPage />} />
         <Route path="about" element={<AboutPage />} />
         <Route path="contact" element={<ContactPage />} />
+        <Route path="policies" element={<PoliciesPage />} />
         <Route path="login" element={<LoginPage />} />
         <Route path="register" element={<RegisterPage />} />
         <Route path="forgot-password" element={<ForgotPasswordPage />} />

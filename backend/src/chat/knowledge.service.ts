@@ -1,6 +1,6 @@
 import { ConflictException, HttpException, Injectable, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Brackets, Repository } from 'typeorm';
+import { Brackets, In, Repository } from 'typeorm';
 import { ChatbotKnowledge, KnowledgeStatus } from '../database/entities/chatbot-knowledge.entity';
 import { ChatProductsService } from './chat-products.service';
 import { normalizeText, questionKey, questionWords, similarity } from './chat-matching';
@@ -68,10 +68,18 @@ export class KnowledgeService {
   list(query: ListKnowledgeDto) {
     return this.database(async () => {
       const [items, total] = await this.knowledge.findAndCount({
-        where: query.status ? { status: query.status } : {}, order: { createdAt: 'DESC', id: 'DESC' },
+        where: query.status === KnowledgeStatus.PENDING
+          ? { status: In([KnowledgeStatus.PENDING, KnowledgeStatus.LEGACY_PENDING_REVIEW]) }
+          : query.status ? { status: query.status } : {},
+        order: { createdAt: 'DESC', id: 'DESC' },
         skip: (query.page - 1) * query.limit, take: query.limit,
       });
-      return { items, total, page: query.page, limit: query.limit };
+      return {
+        items: items.map((item) => item.status === KnowledgeStatus.LEGACY_PENDING_REVIEW
+          ? { ...item, status: KnowledgeStatus.PENDING }
+          : item),
+        total, page: query.page, limit: query.limit,
+      };
     });
   }
 

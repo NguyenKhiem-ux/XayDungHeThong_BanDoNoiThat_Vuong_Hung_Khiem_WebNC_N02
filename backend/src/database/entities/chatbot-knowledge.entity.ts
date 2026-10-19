@@ -4,6 +4,8 @@ export enum KnowledgeStatus {
   PENDING = 'pending',
   APPROVED = 'approved',
   REJECTED = 'rejected',
+  // Retain older rows during TypeORM schema sync; the API presents this as pending.
+  LEGACY_PENDING_REVIEW = 'pending_review',
 }
 
 @Entity('chatbot_knowledge')
