@@ -138,17 +138,47 @@ export interface ContactMessage {
 
 export interface ChatResponse {
   message: string;
-  source: 'knowledge' | 'gemini' | 'product' | 'small_talk' | 'system';
+  source: 'knowledge' | 'gemini' | 'product' | 'small_talk' | 'system' | 'shopping';
   intent: ChatIntent;
   cached: boolean;
   products?: Product[];
   knowledgeId?: number;
+  type?: 'text' | 'product_result' | 'cart' | 'checkout_review' | 'error';
+  cart?: Cart;
+  actions?: ChatAction[];
+  checkout?: CheckoutReview;
+  checkoutUrl?: '/checkout/info';
+  error?: { code: string; retryable: boolean };
+}
+
+export type ChatActionType = 'product_select' | 'cart_add' | 'cart_remove' | 'cart_update_quantity' | 'cart_view' | 'buy_now' | 'checkout_review' | 'checkout_confirm';
+export interface ChatAction {
+  type: ChatActionType;
+  label: string;
+  productId?: number;
+  quantity?: number;
+  reviewId?: string;
+  addressId?: number;
+}
+export type ChatRequestOptions = Partial<Omit<ChatAction, 'type' | 'label'>> & { action?: ChatActionType; requestId: string };
+export interface CheckoutReview {
+  id: string;
+  product: Product;
+  quantity: number;
+  subtotal: number;
+  total: number;
+  items: Array<{ product: Pick<Product, 'id' | 'name' | 'price' | 'stock'>; quantity: number; subtotal: number }>;
+  addresses: Array<Pick<UserAddress, 'id' | 'fullName' | 'phone' | 'address' | 'isDefault'>>;
+  addressId?: number;
+  missingFields: string[];
+  confirmed: boolean;
 }
 
 export type KnowledgeStatus = 'pending_review' | 'approved' | 'rejected';
 export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH';
 export const chatIntents = ['small_talk', 'greeting', 'thanks', 'goodbye', 'product_search', 'product_detail',
   'product_recommendation', 'product_comparison', 'product_price', 'product_stock', 'product_category',
+  'product_select', 'cart_add', 'cart_remove', 'cart_update_quantity', 'cart_view', 'buy_now', 'checkout_review',
   'shipping', 'payment', 'promotion', 'warranty', 'return', 'refund', 'order', 'complaint', 'account',
   'password', 'legal', 'general_store_question', 'general_question', 'unknown'] as const;
 export type ChatIntent = typeof chatIntents[number];

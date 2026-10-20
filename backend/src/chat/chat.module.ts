@@ -10,10 +10,13 @@ import { ChatService } from './chat.service';
 import { IntentService } from './intent.service';
 import { SmallTalkService } from './small-talk.service';
 import { GeminiService } from './gemini.service';
+import { CartModule } from '../cart/cart.module';
+import { AddressesModule } from '../addresses/addresses.module';
+import { ChatShoppingService } from './chat-shopping.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Product, ChatbotKnowledge])],
+  imports: [TypeOrmModule.forFeature([Product, ChatbotKnowledge]), CartModule, AddressesModule],
   controllers: [ChatController, KnowledgeController],
-  providers: [ChatService, ChatProductsService, KnowledgeService, IntentService, SmallTalkService, GeminiService],
+  providers: [ChatService, ChatProductsService, KnowledgeService, IntentService, SmallTalkService, GeminiService, ChatShoppingService],
 })
 export class ChatModule {}

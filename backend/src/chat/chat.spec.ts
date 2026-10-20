@@ -20,6 +20,9 @@ import { IntentService } from './intent.service';
 import { SmallTalkService } from './small-talk.service';
 import { GeminiService } from './gemini.service';
 import { GeminiDraft, RiskLevel } from './chat.types';
+import { ChatShoppingService } from './chat-shopping.service';
+import { CartService } from '../cart/cart.service';
+import { AddressesService } from '../addresses/addresses.service';
 
 function memoryKnowledge() {
   const rows: ChatbotKnowledge[] = [];
@@ -81,6 +84,7 @@ test('matching preserves numbers, negation and different policy questions', () =
 
 test('product budgets parse Vietnamese amounts and do not interpret greetings as furniture', () => {
   assert.equal(productQuery('Xin chào bạn').related, false);
+  assert.deepEqual(productQuery('Tất cả sản phẩm').terms, []);
   assert.equal(productQuery('Shop có giao hàng Hà Nội không?').related, false);
   assert.deepEqual(productQuery('Tôi đang tìm nồi cơm điện').terms, ['noi com dien']);
   assert.equal(productQuery('Tôi đang tìm nồi cơm điện').keyword, 'noi com dien');
@@ -128,7 +132,7 @@ test('HTTP chatbot: required scenarios, moderation, metadata, security and safe 
   const memory = memoryKnowledge();
   let snapshot = 'current-products';
   let productLookups = 0;
-  const products = { context: async (message: string) => {
+  const products = { findById: async (id: number) => ({ id, name: 'Ghế gỗ', price: '1500000', stock: 2 }), context: async (message: string) => {
     const query = productQuery(message);
     if (!query.related || !query.terms.length) return null;
     productLookups++;
@@ -137,7 +141,8 @@ test('HTTP chatbot: required scenarios, moderation, metadata, security and safe 
   const config = new ConfigService({ JWT_SECRET: 'chat-test-only-secret', GEMINI_API_KEY: 'test-only-not-a-real-key' });
   const module = await Test.createTestingModule({
     controllers: [ChatController, KnowledgeController],
-    providers: [ChatService, KnowledgeService, IntentService, SmallTalkService, GeminiService, JwtStrategy,
+    providers: [ChatService, KnowledgeService, IntentService, SmallTalkService, GeminiService, JwtStrategy, ChatShoppingService,
+      { provide: CartService, useValue: {} }, { provide: AddressesService, useValue: {} },
       { provide: ConfigService, useValue: config },
       { provide: ChatProductsService, useValue: products },
       { provide: getRepositoryToken(ChatbotKnowledge), useValue: memory.repo }],
@@ -342,7 +347,7 @@ test('HTTP chatbot: required scenarios, moderation, metadata, security and safe 
     assert.equal(memory.rows.length, size);
   });
   await t.test('missing key, DB read/write errors are safe; small talk works during outages', async () => {
-    const noKey = new ChatService(module.get(KnowledgeService), products as any, module.get(IntentService), module.get(SmallTalkService), new GeminiService(new ConfigService({ GEMINI_API_KEY: '' })));
+    const noKey = new ChatService(module.get(KnowledgeService), products as any, module.get(IntentService), module.get(SmallTalkService), new GeminiService(new ConfigService({ GEMINI_API_KEY: '' })), module.get(ChatShoppingService));
     assert.equal((await noKey.send('Xin chào')).source, 'small_talk');
     assert.equal((await noKey.send('Phòng nhỏ nên chọn nội thất màu gì?')).source, 'knowledge');
     await assert.rejects(noKey.send('Bảo hành khác thế nào?'), (error: any) => error.getStatus() === 503);

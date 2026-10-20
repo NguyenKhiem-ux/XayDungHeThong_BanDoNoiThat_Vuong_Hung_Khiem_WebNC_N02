@@ -8,7 +8,8 @@
     "start:dev": "nest start --watch",
     "start:prod": "node dist/main.js",
     "test:addresses": "node --test -r ts-node/register src/addresses/addresses.service.spec.ts",
-    "test:chat": "node --test -r ts-node/register src/chat/chat.spec.ts",
+    "test:chat": "node --test -r ts-node/register src/chat/chat.spec.ts src/chat/shopping.spec.ts",
+    "test:shopping:mysql": "node scripts/verify-shopping.cjs",
     "db:chatbot": "node scripts/setup-chatbot.cjs",
     "format": "prettier --write \"src/**/*.ts\"",
     "lint": "eslint \"src/**/*.ts\""

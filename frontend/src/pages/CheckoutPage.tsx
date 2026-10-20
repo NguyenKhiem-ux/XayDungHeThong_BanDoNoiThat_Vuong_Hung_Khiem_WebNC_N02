@@ -22,7 +22,7 @@ type CardType = 'DOMESTIC' | 'INTERNATIONAL';
 type CardDetails = { holder: string; type: CardType; provider: string };
 
 export function CheckoutPage() {
-  const { cart, refresh } = useCart();
+  const { cart, refresh, loading: cartLoading } = useCart();
   const { user } = useAuth();
   const loc = useLocation();
   const nav = useNavigate();
@@ -69,13 +69,20 @@ export function CheckoutPage() {
     sessionStorage.setItem('giadung_checkout', JSON.stringify(form));
   }, [form]);
 
+  useEffect(() => {
+    const saved = loc.state?.chatCheckout;
+    if (saved?.userId !== user?.id || !saved?.address) return;
+    const { fullName, phone, address } = saved.address;
+    if ([fullName, phone, address].every(value => typeof value === 'string')) {
+      setForm(current => ({ ...current, fullName, phone, address, email: user?.email ?? current.email, district: '', province: '' }));
+    }
+  }, [loc.state, user?.id]);
+
   useEffect(() => { sessionStorage.setItem('giadung_checkout_card_demo', JSON.stringify(cardDetails)); }, [cardDetails]);
 
   useEffect(() => {
-    if (!cart?.items?.length) nav('/cart');
-  }, [cart?.items?.length, nav]);
-
-  if (!cart?.items?.length) return null;
+    if (!cartLoading && cart && !cart.items.length) nav('/cart');
+  }, [cartLoading, cart, nav]);
 
   const update = (key: keyof CheckoutForm, value: string) => {
     setForm((current) => ({ ...current, [key]: value }));
@@ -154,6 +161,8 @@ export function CheckoutPage() {
     });
     return () => { active = false; };
   }, [cart?.total]);
+
+  if (!cart?.items?.length) return null;
 
   const deliveryAddress = [form.address.trim(), form.district.trim(), form.province.trim()].filter(Boolean).join(', ');
 

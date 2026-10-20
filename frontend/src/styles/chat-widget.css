@@ -63,6 +63,9 @@
 .chat-header span { margin-top: 2px; color: rgba(255, 255, 255, .72); font-size: 11px; }
 .chat-close { display: grid; place-items: center; width: 44px; height: 44px; margin-left: auto; border-radius: 12px; color: #fff; opacity: .8; transition: background .2s ease, opacity .2s ease, transform .15s ease; }
 .chat-close:hover { opacity: 1; }
+.chat-reset { display: grid; place-items: center; width: 36px; height: 36px; margin-left: auto; color: #fff; border-radius: 8px; }
+.chat-reset + .chat-close { margin-left: 0; }
+.chat-reset:disabled { opacity: .45; cursor: not-allowed; }
 
 .chat-messages {
   display: flex;
@@ -91,7 +94,34 @@
 .chat-message.has-products { width: 100%; max-width: 100%; padding: 0; background: transparent; box-shadow: none; }
 .chat-message.has-products > span { display: inline-block; padding: 10px 12px; border-radius: 14px 14px 14px 5px; background: #fff; box-shadow: 0 4px 16px rgba(24, 31, 28, .06); }
 .chat-products { display: grid; gap: 10px; margin-top: 10px; }
-.chat-products .product-card { min-width: 0; }
+.chat-widget .chat-products .product-card { display: grid; grid-template-columns: 84px minmax(0, 1fr); align-items: center; height: auto; min-width: 0; opacity: 1; transform: none; transition: none; }
+.chat-widget .chat-products .product-media { height: 100px; min-height: 0; aspect-ratio: auto; }
+.chat-widget .chat-products .product-media img { object-fit: contain; padding: 6px; }
+.chat-widget .chat-products .product-info { gap: 6px; padding: 10px; }
+.chat-widget .chat-products .product-info h3 { height: auto; margin: 4px 0; font-size: 13px; }
+.chat-widget .chat-products .product-row { display: block; margin-bottom: 8px; font-size: 12px; }
+.chat-widget .chat-products .product-row > span { display: block; }
+.chat-widget .chat-products .product-favorite-button, .chat-widget .chat-products .badge { display: none; }
+.chat-product-choice { overflow: hidden; border: 1px solid var(--line, #ddd); border-radius: 14px; background: #fff; white-space: normal; }
+.chat-product-number { display: block; padding: 8px 12px; color: var(--muted, #69716d); font-size: 12px; }
+.chat-actions { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px; }
+.chat-actions button, .chat-cart-controls button { min-height: 36px; padding: 7px 10px; border: 1px solid var(--line, #ddd); border-radius: 8px; color: var(--brand, #0f4f3f); background: #f4f7ee; font-size: 12px; }
+.chat-actions button:disabled, .chat-cart-controls button:disabled { opacity: .45; cursor: not-allowed; }
+.chat-shopping-summary { margin-top: 10px; padding: 12px; border: 1px solid var(--line, #ddd); border-radius: 12px; background: #fff; white-space: normal; }
+.chat-shopping-summary > strong { display: block; margin-bottom: 8px; }
+.chat-shopping-summary > p { margin: 10px 0; font-size: 12px; }
+.chat-cart-item { padding: 8px 0; border-bottom: 1px solid var(--line, #ddd); }
+.chat-cart-line, .chat-total { display: flex; justify-content: space-between; align-items: start; gap: 10px; padding: 8px 0; }
+.chat-cart-line > span { min-width: 0; }
+.chat-cart-line small { display: block; color: var(--muted, #69716d); }
+.chat-cart-line > strong { flex-shrink: 0; }
+.chat-total { margin-top: 8px; border-top: 1px solid var(--line, #ddd); color: var(--brand, #0f4f3f); }
+.chat-cart-controls { display: flex; gap: 6px; align-items: center; }
+.chat-cart-controls input { width: 64px; min-height: 36px; padding: 6px; border: 1px solid var(--line, #ddd); border-radius: 8px; }
+.chat-address { display: grid; gap: 6px; margin-top: 8px; }
+.chat-address select { width: 100%; min-width: 0; padding: 8px; border: 1px solid var(--line, #ddd); border-radius: 8px; background: #fff; }
+.chat-shopping-summary a { display: inline-block; margin-top: 8px; color: var(--brand, #0f4f3f); text-decoration: underline; }
+.chat-form .chat-view-cart { font-size: 12px; background: #eef2e8; }
 .chat-loading { display: inline-flex; align-items: center; gap: 7px; color: var(--muted, #69716d); }
 .chat-loading svg { animation: chat-spin .9s linear infinite; }
 .chat-error { margin: 0; padding: 0 16px 8px; color: var(--danger, #b83232); font-size: 12px; line-height: 1.4; }

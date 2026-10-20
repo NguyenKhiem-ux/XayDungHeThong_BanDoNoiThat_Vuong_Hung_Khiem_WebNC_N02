@@ -3,6 +3,40 @@ import { normalizeText } from './chat-matching';
 import { productQuery } from './chat-products.service';
 import { ChatIntent, Classification, GeminiDraft, RiskLevel } from './chat.types';
 import { SmallTalkService } from './small-talk.service';
+import { ChatActionType } from './chat.types';
+
+export function shoppingIntent(text: string): ChatActionType | undefined {
+  if (/\b(xem lai|kiem tra|tom tat|xac nhan)\b.*\b(mua hang|mua ngay|thanh toan|don hang|tom tat)\b|\b(checkout|xem lai thong tin mua)\b/.test(text)) return 'checkout_review';
+  if (/\b(mua ngay|mua luon|lay luon)\b/.test(text)) return 'buy_now';
+  if (/\b(bo|xoa|go)\b.*\b(gio|san pham|vua chon|cai|chiec)\b/.test(text)) return 'cart_remove';
+  if (/\b(cap nhat|doi|sua|tang|giam)\b.*\b(so luong|cai|chiec|len|xuong)\b|\bso luong\b.*\b(thanh|la)\b/.test(text)) return 'cart_update_quantity';
+  if (/\bthem\b/.test(text) && /\b(gio|cai|chiec|san pham|cai nay|hai|mot|ba|bon|nam|sau|bay|tam|chin|muoi|\d+)\b/.test(text)) return 'cart_add';
+  if (/\b(xem|kiem tra|tong tien|bao nhieu|gio cua toi)\b.*\bgio\b|\bgio hang\b.*\b(bao nhieu|tong tien)\b|\btong tien\b|^(gio hang|xem gio)$/.test(text)) return 'cart_view';
+  if (/\b(chon|toi lay|minh lay)\b/.test(text) && !/\b(nen chon|tu van|nen mua|mau|phoi|phong)\b/.test(text)) return 'product_select';
+  return undefined;
+}
+
+const NUMBER_WORDS = ['khong', 'mot', 'hai', 'ba', 'bon', 'nam', 'sau', 'bay', 'tam', 'chin', 'muoi'];
+export function selectedOrdinal(message: string) {
+  const text = normalizeText(message);
+  const value = text.match(/\bthu\s+(\d+|nhat|mot|hai|ba|tu|bon|nam|sau|bay|tam|chin|muoi)\b/)?.[1] ??
+    text.match(/\b(dau tien|cuoi cung)\b/)?.[1];
+  if (value === 'cuoi cung') return -1;
+  if (value === 'dau tien' || value === 'nhat') return 1;
+  if (value === 'tu') return 4;
+  return value ? (/^\d+$/.test(value) ? Number(value) : NUMBER_WORDS.indexOf(value)) : undefined;
+}
+
+export function requestedQuantity(message: string) {
+  const text = message.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd').toLowerCase();
+  const number = '-?\\d+(?:[.,]\\d+)*|khong|mot|hai|ba|bon|nam|sau|bay|tam|chin|muoi';
+  const value = text.match(new RegExp(`(?:so luong\\s*(?:thanh|la|len|xuong)?\\s*)(${number})(?=\\s|$|[!?])`))?.[1] ??
+    text.match(new RegExp(`(?:^|\\s)(${number})\\s*(?:cai|chiec|san pham)(?=\\s|$|[.!?])`))?.[1] ??
+    text.match(new RegExp(`^\\s*(?:them(?: cho (?:toi|minh))?|(?:toi )?(?:muon )?mua ngay)\\s+(${number})\\s*[.!?]?\\s*$`))?.[1] ??
+    text.match(new RegExp(`^\\s*(${number})\\s*[.!?]?\\s*$`))?.[1];
+  if (!value) return undefined;
+  return /^-?\d/.test(value) ? Number(value.replace(',', '.')) : NUMBER_WORDS.indexOf(value);
+}
 
 const BUSINESS_RULES: Array<[ChatIntent, RegExp]> = [
   ['password', /\b(mat khau|password|otp)\b/],
@@ -33,6 +67,10 @@ export class IntentService {
     const spam = /(\b\w+\b)(?:\s+\1){5,}/.test(text) || /https?:\/\//i.test(message);
     if (spam || /\b(system prompt|api key|bo qua (chi dan|quy tac)|ignore (previous|instructions)|code python|bong da|nguoi that)\b/.test(text)) {
       return { intent: 'unknown', riskLevel: RiskLevel.LOW, shouldStore: false };
+    }
+    if (!privateData) {
+      const shopping = shoppingIntent(text);
+      if (shopping) return { intent: shopping === 'checkout_confirm' ? 'checkout_review' : shopping, riskLevel: RiskLevel.HIGH, shouldStore: false };
     }
     for (const [intent, pattern] of BUSINESS_RULES) {
       if (pattern.test(text)) return { intent, riskLevel: RiskLevel.HIGH, shouldStore: !privateData };

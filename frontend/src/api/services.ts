@@ -1,6 +1,6 @@
 // file tập trung các hàm gọi api cho các chức năng của ứng dụng.
 import { api } from './client';
-import type { Cart, ChatResponse, ContactMessage, Coupon, DashboardData, Favorite, Order, Product, User, UserAddress } from './types';
+import type { Cart, ChatRequestOptions, ChatResponse, ContactMessage, Coupon, DashboardData, Favorite, Order, Product, User, UserAddress } from './types';
 
 export const authApi = {
   login: (data: { usernameOrEmail: string; password: string }) => api.post<{ accessToken: string; user: User }>('/auth/login', data),
@@ -25,7 +25,7 @@ export const productApi = {
 };
 
 export const chatApi = {
-  send: (message: string, sessionId?: string) => api.post<ChatResponse>('/chat', { message, sessionId }, { timeout: 20_000 }),
+  send: (message: string, sessionId?: string, options?: ChatRequestOptions) => api.post<ChatResponse>('/chat', { message, sessionId, ...options }, { timeout: 20_000 }),
 };
 
 export const cartApi = {

@@ -10,6 +10,7 @@ const { ChatbotKnowledge, KnowledgeStatus } = require('../dist/database/entities
 const { KnowledgeService } = require('../dist/chat/knowledge.service');
 const { ChatProductsService } = require('../dist/chat/chat-products.service');
 const { ChatService } = require('../dist/chat/chat.service');
+const { ChatShoppingService } = require('../dist/chat/chat-shopping.service');
 const { IntentService } = require('../dist/chat/intent.service');
 const { SmallTalkService } = require('../dist/chat/small-talk.service');
 const { GeminiService } = require('../dist/chat/gemini.service');
@@ -75,7 +76,7 @@ async function verify() {
     console.log('MySQL PASS: pending/approve/match/usage_count, bounded price/stock query.');
 
     if (process.argv.includes('--gemini')) {
-      const chat = new ChatService(knowledge, products, intents, smallTalk, new GeminiService(new ConfigService(process.env)));
+      const chat = new ChatService(knowledge, products, intents, smallTalk, new GeminiService(new ConfigService(process.env)), new ChatShoppingService(products, {}, {}));
       assert.equal((await chat.send('Xin chào')).source, 'small_talk');
       assert.equal((await chat.stats()).geminiCalls, 0);
       const question = `Shop có giao hàng không? Kiểm thử ${randomUUID()}`;
