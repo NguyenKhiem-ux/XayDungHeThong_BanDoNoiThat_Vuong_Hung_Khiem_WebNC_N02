@@ -1,8 +1,9 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import axios from 'axios';
-import { Bot, LoaderCircle, MessageCircle, RotateCcw, Send, X } from 'lucide-react';
+import { Bot, LoaderCircle, MessageCircle, RotateCcw, Send, Square, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { chatApi } from '../api/services';
+import { createTextQueue } from '../api/chat-stream';
 import { formatVnd } from '../api/client';
 import { ProductCard } from './ProductCard';
 import { useAuth } from '../context/AuthContext';
@@ -41,10 +42,12 @@ function ShoppingChat() {
   const sessionId = useRef(crypto.randomUUID());
   const busy = useRef(false);
   const active = useRef(true);
+  const messageSequence = useRef(1);
+  const inFlight = useRef<AbortController | null>(null);
   const [retry, setRetry] = useState<{ message: string; options: ChatRequestOptions } | null>(null);
   const latestAssistant = messages.filter(message => message.role === 'assistant').at(-1)?.id;
 
-  useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
+  useEffect(() => { active.current = true; return () => { active.current = false; inFlight.current?.abort(); }; }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -68,24 +71,54 @@ function ShoppingChat() {
   const request = async (message: string, options: ChatRequestOptions = { requestId: crypto.randomUUID() }, replay = false) => {
     if (!message || busy.current) return;
     busy.current = true;
-    if (!replay) setMessages((current) => [...current, { id: Date.now(), role: 'user', text: message }]);
+    if (!replay) {
+      const id = ++messageSequence.current;
+      setMessages((current) => [...current, { id, role: 'user', text: message }]);
+    }
     setInput('');
     setError('');
     setRetry(null);
     setLoading(true);
+    const controller = new AbortController();
+    inFlight.current = controller;
+    const assistantId = ++messageSequence.current;
+    const isCurrent = () => active.current && inFlight.current === controller && !controller.signal.aborted;
+    let received = '';
+    let partial = '';
+    const updateReply = (text: string, response?: ChatResponse) => {
+      if (!isCurrent()) return;
+      setMessages(current => {
+        const reply: ChatMessage = { id: assistantId, role: 'assistant', text, response };
+        return current.some(item => item.id === assistantId) ? current.map(item => item.id === assistantId ? reply : item) : [...current, reply];
+      });
+    };
+    const textQueue = createTextQueue(text => {
+      partial += text;
+      updateReply(partial);
+    }, controller.signal);
 
     try {
-      const { data } = await chatApi.send(message, sessionId.current, options);
-      if (!active.current) return;
+      const data = await chatApi.stream(message, sessionId.current, options, text => {
+        if (!isCurrent()) return;
+        received += text;
+        textQueue.push(text);
+      }, controller.signal);
+      if (!isCurrent()) return;
       if (data.cart) sync(data.cart);
-      setMessages((current) => [...current, { id: Date.now(), role: 'assistant', text: data.message, response: data }]);
+      // A final moderation/review message replaces the draft immediately; normal answers drain first.
+      if (data.source === 'gemini' && received.trim() === data.message) await textQueue.finish();
+      else textQueue.cancel();
+      updateReply(data.message, data);
     } catch (requestError) {
-      if (!active.current) return;
+      if (!isCurrent()) return;
       const serverMessage = axios.isAxiosError(requestError) && requestError.response?.data?.message;
-      setError(typeof serverMessage === 'string' ? serverMessage : Array.isArray(serverMessage) ? serverMessage.join('. ') : 'Chatbot đang bận. Bạn vui lòng thử lại sau.');
-      if (axios.isAxiosError(requestError) && !requestError.response) setRetry({ message, options });
+      setError(typeof serverMessage === 'string' ? serverMessage : Array.isArray(serverMessage) ? serverMessage.join('. ') : requestError instanceof Error ? requestError.message : 'Chatbot đang bận. Bạn vui lòng thử lại sau.');
+      if (requestError instanceof TypeError || axios.isAxiosError(requestError) && !requestError.response) setRetry({ message, options });
     } finally {
+      textQueue.cancel();
+      if (inFlight.current !== controller) return;
       busy.current = false;
+      inFlight.current = null;
       if (!active.current) return;
       setLoading(false);
       window.setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 0);
@@ -176,8 +209,9 @@ function ShoppingChat() {
               maxLength={1000}
               disabled={loading}
             />
-            <button type="submit" aria-label="Gửi tin nhắn" disabled={loading || !input.trim()}>
-              <Send size={17} />
+            <button type={loading ? 'button' : 'submit'} aria-label={loading ? 'Dừng phản hồi' : 'Gửi tin nhắn'}
+              disabled={!loading && !input.trim()} onClick={loading ? () => inFlight.current?.abort() : undefined}>
+              {loading ? <Square size={17} /> : <Send size={17} />}
             </button>
           </form>
         </section>

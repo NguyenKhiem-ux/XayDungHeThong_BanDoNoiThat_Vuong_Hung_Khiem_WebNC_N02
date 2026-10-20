@@ -18,7 +18,7 @@ import { KnowledgeController } from './knowledge.controller';
 import { KnowledgeService } from './knowledge.service';
 import { IntentService } from './intent.service';
 import { SmallTalkService } from './small-talk.service';
-import { GeminiService } from './gemini.service';
+import { GeminiService, partialAnswer } from './gemini.service';
 import { GeminiDraft, RiskLevel } from './chat.types';
 import { ChatShoppingService } from './chat-shopping.service';
 import { CartService } from '../cart/cart.service';
@@ -410,4 +410,105 @@ test('Gemini prompt includes bounded approved RAG context', async () => {
   };
   await service.draft('Shop giao hàng thế nào?', { intent: 'shipping', riskLevel: RiskLevel.HIGH, shouldStore: true }, context, () => {});
   assert.deepEqual(JSON.parse(request.contents).context, context);
+});
+
+test('streamed JSON decodes answer prefixes without exposing metadata or partial escapes', () => {
+  const answer = 'Chọn màu "be".\nGiữ không gian thoáng 😊';
+  const json = JSON.stringify({ answer, intent: 'general_question', confidence_score: 90 });
+  let emitted = '';
+  for (let length = 0; length <= json.length; length++) {
+    const prefix = partialAnswer(json.slice(0, length));
+    assert.ok(answer.startsWith(prefix));
+    assert.ok(prefix.startsWith(emitted));
+    emitted = prefix;
+  }
+  assert.equal(emitted, answer);
+  assert.equal(partialAnswer('{"answer":"Màu \\u00'), '');
+  assert.equal(partialAnswer('{"answer":"Màu \\u0062e"}'), 'Màu be');
+  assert.equal(partialAnswer('{"intent":"general_question", "answer":"Màu be'), 'Màu be');
+});
+
+test('HTTP SSE forwards Gemini chunks before completion, preserves final metadata and hides policy drafts', async t => {
+  const memory = memoryKnowledge();
+  const module = await Test.createTestingModule({
+    controllers: [ChatController],
+    providers: [ChatService, KnowledgeService, IntentService, SmallTalkService, GeminiService, ChatShoppingService, JwtStrategy,
+      { provide: CartService, useValue: {} }, { provide: AddressesService, useValue: {} },
+      { provide: ConfigService, useValue: new ConfigService({ JWT_SECRET: 'stream-test-secret', GEMINI_API_KEY: 'test-only' }) },
+      { provide: ChatProductsService, useValue: {} },
+      { provide: getRepositoryToken(ChatbotKnowledge), useValue: memory.repo }],
+  }).compile();
+  const app = module.createNestApplication({ logger: false });
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true, forbidNonWhitelisted: true }));
+  await app.listen(0, '127.0.0.1');
+  t.after(async () => { finish?.(); await app.close(); });
+  const base = await app.getUrl();
+  const ai = (module.get(GeminiService) as any).ai;
+  ai.models.generateContent = () => assert.fail('SSE must use the real SDK streaming method');
+  let finish!: () => void;
+  const completion = new Promise<void>(resolve => { finish = resolve; });
+  let finished = false;
+  let calls = 0;
+  const answer = 'Bạn nên dùng màu be để không gian thoáng hơn.';
+  ai.models.generateContentStream = async function* () {
+    calls++;
+    yield { text: '{"intent":"general_question","confidence_score":90,"risk_level":"LOW","should_auto_approve":true,"answer":"Bạn nên dùng màu ' };
+    await completion;
+    finished = true;
+    yield { text: 'be để không gian thoáng hơn."}' };
+  };
+  const body = { message: 'Phòng nhỏ nên chọn nội thất màu gì?', sessionId: 'stream-test', requestId: 'stream-once' };
+  const post = (input: unknown, authorization?: string) => fetch(base + '/chat', { method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream', ...(authorization ? { Authorization: authorization } : {}) },
+    body: JSON.stringify(input), signal: AbortSignal.timeout(5000) });
+  const response = await post(body);
+  assert.match(response.headers.get('Content-Type')!, /text\/event-stream/);
+  assert.equal(response.headers.get('X-Accel-Buffering'), 'no');
+  const reader = response.body!.getReader();
+  const decoder = new TextDecoder();
+  const first = await reader.read();
+  const firstText = decoder.decode(first.value, { stream: true });
+  assert.ok(firstText.includes('Bạn nên dùng màu '));
+  assert.ok(!firstText.includes('"type":"result"'));
+  assert.equal(finished, false);
+  assert.equal(memory.rows.length, 0);
+  finish();
+  let wire = firstText;
+  while (true) { const next = await reader.read(); if (next.done) break; wire += decoder.decode(next.value, { stream: true }); }
+  const events = wire.trim().split('\n\n').map(line => JSON.parse(line.slice(6)));
+  assert.equal(events.filter(event => event.type === 'delta').map(event => event.text).join(''), answer);
+  const result = events.find(event => event.type === 'result').reply;
+  assert.equal(result.message, answer);
+  assert.equal(result.source, 'gemini');
+  assert.equal(memory.rows[0].status, 'approved');
+  const replay = await (await post(body)).text();
+  assert.ok(!replay.includes('"type":"delta"'));
+  assert.ok(replay.includes(answer));
+  assert.equal(calls, 1);
+
+  ai.models.generateContentStream = async function* () {
+    yield { text: JSON.stringify({ intent: 'shipping', confidence_score: 99, risk_level: 'HIGH', should_auto_approve: false,
+      answer: 'Bản nháp chính sách riêng chưa được duyệt.' }) };
+  };
+  const policy = await (await post({ message: 'Shop có giao hàng không?' })).text();
+  assert.ok(!policy.includes('Bản nháp chính sách riêng'));
+  assert.ok(!policy.includes('"type":"delta"'));
+  assert.match(policy, /ghi nhận/);
+  const reclassified = await (await post({ message: 'Không gian làm việc nên phối màu ra sao?' })).text();
+  assert.ok(!reclassified.includes('Bản nháp chính sách riêng'));
+  assert.ok(!reclassified.includes('"type":"delta"'));
+  const smallTalk = await (await post({ message: 'Xin chào' })).text();
+  assert.match(smallTalk, /"source":"small_talk"/);
+  assert.equal((await post(body, 'Bearer invalid')).status, 401);
+  assert.equal((await post({ message: '' })).status, 400);
+
+  ai.models.generateContentStream = async function* () {
+    yield { text: '{"intent":"general_question","confidence_score":90,"risk_level":"LOW","should_auto_approve":true,"answer":"Màu be' };
+    throw { status: 503, message: 'provider-secret' };
+  };
+  const failed = await (await post({ message: 'Phòng đọc sách nên phối màu thế nào?' })).text();
+  assert.ok(failed.includes('"type":"delta"'));
+  assert.ok(failed.includes('"type":"error"'));
+  assert.ok(!failed.includes('provider-secret'));
+  assert.ok(!failed.includes('"type":"result"'));
 });

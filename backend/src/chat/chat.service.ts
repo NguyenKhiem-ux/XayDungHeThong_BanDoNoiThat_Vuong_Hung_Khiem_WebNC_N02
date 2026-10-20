@@ -4,7 +4,7 @@ import { KnowledgeService } from './knowledge.service';
 import { IntentService } from './intent.service';
 import { SmallTalkService } from './small-talk.service';
 import { GeminiService } from './gemini.service';
-import { ChatIntent, ChatReply, RiskLevel } from './chat.types';
+import { ChatIntent, ChatReply, ChatStream, RiskLevel } from './chat.types';
 import { normalizeText } from './chat-matching';
 import { AuthUser } from '../common/types/auth-user.type';
 import { ChatDto } from './dto/chat.dto';
@@ -33,7 +33,7 @@ export class ChatService {
     return { ...this.counters, ...await this.knowledge.counts(), knowledgeHitRate: rate(this.counters.knowledgeHits), geminiUsageRate: rate(this.counters.geminiCalls) };
   }
 
-  async send(message: string, sessionId?: string, user?: AuthUser, options?: ChatDto): Promise<ChatReply> {
+  async send(message: string, sessionId?: string, user?: AuthUser, options?: ChatDto, stream?: ChatStream): Promise<ChatReply> {
     const dto: ChatDto = { ...options, message: message.trim().replace(/\s+/g, ' '), sessionId };
     const scope = `${user ? `user:${user.id}` : 'guest'}:${sessionId ?? ''}`;
     const session = sessionId ? this.getSession(scope) : this.newSession();
@@ -46,7 +46,7 @@ export class ChatService {
     if (dto.requestId && session.requests.size >= 100) throw new BadRequestException('Phiên đã có quá nhiều thao tác. Vui lòng mở phiên trò chuyện mới.');
     // Serialize each user's requests, including actions from different chat tabs.
     const queueKey = user ? `user:${user.id}` : scope;
-    const result = (this.queues.get(queueKey) ?? Promise.resolve()).catch(() => {}).then(() => this.respond(dto, session, user));
+    const result = (this.queues.get(queueKey) ?? Promise.resolve()).catch(() => {}).then(() => this.respond(dto, session, user, stream));
     this.queues.set(queueKey, result);
     if (dto.requestId) session.requests.set(dto.requestId, { fingerprint, result });
     try { return await result; } finally {
@@ -54,7 +54,7 @@ export class ChatService {
     }
   }
 
-  private async respond(dto: ChatDto, session: ChatSession, user?: AuthUser): Promise<ChatReply> {
+  private async respond(dto: ChatDto, session: ChatSession, user?: AuthUser, stream?: ChatStream): Promise<ChatReply> {
     this.counters.totalQuestions++;
     const message = dto.message;
     try {
@@ -106,7 +106,17 @@ export class ChatService {
       if (existing) return this.reviewAnswer(intent, true);
 
       const ragContext = intent.startsWith('product_') ? [] : await this.knowledge.retrieveContext(message, intent);
-      const draft = await this.gemini.draft(message, classification, ragContext, () => this.counters.geminiCalls++);
+      let partial = '';
+      let blocked = false;
+      const draft = await this.gemini.draft(message, classification, ragContext, () => this.counters.geminiCalls++, stream && {
+        signal: stream.signal,
+        // Policy drafts remain private; general advice also passes the existing content guard as it arrives.
+        onText: classification.intent === 'general_question' && classification.riskLevel === RiskLevel.LOW ? text => {
+          partial += text;
+          blocked ||= !this.intents.safeAnswer(partial);
+          if (!blocked) stream.onDelta(text);
+        } : undefined,
+      });
       const stored = await this.knowledge.saveDraft(message, draft);
       if (!stored.saved) this.counters.pendingSaveFailures++;
       if (stored.autoApproved) this.counters.autoApproved++;

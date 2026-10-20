@@ -1,5 +1,6 @@
 // file tập trung các hàm gọi api cho các chức năng của ứng dụng.
 import { api } from './client';
+import { readChatStream } from './chat-stream';
 import type { Cart, ChatRequestOptions, ChatResponse, ContactMessage, Coupon, DashboardData, Favorite, Order, Product, User, UserAddress } from './types';
 
 export const authApi = {
@@ -27,6 +28,15 @@ export const productApi = {
 
 export const chatApi = {
   send: (message: string, sessionId?: string, options?: ChatRequestOptions) => api.post<ChatResponse>('/chat', { message, sessionId, ...options }, { timeout: 20_000 }),
+  async stream(message: string, sessionId: string, options: ChatRequestOptions, onDelta: (text: string) => void, signal: AbortSignal) {
+    const token = localStorage.getItem('giadung_token');
+    const response = await fetch(api.getUri({ url: '/chat' }), {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: JSON.stringify({ message, sessionId, ...options }), signal: AbortSignal.any([signal, AbortSignal.timeout(20_000)]),
+    });
+    return readChatStream(response, onDelta);
+  },
 };
 
 export const cartApi = {

@@ -27,6 +27,11 @@ export interface RagContext {
   intent: ChatIntent;
 }
 
+export interface ChatStream {
+  onDelta: (text: string) => void;
+  signal: AbortSignal;
+}
+
 export const CHAT_ACTIONS = ['product_select', 'cart_add', 'cart_remove', 'cart_update_quantity', 'cart_view',
   'buy_now', 'checkout_review', 'checkout_confirm'] as const;
 export type ChatActionType = typeof CHAT_ACTIONS[number];
