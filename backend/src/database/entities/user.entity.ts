@@ -39,6 +39,33 @@ export class User {
   @Column({ type: 'enum', enum: UserRole, default: UserRole.USER })
   role: UserRole;
 
+  @Column({ name: 'card_holder', type: 'varchar', length: 100, nullable: true })
+  cardHolder: string | null;
+
+  @Column({ name: 'card_type', type: 'varchar', length: 20, nullable: true })
+  cardType: string | null;
+
+  @Column({ name: 'card_provider', type: 'varchar', length: 40, nullable: true })
+  cardProvider: string | null;
+
+  @Column({ name: 'card_last4', type: 'char', length: 4, nullable: true })
+  cardLast4: string | null;
+
+  @Column({ name: 'card_exp_month', type: 'tinyint', unsigned: true, nullable: true })
+  cardExpMonth: number | null;
+
+  @Column({ name: 'card_exp_year', type: 'smallint', unsigned: true, nullable: true })
+  cardExpYear: number | null;
+
+  @Column({ name: 'transaction_pin_hash', type: 'varchar', length: 255, nullable: true })
+  transactionPinHash: string | null;
+
+  @Column({ name: 'transaction_pin_failed_attempts', type: 'tinyint', unsigned: true, default: 0 })
+  transactionPinFailedAttempts: number;
+
+  @Column({ name: 'transaction_pin_locked_until', type: 'datetime', nullable: true })
+  transactionPinLockedUntil: Date | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'datetime' })
   createdAt: Date;
 

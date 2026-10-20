@@ -5,6 +5,8 @@ export enum KnowledgeStatus {
   PENDING = 'pending_review',
   APPROVED = 'approved',
   REJECTED = 'rejected',
+  // Retain older rows during TypeORM schema sync; the API presents this as pending.
+  LEGACY_PENDING_REVIEW = 'pending_review',
 }
 
 // Explicit additive migration owns this table, not global synchronize (which would damage legacy enum values).

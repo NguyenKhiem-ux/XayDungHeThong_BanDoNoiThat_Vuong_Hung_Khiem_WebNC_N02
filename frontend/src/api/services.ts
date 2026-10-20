@@ -11,6 +11,7 @@ export const authApi = {
   changePassword: (currentPassword: string, newPassword: string, confirmPassword: string) => api.post<{ message: string }>('/auth/change-password', { currentPassword, newPassword, confirmPassword }),
   me: () => api.get<User>('/auth/me'),
   updateProfile: (data: { fullName: string; phone: string; birthDate: string; address: string; gender: string }) => api.patch<User>('/auth/me', data),
+  updateCardProfile: (data: { holder: string; type: 'DOMESTIC' | 'INTERNATIONAL'; provider: string; last4: string; expMonth: number; expYear: number; pin?: string }) => api.patch<User>('/auth/me/card', data),
   updateAvatar: (form: FormData) => api.post<User>('/auth/me/avatar', form, { headers: { 'Content-Type': 'multipart/form-data' } }),
 };
 
@@ -68,6 +69,7 @@ export const couponApi = {
 
 export const paymentApi = {
   createPayOSPaymentLink: (orderId: number) => api.post<{ checkoutUrl: string }>(`/payment/payos/create-link/${orderId}`),
+  confirmCardPayment: (orderId: number, pin: string) => api.post<{ success: boolean; simulated: boolean }>(`/payment/card/confirm/${orderId}`, { pin }),
 };
 
 export const contactApi = {

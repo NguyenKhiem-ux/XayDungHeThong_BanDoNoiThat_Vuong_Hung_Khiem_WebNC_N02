@@ -17,6 +17,16 @@ type ProfileForm = {
   gender: Gender;
   address: string;
 };
+type CardProfileForm = {
+  holder: string;
+  type: 'DOMESTIC' | 'INTERNATIONAL';
+  provider: string;
+  cardNumber: string;
+  expMonth: string;
+  expYear: string;
+  pin: string;
+  confirmPin: string;
+};
 type CouponCard = Pick<Coupon, 'code' | 'description' | 'discountType' | 'discountValue' | 'minOrderAmount'> & {
   id: number | string;
   endDate?: string;
@@ -38,6 +48,9 @@ const emptyForm: ProfileForm = {
   gender: 'male',
   address: '',
 };
+const emptyCardForm: CardProfileForm = {
+  holder: '', type: 'DOMESTIC', provider: 'NAPAS', cardNumber: '', expMonth: '', expYear: '', pin: '', confirmPin: '',
+};
 
 function couponValue(coupon: CouponCard) {
   const value = Number(coupon.discountValue);
@@ -56,6 +69,8 @@ export function ProfilePage() {
   const [addresses, setAddresses] = useState<UserAddress[]>([]);
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [form, setForm] = useState<ProfileForm>(emptyForm);
+  const [cardForm, setCardForm] = useState<CardProfileForm>(emptyCardForm);
+  const [cardBusy, setCardBusy] = useState(false);
   const [showAllFavorites, setShowAllFavorites] = useState(false);
   const [showAllCoupons, setShowAllCoupons] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState('');
@@ -81,6 +96,22 @@ export function ProfilePage() {
       address: user.address || defaultAddress?.address || '',
     });
   }, [user, defaultAddress?.address]);
+
+  useEffect(() => {
+    const card = user?.savedCard;
+    if (!card) return;
+    setCardForm(current => ({
+      ...current,
+      holder: card.holder,
+      type: card.type,
+      provider: card.provider,
+      last4: card.last4,
+      expMonth: String(card.expMonth),
+      expYear: String(card.expYear),
+      pin: '',
+      confirmPin: '',
+    }));
+  }, [user?.savedCard]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setMapAddress(form.address.trim()), 700);
@@ -139,6 +170,29 @@ export function ProfilePage() {
       toast('Không thể lưu hồ sơ. Vui lòng thử lại.');
     }
   };
+  const updateCardField = (key: keyof CardProfileForm, value: string) => setCardForm(current => ({ ...current, [key]: value }));
+  const saveCard = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!/^\d{16,19}$/.test(cardForm.cardNumber)) { toast('Vui lòng nhập số thẻ gồm 16–19 chữ số.'); return; }
+    if (cardForm.pin && cardForm.pin !== cardForm.confirmPin) { toast('PIN xác nhận chưa khớp.'); return; }
+    setCardBusy(true);
+    try {
+      await authApi.updateCardProfile({
+        holder: cardForm.holder,
+        type: cardForm.type,
+        provider: cardForm.provider,
+        last4: cardForm.cardNumber.slice(-4),
+        expMonth: Number(cardForm.expMonth),
+        expYear: Number(cardForm.expYear),
+        ...(cardForm.pin ? { pin: cardForm.pin } : {}),
+      });
+      await refresh();
+      setCardForm(current => ({ ...current, cardNumber: '', pin: '', confirmPin: '' }));
+      toast('Đã lưu thông tin thẻ mô phỏng.');
+    } catch (error) {
+      toast((error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Không thể lưu thông tin thẻ. Vui lòng kiểm tra lại.');
+    } finally { setCardBusy(false); }
+  };
 
   return <section className="profile-shell">
     <aside className="profile-sidebar">
@@ -153,6 +207,7 @@ export function ProfilePage() {
       </button>
       <nav id="profile-navigation" aria-label="Tài khoản cá nhân" className={`profile-menu ${menuOpen ? 'is-open' : ''}`}>
         <a href="#profile-info" className="active"><i className="fa-solid fa-id-card" /> Hồ sơ cá nhân</a>
+        <a href="#profile-card"><i className="fa-solid fa-credit-card" /> Thẻ thanh toán</a>
         <Link to="/orders"><i className="fa-solid fa-receipt" /> Đơn hàng của tôi</Link>
         <a href="#profile-addresses"><i className="fa-solid fa-location-dot" /> Địa chỉ giao hàng</a>
         <a href="#profile-coupons"><i className="fa-solid fa-ticket" /> Mã giảm giá</a>
@@ -207,6 +262,45 @@ export function ProfilePage() {
           </label>
         </div>
         <button type="submit" className="profile-mobile-save profile-mini-btn primary"><Save size={18} aria-hidden="true" /> Lưu thay đổi</button>
+      </form>
+
+      <form className="profile-panel" id="profile-card" onSubmit={saveCard}>
+        <div className="profile-panel-head">
+          <div><h2>Thẻ thanh toán</h2><p>Lưu thông tin thẻ mô phỏng để dùng nhanh ở bước thanh toán.</p></div>
+          <button type="submit" className="profile-mini-btn primary" disabled={cardBusy}><Save size={16} /> {cardBusy ? 'Đang lưu…' : 'Lưu thẻ'}</button>
+        </div>
+        <div className="card-demo-notice"><i className="fa-solid fa-shield-halved" /><div><strong>Chỉ dùng cho bản mô phỏng</strong><span>Nhập số thẻ mô phỏng gồm 16–19 chữ số. Hệ thống chỉ lưu 4 số cuối để hiển thị; số thẻ đầy đủ không được lưu. Không nhập thông tin thẻ thật hoặc CVV. PIN là PIN riêng của website, không phải PIN ngân hàng.</span></div></div>
+        <div className="profile-form-grid">
+          <label>Tên chủ thẻ
+            <input autoComplete="off" required maxLength={100} value={cardForm.holder} onChange={e => updateCardField('holder', e.target.value)} placeholder="Ví dụ: NGUYEN VAN A" />
+          </label>
+          <label>Loại thẻ
+            <select value={cardForm.type} onChange={e => { const type = e.target.value as CardProfileForm['type']; setCardForm(current => ({ ...current, type, provider: type === 'DOMESTIC' ? 'NAPAS' : 'VISA' })); }}>
+              <option value="DOMESTIC">Thẻ nội địa</option><option value="INTERNATIONAL">Thẻ quốc tế</option>
+            </select>
+          </label>
+          <label>Ngân hàng / tổ chức thẻ
+            <select value={cardForm.provider} onChange={e => updateCardField('provider', e.target.value)}>
+              {(cardForm.type === 'DOMESTIC' ? [['NAPAS','NAPAS'],['VIETCOMBANK','Vietcombank'],['BIDV','BIDV'],['TECHCOMBANK','Techcombank'],['MB','MB Bank'],['ACB','ACB']] : [['VISA','Visa'],['MASTERCARD','Mastercard'],['JCB','JCB'],['AMEX','American Express']]).map(([value,label]) => <option key={value} value={value}>{label}</option>)}
+            </select>
+          </label>
+          <label>Số thẻ (mô phỏng)
+            <input type="text" inputMode="numeric" autoComplete="off" pattern="[0-9]{16,19}" minLength={16} maxLength={19} required value={cardForm.cardNumber} onChange={e => updateCardField('cardNumber', e.target.value.replace(/\D/g, '').slice(0, 19))} placeholder="Nhập 16–19 chữ số" />
+          </label>
+          <label>Tháng hết hạn
+            <select required value={cardForm.expMonth} onChange={e => updateCardField('expMonth', e.target.value)}><option value="">Tháng</option>{Array.from({ length: 12 }, (_, i) => <option key={i + 1} value={i + 1}>{String(i + 1).padStart(2, '0')}</option>)}</select>
+          </label>
+          <label>Năm hết hạn
+            <input type="number" min={new Date().getFullYear()} max="2100" required value={cardForm.expYear} onChange={e => updateCardField('expYear', e.target.value)} placeholder={String(new Date().getFullYear() + 3)} />
+          </label>
+          <label>PIN thanh toán 6 số {user.hasTransactionPin && <small>(để trống nếu giữ PIN cũ)</small>}
+            <input type="password" inputMode="numeric" autoComplete="new-password" pattern="[0-9]{6}" minLength={6} maxLength={6} required={!user.hasTransactionPin} value={cardForm.pin} onChange={e => updateCardField('pin', e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder={user.hasTransactionPin ? 'Đã thiết lập' : 'Tạo PIN 6 chữ số'} />
+          </label>
+          {cardForm.pin && <label>Nhập lại PIN
+            <input type="password" inputMode="numeric" autoComplete="new-password" pattern="[0-9]{6}" minLength={6} maxLength={6} required value={cardForm.confirmPin} onChange={e => updateCardField('confirmPin', e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="Nhập lại PIN" />
+          </label>}
+        </div>
+        {user.savedCard && <p className="profile-card-saved"><i className="fa-solid fa-circle-check" /> Đã lưu {user.savedCard.type === 'DOMESTIC' ? 'thẻ nội địa' : 'thẻ quốc tế'} {user.savedCard.provider} ·•••• {user.savedCard.last4}</p>}
       </form>
 
       <div className="profile-stats">
