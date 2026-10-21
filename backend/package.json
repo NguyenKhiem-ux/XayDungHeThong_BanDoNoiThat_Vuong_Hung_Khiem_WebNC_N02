@@ -8,9 +8,13 @@
     "start:dev": "nest start --watch",
     "start:prod": "node dist/main.js",
     "test:addresses": "node --test -r ts-node/register src/addresses/addresses.service.spec.ts",
+    "test:auth": "node --test -r ts-node/register src/auth/auth.service.spec.ts src/auth/auth-schema.spec.ts",
+    "test:checkout": "node --test -r ts-node/register src/chat/checkout.spec.ts",
     "test:chat": "node --test -r ts-node/register src/chat/chat.spec.ts src/chat/shopping.spec.ts src/chat/user-actions.spec.ts",
     "test:shopping:mysql": "node scripts/verify-shopping.cjs",
     "db:chatbot": "node scripts/setup-chatbot.cjs",
+    "db:checkout": "node scripts/setup-checkout.cjs",
+    "db:auth-profile": "node scripts/setup-auth-profile.cjs",
     "format": "prettier --write \"src/**/*.ts\"",
     "lint": "eslint \"src/**/*.ts\""
   },

@@ -109,66 +109,72 @@ export class CouponsService {
       },
     });
 
-    if (!coupon) {
-      throw new BadRequestException('Mã giảm giá không tồn tại');
-    }
+    return evaluateCoupon(coupon, orderAmount, userId);
+  }
+}
 
-    if (!coupon.isActive) {
-      throw new BadRequestException('Mã giảm giá đã bị vô hiệu hóa');
-    }
-    if (coupon.userId !== null && coupon.userId !== userId) throw new BadRequestException('Mã giảm giá không thuộc tài khoản của bạn');
 
-    const now = new Date();
+// Shared by previews and the locked order transaction; keep rounding and eligibility in one place.
+export function evaluateCoupon(coupon: Coupon | null, orderAmount: number, userId?: number) {
+  if (!coupon) {
+    throw new BadRequestException('Mã giảm giá không tồn tại');
+  }
 
-    if (now < coupon.startDate) {
-      throw new BadRequestException('Mã giảm giá chưa bắt đầu sử dụng');
-    }
+  if (!coupon.isActive) {
+    throw new BadRequestException('Mã giảm giá đã bị vô hiệu hóa');
+  }
+  if (coupon.userId !== null && coupon.userId !== userId) throw new BadRequestException('Mã giảm giá không thuộc tài khoản của bạn');
 
-    if (now > coupon.endDate) {
-      throw new BadRequestException('Mã giảm giá đã hết hạn');
-    }
+  const now = new Date();
+
+  if (now < coupon.startDate) {
+    throw new BadRequestException('Mã giảm giá chưa bắt đầu sử dụng');
+  }
+
+  if (now > coupon.endDate) {
+    throw new BadRequestException('Mã giảm giá đã hết hạn');
+  }
+
+  if (
+    coupon.usageLimit !== null &&
+    coupon.usedCount >= coupon.usageLimit
+  ) {
+    throw new BadRequestException('Mã giảm giá đã hết lượt sử dụng');
+  }
+
+  if (orderAmount < coupon.minOrderAmount) {
+    throw new BadRequestException(
+      `Đơn hàng tối thiểu ${coupon.minOrderAmount}đ`,
+    );
+  }
+
+  let discountAmount = 0;
+
+  if (coupon.discountType === CouponDiscountType.PERCENTAGE) {
+    discountAmount = (orderAmount * Number(coupon.discountValue)) / 100;
 
     if (
-      coupon.usageLimit !== null &&
-      coupon.usedCount >= coupon.usageLimit
+      coupon.maxDiscountAmount !== null &&
+      discountAmount > Number(coupon.maxDiscountAmount)
     ) {
-      throw new BadRequestException('Mã giảm giá đã hết lượt sử dụng');
+      discountAmount = Number(coupon.maxDiscountAmount);
     }
-
-    if (orderAmount < coupon.minOrderAmount) {
-      throw new BadRequestException(
-        `Đơn hàng tối thiểu ${coupon.minOrderAmount}đ`,
-      );
-    }
-
-    let discountAmount = 0;
-
-    if (coupon.discountType === CouponDiscountType.PERCENTAGE) {
-      discountAmount = (orderAmount * Number(coupon.discountValue)) / 100;
-
-      if (
-        coupon.maxDiscountAmount !== null &&
-        discountAmount > Number(coupon.maxDiscountAmount)
-      ) {
-        discountAmount = Number(coupon.maxDiscountAmount);
-      }
-    } else {
-      discountAmount = Number(coupon.discountValue);
-    }
-
-    if (discountAmount > orderAmount) {
-      discountAmount = orderAmount;
-    }
-
-    discountAmount = Math.round(discountAmount);
-
-    const finalAmount = orderAmount - discountAmount;
-
-    return {
-      valid: true,
-      coupon,
-      discountAmount,
-      finalAmount,
-    };
+  } else {
+    discountAmount = Number(coupon.discountValue);
   }
+
+  if (discountAmount > orderAmount) {
+    discountAmount = orderAmount;
+  }
+
+  discountAmount = Math.round(discountAmount);
+
+  const finalAmount = orderAmount - discountAmount;
+
+  return {
+    valid: true,
+    coupon,
+    discountAmount,
+    finalAmount,
+  };
 }

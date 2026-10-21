@@ -83,7 +83,7 @@ export class ChatUserActionsService {
         const orders = await this.orders.listForUser(user.id);
         state.orderIds = orders.map(o => o.id); state.userDomain = 'orders'; state.viewedOrderId = undefined;
         return { ...this.reply(orders.length ? 'Đơn hàng của bạn, mới nhất trước:' : 'Bạn chưa có đơn hàng.'), orders,
-          actions: orders.map(o => ({ type: 'order_detail', label: `Chi tiết đơn #${o.id}`, orderId: o.id })) };
+          actions: orders.flatMap(o => [{ type: 'order_detail' as const, label: `Chi tiết đơn #${o.id}`, orderId: o.id }, ...this.paymentActions(o)]) };
       }
       if (action === 'order_detail') {
         const recent = /\b(gan nhat|moi nhat)\b/.test(normalizeText(dto.message));
@@ -95,7 +95,7 @@ export class ChatUserActionsService {
         if (!Number.isSafeInteger(id) || id < 1) throw new BadRequestException('Mã đơn hàng không hợp lệ.');
         const order = await this.orders.getOneForUser(user.id, id);
         state.userDomain = 'orders'; state.viewedOrderId = order.id;
-        return { ...this.reply(`Chi tiết đơn hàng #${order.id}:`), orders: [order] };
+        return { ...this.reply(`Chi tiết đơn hàng #${order.id}:`), orders: [order], actions: this.paymentActions(order) };
       }
       if (action.startsWith('favorite')) return await this.favorite(dto, resolved, state, user.id);
       if (action.startsWith('address')) return await this.address(dto, resolved, state, user.id);
@@ -307,9 +307,18 @@ export class ChatUserActionsService {
   }
 
   private async addMany(dto: ChatDto, resolved: InterpretedAction, state: State, userId: number, signal?: AbortSignal) {
+    const items = await this.resolveItems(dto, resolved.items, signal);
+    if (!items) return this.reply('Hãy nêu rõ tên và số lượng từng món, ví dụ: “Thêm 2 nồi cơm điện và 1 máy xay sinh tố vào giỏ”.');
+    signal?.throwIfAborted();
+    const cart = await this.cart.addMany(userId, items);
+    state.review = undefined;
+    return this.cartReply('Đã thêm các sản phẩm vào giỏ hàng.', cart);
+  }
+
+  async resolveItems(dto: ChatDto, extracted?: InterpretedAction['items'], signal?: AbortSignal) {
     let items = dto.items;
     if (!items) {
-      let parts = resolved.items;
+      let parts = extracted;
       if (!parts) {
         const chunks = dto.message.replace(/(?:thêm|cho tôi|cho mình|vào giỏ hàng|vào giỏ|giúp tôi|giúp mình)/gi, ' ').split(/[,;+]|\s+và\s+/i).map(s => s.trim()).filter(Boolean);
         const parsed = chunks.map(chunk => {
@@ -323,7 +332,7 @@ export class ChatUserActionsService {
           if (semantic?.action === 'cart_add_many') parts = semantic.items;
         }
       }
-      if (!parts?.length) return this.reply('Hãy nêu rõ tên và số lượng từng món, ví dụ: “Thêm 2 nồi cơm điện và 1 máy xay sinh tố vào giỏ”.');
+      if (!parts?.length) return null;
       items = [];
       for (const part of parts) {
         const number = [String(part.quantity), ['khong', 'mot', 'hai', 'ba', 'bon', 'nam', 'sau', 'bay', 'tam', 'chin', 'muoi'][part.quantity]].filter(Boolean).join('|');
@@ -333,10 +342,7 @@ export class ChatUserActionsService {
         items.push({ productId: await this.resolveProduct(part.query), quantity: part.quantity });
       }
     }
-    signal?.throwIfAborted();
-    const cart = await this.cart.addMany(userId, items);
-    state.review = undefined;
-    return this.cartReply('Đã thêm các sản phẩm vào giỏ hàng.', cart);
+    return items;
   }
 
   private async resolveProduct(query: string) {
@@ -390,7 +396,11 @@ export class ChatUserActionsService {
   }
   private cartReply(message: string, cart: ChatCart): ChatReply {
     const actions: ChatAction[] = cart.items.flatMap(i => [{ type: 'cart_update_quantity', label: 'Đổi số lượng', productId: i.productId }, { type: 'cart_remove', label: 'Xóa', productId: i.productId }]);
-    if (cart.items.length) actions.push({ type: 'cart_clear', label: 'Xóa toàn bộ giỏ' });
+    if (cart.items.length) actions.push({ type: 'checkout_start', label: 'Checkout giỏ hàng' }, { type: 'cart_clear', label: 'Xóa toàn bộ giỏ' });
     return { ...this.reply(message), intent: 'cart_view', cart, type: 'cart', actions };
+  }
+  private paymentActions(order: { id: number; paymentStatus: string; paymentMethod: string; status: string }): ChatAction[] {
+    return order.paymentStatus === 'UNPAID' && order.status !== 'CANCELLED' && ['QR', 'PAYOS', 'CARD'].includes(order.paymentMethod)
+      ? [{ type: 'checkout_payment_link', label: 'Tiếp tục thanh toán', orderId: order.id }] : [];
   }
 }

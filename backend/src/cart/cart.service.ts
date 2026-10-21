@@ -24,6 +24,14 @@ export class CartService {
   }
 
   async addMany(userId: number, lines: Array<{ productId: number; quantity: number }>) {
+    return this.changeMany(userId, lines, false);
+  }
+
+  async setMany(userId: number, lines: Array<{ productId: number; quantity: number }>) {
+    return this.changeMany(userId, lines, true);
+  }
+
+  private async changeMany(userId: number, lines: Array<{ productId: number; quantity: number }>, replace: boolean) {
     if (!Array.isArray(lines) || !lines.length || lines.length > 20) throw new BadRequestException('Cần từ 1 đến 20 sản phẩm');
     const quantities = new Map<number, number>();
     for (const line of lines) {
@@ -41,9 +49,9 @@ export class CartService {
         if (!product) throw new NotFoundException('Không tìm thấy sản phẩm');
         if (product.stock <= 0) throw new BadRequestException(`${product.name} đã hết hàng`);
         const item = await items.findOne({ where: { cartId: cart.id, productId } });
-        const nextQuantity = (item?.quantity ?? 0) + quantity;
+        const nextQuantity = (replace ? 0 : item?.quantity ?? 0) + quantity;
         if (nextQuantity > product.stock) throw new BadRequestException(`${product.name}: chỉ còn ${product.stock} sản phẩm trong kho`);
-        pending.push(item ? Object.assign(item, { quantity: nextQuantity }) : items.create({ cartId: cart.id, productId, quantity }));
+        pending.push(item ? Object.assign(item, { quantity: nextQuantity }) : items.create({ cartId: cart.id, productId, quantity: nextQuantity }));
       }
       for (const item of pending) await items.save(item);
     });

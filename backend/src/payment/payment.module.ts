@@ -11,5 +11,6 @@ import { PaymentService } from './payment.service';
   imports: [TypeOrmModule.forFeature([Order, Payment, User])],
   controllers: [PaymentController],
   providers: [PaymentService],
+  exports: [PaymentService],
 })
 export class PaymentModule {}

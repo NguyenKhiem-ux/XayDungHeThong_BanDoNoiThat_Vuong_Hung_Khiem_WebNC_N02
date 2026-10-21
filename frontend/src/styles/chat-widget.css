@@ -77,6 +77,7 @@
   min-height: 0;
   padding: 20px;
   overflow-y: auto;
+  overflow-anchor: none;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
   background: var(--bg, #f3f1ec);
@@ -227,6 +228,20 @@
 .chat-shortcuts button:disabled { opacity: .5; cursor: default; }
 .chat-input-hint { display: flex; justify-content: space-between; gap: 10px; margin-top: 8px; margin-bottom: 0; color: var(--muted, #69716d); font-size: 10px; }
 .chat-scroll-down { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 6px; padding: 9px 12px; border: 1px solid var(--line, #ddd); border-radius: 20px; color: var(--brand, #0f4f3f); background: #fff; box-shadow: 0 4px 16px rgb(24 31 28 / 12%); font: inherit; font-size: 12px; white-space: nowrap; }
+.chat-checkout-heading { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+.chat-checkout small { display: block; color: var(--muted, #69716d); font-size: 12px; }
+.chat-checkout-form, .chat-checkout-form form, .chat-secure-payment { display: grid; gap: 12px; margin-block: 14px; }
+.chat-checkout-form label, .chat-secure-payment label { display: grid; gap: 6px; font-size: 12px; }
+.chat-checkout-form input:not([type="radio"]):not([type="checkbox"]), .chat-checkout-form select, .chat-checkout-form textarea, .chat-secure-payment input { box-sizing: border-box; width: 100%; min-width: 0; min-height: 42px; padding: 10px; border: 1px solid var(--line, #ddd); border-radius: 8px; background: #fff; color: var(--ink, #171a18); font: inherit; font-size: 16px; }
+.chat-checkout-form label.chat-checkout-choice { display: flex; align-items: flex-start; gap: 10px; padding: 12px; border: 1px solid var(--line, #ddd); border-radius: 8px; }
+.chat-checkout-choice input { accent-color: var(--brand, #0f4f3f); margin-top: 3px; }
+.chat-checkout-form button, .chat-secure-payment button, .chat-checkout-pay { min-height: 42px; padding: 10px 14px; border: 1px solid var(--line, #ddd); border-radius: 8px; background: #fff; color: var(--brand, #0f4f3f); font: inherit; font-size: 13px; cursor: pointer; }
+.chat-checkout-form button:disabled { opacity: .5; cursor: default; }
+.chat-checkout-voucher { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 8px; }
+.chat-checkout-recipient { display: grid; gap: 5px; padding-block: 14px; font-size: 13px; overflow-wrap: anywhere; }
+.chat-checkout-totals > div { display: flex; justify-content: space-between; gap: 12px; padding-block: 5px; font-size: 12px; }
+.chat-checkout-pay { display: inline-flex; align-items: center; background: var(--brand, #0f4f3f); color: #fff; text-decoration: none; }
+.chat-checkout p { font-size: 12px; line-height: 1.6; }
 .chat-resource-grid { display: grid; gap: 12px; margin-top: 12px; }
 .chat-resource-grid > .chat-shopping-summary { margin-top: 0; }
 .chat-card-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }

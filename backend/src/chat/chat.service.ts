@@ -10,8 +10,9 @@ import { AuthUser } from '../common/types/auth-user.type';
 import { ChatDto } from './dto/chat.dto';
 import { ChatShoppingService, ShoppingSession } from './chat-shopping.service';
 import { ChatUserActionsService, UserActionSession, hasChatSecret } from './chat-user-actions.service';
+import { ChatCheckoutService, CheckoutSession } from './chat-checkout.service';
 
-type ChatSession = ShoppingSession & UserActionSession & { expiresAt: number; requests: Map<string, { fingerprint: string; result: Promise<ChatReply> }> };
+type ChatSession = ShoppingSession & UserActionSession & CheckoutSession & { expiresAt: number; requests: Map<string, { fingerprint: string; result: Promise<ChatReply> }> };
 const SESSION_TTL = 30 * 60 * 1000;
 const MAX_SESSIONS = 1000;
 
@@ -27,7 +28,7 @@ export class ChatService {
 
   constructor(private readonly knowledge: KnowledgeService, private readonly products: ChatProductsService,
     private readonly intents: IntentService, private readonly smallTalk: SmallTalkService, private readonly gemini: GeminiService,
-    private readonly shopping: ChatShoppingService, private readonly userActions: ChatUserActionsService) {}
+    private readonly shopping: ChatShoppingService, private readonly userActions: ChatUserActionsService, private readonly checkout: ChatCheckoutService) {}
 
   async stats() {
     const rate = (count: number) => this.counters.totalQuestions ? Math.round(count / this.counters.totalQuestions * 10000) / 100 : 0;
@@ -63,6 +64,8 @@ export class ChatService {
     try {
       const classification = this.intents.classify(message);
       let { intent } = classification;
+      const checkoutReply = await this.checkout.handle(dto, session, user, stream?.signal);
+      if (checkoutReply) return checkoutReply;
       const accountReply = await this.userActions.handle(dto, session, user, stream?.signal);
       if (accountReply) return accountReply;
       session.confirmation = undefined;

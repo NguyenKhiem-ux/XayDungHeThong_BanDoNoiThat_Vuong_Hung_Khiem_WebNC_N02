@@ -158,6 +158,7 @@ export interface ChatResponse {
   cart?: Cart;
   actions?: ChatAction[];
   checkout?: CheckoutReview;
+  checkoutFlow?: ChatCheckoutView;
   checkoutUrl?: '/checkout/info';
   error?: { code: string; retryable: boolean };
   orders?: Order[];
@@ -171,7 +172,10 @@ export interface ChatResponse {
 export type ChatActionType = 'product_select' | 'cart_add' | 'cart_remove' | 'cart_update_quantity' | 'cart_view' | 'buy_now' | 'checkout_review' | 'checkout_confirm' |
   'orders_list' | 'order_detail' | 'favorites_list' | 'favorite_add' | 'favorite_remove' | 'addresses_list' |
   'address_create' | 'address_update' | 'address_delete' | 'address_default' | 'coupons_list' | 'coupon_detail' |
-  'cart_add_many' | 'cart_clear' | 'action_confirm' | 'action_cancel';
+  'cart_add_many' | 'cart_clear' | 'action_confirm' | 'action_cancel' |
+  'checkout_start' | 'checkout_address' | 'checkout_voucher' | 'checkout_best_voucher' | 'checkout_payment' |
+  'checkout_preview' | 'checkout_place_order' | 'checkout_cancel' | 'checkout_edit_items' | 'checkout_edit_address' |
+  'checkout_edit_voucher' | 'checkout_edit_payment' | 'checkout_item_update' | 'checkout_item_remove' | 'checkout_payment_link' | 'checkout_status';
 export type ChatAddressInput = Partial<Pick<UserAddress, 'fullName' | 'phone' | 'address' | 'isDefault'>>;
 export interface ChatAction {
   type: ChatActionType;
@@ -183,10 +187,43 @@ export interface ChatAction {
   orderId?: number;
   code?: string;
   confirmationId?: string;
+  checkoutId?: string;
+  quoteHash?: string;
+  paymentMethod?: PaymentMethod;
   address?: ChatAddressInput;
   items?: Array<{ productId: number; quantity: number }>;
 }
 export type ChatRequestOptions = Partial<Omit<ChatAction, 'type' | 'label'>> & { action?: ChatActionType; requestId: string };
+export interface ChatCheckoutQuote {
+  id: string;
+  hash: string;
+  expiresAt: string;
+  items: Array<{ productId: number; name: string; imageUrl: string | null; price: number; quantity: number; subtotal: number }>;
+  address: { id?: number; fullName: string; phone: string; address: string };
+  email: string;
+  paymentMethod: PaymentMethod;
+  couponCode: string | null;
+  subtotal: number;
+  discountAmount: number;
+  shippingFee: number;
+  total: number;
+}
+export interface ChatCheckoutView {
+  appliedVoucher?: { code: string; discountAmount: number; finalAmount: number };
+  stage: 'collecting_items' | 'collecting_address' | 'selecting_voucher' | 'selecting_payment' | 'awaiting_confirmation' | 'creating_order' | 'awaiting_payment' | 'completed' | 'cancelled';
+  addressId?: number;
+  couponCode?: string;
+  paymentMethod?: PaymentMethod;
+  quote?: ChatCheckoutQuote;
+  order?: Order;
+  paymentUrl?: string;
+  paymentError?: string;
+  cart: Cart;
+  addresses: UserAddress[];
+  coupons: NonNullable<ChatResponse['coupons']>;
+  paymentMethods: Array<{ value: PaymentMethod; label: string; description: string }>;
+  actions: ChatAction[];
+}
 export interface CheckoutReview {
   id: string;
   product: Product;

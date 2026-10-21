@@ -212,6 +212,6 @@ export class ChatShoppingService {
       actions: [...cart.items.flatMap(item => [
         { type: 'cart_update_quantity' as const, label: 'Đổi số lượng', productId: item.productId, quantity: item.quantity },
         { type: 'cart_remove' as const, label: 'Xóa', productId: item.productId },
-      ]), ...(cart.items.length ? [{ type: 'cart_clear' as const, label: 'Xóa toàn bộ giỏ' }] : [])] };
+      ]), ...(cart.items.length ? [{ type: 'checkout_start' as const, label: 'Checkout giỏ hàng' }, { type: 'cart_clear' as const, label: 'Xóa toàn bộ giỏ' }] : [])] };
   }
 }

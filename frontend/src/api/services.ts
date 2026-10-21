@@ -33,7 +33,7 @@ export const chatApi = {
     const response = await fetch(api.getUri({ url: '/chat' }), {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream',
         ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-      body: JSON.stringify({ message, sessionId, ...options }), signal: AbortSignal.any([signal, AbortSignal.timeout(20_000)]),
+      body: JSON.stringify({ message, sessionId, ...options }), signal: AbortSignal.any([signal, AbortSignal.timeout(!options.action || options.action.startsWith('checkout_') ? 45_000 : 20_000)]),
     });
     return readChatStream(response, onDelta);
   },

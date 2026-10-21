@@ -5,7 +5,7 @@ import { ProductCard } from './ProductCard';
 
 type Props = { response: ChatResponse; disabled: boolean; onAction: (action: ChatAction) => void };
 const orderStatus = { PENDING: 'Chờ xác nhận', CONFIRMED: 'Đã xác nhận', DELIVERED: 'Đã giao', CANCELLED: 'Đã hủy' };
-const paymentMethod = { QR: 'QR', CARD: 'Thẻ', CASH: 'Tiền mặt', PAYOS: 'PayOS' };
+const paymentMethod = { QR: 'QR', CARD: 'Thẻ mô phỏng', CASH: 'Tiền mặt', PAYOS: 'PayOS' };
 const date = (value: string) => new Date(value).toLocaleDateString('vi-VN');
 
 export function ChatAccountCards({ response, disabled, onAction }: Props) {
@@ -17,7 +17,7 @@ export function ChatAccountCards({ response, disabled, onAction }: Props) {
     {!!response.orders?.length && <div className="chat-resource-grid">{response.orders.map((order, index) => <article className="chat-shopping-summary" key={order.id}>
       <div className="chat-card-heading"><strong>{index + 1}. Đơn #{order.id}</strong><time dateTime={order.createdAt}>{date(order.createdAt)}</time></div>
       <div className="chat-statuses"><span className={`chat-status ${order.status === 'DELIVERED' ? 'is-positive' : order.status === 'PENDING' ? 'is-warning' : ''}`}>{orderStatus[order.status]}</span>
-        <span className={`chat-status ${order.paymentStatus === 'PAID' ? 'is-positive' : ''}`}>{order.paymentStatus === 'PAID' ? 'Đã thanh toán' : 'Chưa thanh toán'}</span></div>
+        <span className={`chat-status ${order.paymentStatus === 'PAID' ? 'is-positive' : ''}`}>{order.paymentStatus === 'PAID' ? order.paymentMethod === 'CARD' ? 'Đã thanh toán mô phỏng' : 'Đã thanh toán' : 'Chưa thanh toán'}</span></div>
       <div className="chat-total"><span>Tổng thanh toán</span><strong>{formatVnd(order.totalAmount)}</strong></div>
       <details className="chat-order-details" open={!actions.some(action => action.type === 'order_detail' && action.orderId === order.id)}>
         <summary>Sản phẩm và thông tin giao hàng</summary>

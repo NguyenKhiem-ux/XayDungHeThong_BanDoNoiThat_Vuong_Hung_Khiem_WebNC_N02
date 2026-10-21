@@ -7,6 +7,7 @@ import { createTextQueue } from '../api/chat-stream';
 import { formatVnd } from '../api/client';
 import { ProductCard } from './ProductCard';
 import { ChatAccountCards } from './ChatAccountCards';
+import { ChatCheckoutCards } from './ChatCheckoutCards';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import type { CartItem, ChatAction, ChatRequestOptions, ChatResponse } from '../api/types';
@@ -43,7 +44,6 @@ function ShoppingChat() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const panelRef = useRef<HTMLElement>(null);
   const toggleRef = useRef<HTMLButtonElement>(null);
-  const stickToBottom = useRef(true);
   const [showScrollDown, setShowScrollDown] = useState(false);
   const sessionId = useRef(crypto.randomUUID());
   const busy = useRef(false);
@@ -58,7 +58,7 @@ function ShoppingChat() {
   useEffect(() => {
     if (!open) return;
     const messages = messagesRef.current;
-    if (messages && stickToBottom.current) messages.scrollTop = messages.scrollHeight;
+    if (messages) setShowScrollDown(messages.scrollHeight - messages.scrollTop - messages.clientHeight > 1);
   }, [messages, loading, open, expanded]);
 
   useEffect(() => {
@@ -117,8 +117,6 @@ function ShoppingChat() {
       return;
     }
     busy.current = true;
-    stickToBottom.current = true;
-    setShowScrollDown(false);
     if (!replay) {
       const id = ++messageSequence.current;
       setMessages((current) => [...current, { id, role: 'user', text: message }]);
@@ -200,7 +198,7 @@ function ShoppingChat() {
             </div>
             <div className="chat-header-actions">
             <button type="button" className="chat-icon-button chat-reset" disabled={loading} title="Cuộc trò chuyện mới" aria-label="Bắt đầu cuộc trò chuyện mới" onClick={() => {
-              stickToBottom.current = true; setShowScrollDown(false);
+              setShowScrollDown(false);
               sessionId.current = crypto.randomUUID(); setMessages([initialMessage]); setInput(''); setError(''); setRetry(null);
             }}><RotateCcw size={17} /></button>
             <button type="button" className="chat-icon-button chat-expand" title={expanded ? 'Thu nhỏ (Esc)' : 'Mở toàn màn hình'} aria-label={expanded ? 'Thu nhỏ chatbot' : 'Mở chatbot toàn màn hình'} aria-pressed={expanded} onClick={() => setExpanded(current => !current)}>
@@ -215,13 +213,11 @@ function ShoppingChat() {
           <div className="chat-body">
           <div className="chat-messages" ref={messagesRef} aria-live="polite" aria-busy={loading} onScroll={event => {
             const element = event.currentTarget;
-            const atBottom = element.scrollHeight - element.scrollTop - element.clientHeight < 80;
-            stickToBottom.current = atBottom;
-            setShowScrollDown(!atBottom);
+            setShowScrollDown(element.scrollHeight - element.scrollTop - element.clientHeight > 1);
           }}>
             <div className="chat-transcript">
             {messages.map((message) => {
-              const visibleCart = message.response?.cart && (message.id === latestAssistant ? cart ?? message.response.cart : message.response.cart);
+              const visibleCart = !message.response?.checkoutFlow && message.response?.cart && (message.id === latestAssistant ? cart ?? message.response.cart : message.response.cart);
               return (
               <div className={`chat-message ${message.role} ${message.response?.products?.length || message.response?.cart || message.response?.checkout || message.response?.orders || message.response?.addresses || message.response?.favorites || message.response?.coupons || message.response?.addressForm || message.response?.confirmation ? 'has-products' : ''}`} key={message.id}>
                 <span>{message.text}</span>
@@ -261,14 +257,15 @@ function ShoppingChat() {
                     address: message.response.checkout.addresses.find(address => address.id === message.response?.checkout?.addressId) } }} onClick={closeChat}>Tiếp tục đến checkout →</Link>}
                 </div>}
                 {message.response?.error?.code === 'LOGIN_REQUIRED' && <Link to="/login" onClick={closeChat}>Đăng nhập</Link>}
-                {message.response && <ChatAccountCards response={message.response} disabled={loading || message.id !== latestAssistant} onAction={act} />}
+                {message.response?.checkoutFlow && <ChatCheckoutCards flow={message.response.checkoutFlow} disabled={loading || message.id !== latestAssistant} onAction={act} />}
+                {message.response && !message.response.checkoutFlow && <ChatAccountCards response={message.response} disabled={loading || message.id !== latestAssistant} onAction={act} />}
               </div>
             ); })}
             {loading && <div className="chat-loading" role="status"><LoaderCircle size={15} /> {messages.at(-1)?.role === 'assistant' ? 'Đang trả lời...' : 'Đang xử lý yêu cầu...'}</div>}
             </div>
           </div>
           {showScrollDown && <button type="button" className="chat-scroll-down" onClick={() => {
-            stickToBottom.current = true; setShowScrollDown(false);
+            setShowScrollDown(false);
             const element = messagesRef.current;
             if (element) element.scrollTop = element.scrollHeight;
           }}><ArrowDown size={15} /> Tin nhắn mới nhất</button>}

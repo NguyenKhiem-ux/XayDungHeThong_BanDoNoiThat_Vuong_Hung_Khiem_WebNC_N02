@@ -1,3 +1,4 @@
+import { ChatCheckoutService } from './chat-checkout.service';
 import { ChatUserActionsService } from './chat-user-actions.service';
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
@@ -142,7 +143,7 @@ test('HTTP chatbot: required scenarios, moderation, metadata, security and safe 
   const config = new ConfigService({ JWT_SECRET: 'chat-test-only-secret', GEMINI_API_KEY: 'test-only-not-a-real-key' });
   const module = await Test.createTestingModule({
     controllers: [ChatController, KnowledgeController],
-    providers: [{ provide: ChatUserActionsService, useValue: { handle: async () => null } }, ChatService, KnowledgeService, IntentService, SmallTalkService, GeminiService, JwtStrategy, ChatShoppingService,
+    providers: [{ provide: ChatCheckoutService, useValue: { handle: async () => null } }, { provide: ChatUserActionsService, useValue: { handle: async () => null } }, ChatService, KnowledgeService, IntentService, SmallTalkService, GeminiService, JwtStrategy, ChatShoppingService,
       { provide: CartService, useValue: {} }, { provide: AddressesService, useValue: {} },
       { provide: ConfigService, useValue: config },
       { provide: ChatProductsService, useValue: products },
@@ -348,7 +349,7 @@ test('HTTP chatbot: required scenarios, moderation, metadata, security and safe 
     assert.equal(memory.rows.length, size);
   });
   await t.test('missing key, DB read/write errors are safe; small talk works during outages', async () => {
-    const noKey = new ChatService(module.get(KnowledgeService), products as any, module.get(IntentService), module.get(SmallTalkService), new GeminiService(new ConfigService({ GEMINI_API_KEY: '' })), module.get(ChatShoppingService), module.get(ChatUserActionsService));
+    const noKey = new ChatService(module.get(KnowledgeService), products as any, module.get(IntentService), module.get(SmallTalkService), new GeminiService(new ConfigService({ GEMINI_API_KEY: '' })), module.get(ChatShoppingService), module.get(ChatUserActionsService), module.get(ChatCheckoutService));
     assert.equal((await noKey.send('Xin chào')).source, 'small_talk');
     assert.equal((await noKey.send('Phòng nhỏ nên chọn nội thất màu gì?')).source, 'knowledge');
     await assert.rejects(noKey.send('Bảo hành khác thế nào?'), (error: any) => error.getStatus() === 503);
@@ -433,7 +434,7 @@ test('HTTP SSE forwards Gemini chunks before completion, preserves final metadat
   const memory = memoryKnowledge();
   const module = await Test.createTestingModule({
     controllers: [ChatController],
-    providers: [{ provide: ChatUserActionsService, useValue: { handle: async () => null } }, ChatService, KnowledgeService, IntentService, SmallTalkService, GeminiService, ChatShoppingService, JwtStrategy,
+    providers: [{ provide: ChatCheckoutService, useValue: { handle: async () => null } }, { provide: ChatUserActionsService, useValue: { handle: async () => null } }, ChatService, KnowledgeService, IntentService, SmallTalkService, GeminiService, ChatShoppingService, JwtStrategy,
       { provide: CartService, useValue: {} }, { provide: AddressesService, useValue: {} },
       { provide: ConfigService, useValue: new ConfigService({ JWT_SECRET: 'stream-test-secret', GEMINI_API_KEY: 'test-only' }) },
       { provide: ChatProductsService, useValue: {} },

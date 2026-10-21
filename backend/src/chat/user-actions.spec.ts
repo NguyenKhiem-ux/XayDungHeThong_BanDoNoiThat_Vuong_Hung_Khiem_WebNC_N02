@@ -1,3 +1,4 @@
+import { ChatCheckoutService } from './chat-checkout.service';
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -101,7 +102,7 @@ function fixture() {
 
 test('phase 1 HTTP: real business services over isolated fixtures', async t => {
   const f = fixture();
-  const module = await Test.createTestingModule({ controllers: [ChatController], providers: [ChatService, ChatShoppingService, ChatUserActionsService,
+  const module = await Test.createTestingModule({ controllers: [ChatController], providers: [{ provide: ChatCheckoutService, useValue: { handle: async () => null } }, ChatService, ChatShoppingService, ChatUserActionsService,
     IntentService, SmallTalkService, GeminiService, JwtStrategy,
     { provide: CartService, useValue: f.cart }, { provide: OrdersService, useValue: f.orders },
     { provide: FavoritesService, useValue: f.favorites }, { provide: AddressesService, useValue: f.addresses },

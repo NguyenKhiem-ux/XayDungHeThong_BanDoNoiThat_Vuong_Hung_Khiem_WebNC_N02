@@ -1,6 +1,7 @@
 // file gom và export các entity của database để sử dụng tập trung.
 import {
   ChatbotKnowledge,
+  CheckoutRecord,
   Coupon,
   Cart,
   CartItem,
@@ -15,4 +16,4 @@ import {
   UserAddress,
 } from './entities/index';
 
-export const entities = [User, Product, Cart, CartItem, Order, OrderItem, Payment, ContactMessage, PasswordResetToken, UserAddress, Favorite, ChatbotKnowledge, Coupon];
+export const entities = [User, Product, Cart, CartItem, Order, OrderItem, Payment, ContactMessage, PasswordResetToken, UserAddress, Favorite, ChatbotKnowledge, Coupon, CheckoutRecord];

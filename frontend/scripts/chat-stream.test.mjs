@@ -23,7 +23,9 @@ test('SSE displays a delta before the final result and preserves new action meta
     addresses: [{ id: 101, fullName: 'Nguyễn Ánh', address: 'Hà Nội' }],
     coupons: [{ coupon: { code: 'MIN1M' }, active: true, eligible: false, reason: 'Đơn tối thiểu 1000000đ' }],
     favorites: [], actions: [{ type: 'order_detail', label: 'Chi tiết', orderId: 502 }],
-    confirmation: { id: 'confirm-1', summary: 'Xóa giỏ?' } };
+    confirmation: { id: 'confirm-1', summary: 'Xóa giỏ?' },
+    checkoutFlow: { stage: 'awaiting_confirmation', appliedVoucher: { code: 'K', discountAmount: 100000, finalAmount: 900000 }, quote: { id: 'durable-checkout', hash: 'abc', total: 900000, shippingFee: 0, address: { fullName: 'Nguyễn Ánh' } },
+      actions: [{ type: 'checkout_place_order', label: 'Xác nhận đặt hàng', checkoutId: 'durable-checkout', quoteHash: 'abc' }] } };
   controller.enqueue(encoder.encode(frame({ type: 'delta', text: 'của bạn' }) + frame({ type: 'result', reply })));
   controller.close();
   assert.deepEqual(await promise, reply);

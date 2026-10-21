@@ -11,9 +11,11 @@ import { User } from '../database/entities/user.entity';
 import { Coupon } from '../database/entities/coupon.entity';
 import { OrdersController } from './orders.controller';
 import { OrdersService } from './orders.service';
+import { CheckoutRecord } from '../database/entities/checkout-record.entity';
+import { UserAddress } from '../database/entities/user-address.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Order, OrderItem, Payment, Product, Cart, CartItem, User, Coupon])],
+  imports: [TypeOrmModule.forFeature([Order, OrderItem, Payment, Product, Cart, CartItem, User, Coupon, CheckoutRecord, UserAddress])],
   controllers: [OrdersController],
   providers: [OrdersService],
   exports: [OrdersService],

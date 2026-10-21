@@ -50,7 +50,7 @@ async function verify() {
     const smallTalk = new SmallTalkService();
     const intents = new IntentService(smallTalk);
     const knowledge = new KnowledgeService(runner.manager.getRepository(ChatbotKnowledge), productService, intents);
-    const chat = new ChatService(knowledge, productService, intents, smallTalk, new GeminiService(new ConfigService({})), new ChatShoppingService(productService, cart, addresses), { handle: async () => null });
+    const chat = new ChatService(knowledge, productService, intents, smallTalk, new GeminiService(new ConfigService({})), new ChatShoppingService(productService, cart, addresses), { handle: async () => null }, { handle: async () => null });
     const user = { id: 1, email: 'shopping-test@example.test', role: 'USER' };
     let sequence = 0;
     const send = (message, extra = {}) => chat.send(message, 'mysql-shopping-test', user, { requestId: `mysql-${++sequence}`, ...extra });
