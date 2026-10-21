@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UserAddress } from '../database/entities/user-address.entity';
@@ -39,11 +39,15 @@ export class AddressesService {
     });
   }
 
-  remove(userId: number, id: number) {
+  remove(userId: number, id: number, expected?: Pick<UserAddress, 'fullName' | 'phone' | 'address' | 'isDefault'>) {
     return this.addresses.manager.transaction(async (manager) => {
       const addresses = manager.getRepository(UserAddress);
-      const address = await addresses.findOne({ where: { id, userId } });
+      const address = await addresses.findOne({ where: { id, userId }, lock: { mode: 'pessimistic_write' } });
       if (!address) throw new NotFoundException('Khong tim thay dia chi');
+
+      if (expected && (Object.keys(expected) as Array<keyof typeof expected>).some(key => address[key] !== expected[key])) {
+        throw new BadRequestException('Địa chỉ đã thay đổi. Hãy xem lại và yêu cầu xóa lần nữa.');
+      }
 
       await addresses.remove(address);
       if (address.isDefault) {

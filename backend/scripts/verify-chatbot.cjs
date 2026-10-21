@@ -76,7 +76,7 @@ async function verify() {
     console.log('MySQL PASS: pending/approve/match/usage_count, bounded price/stock query.');
 
     if (process.argv.includes('--gemini')) {
-      const chat = new ChatService(knowledge, products, intents, smallTalk, new GeminiService(new ConfigService(process.env)), new ChatShoppingService(products, {}, {}));
+      const chat = new ChatService(knowledge, products, intents, smallTalk, new GeminiService(new ConfigService(process.env)), new ChatShoppingService(products, {}, {}), { handle: async () => null });
       assert.equal((await chat.send('Xin chào')).source, 'small_talk');
       assert.equal((await chat.stats()).geminiCalls, 0);
       const question = `Shop có giao hàng không? Kiểm thử ${randomUUID()}`;

@@ -1,3 +1,4 @@
+import { ChatUserActionsService } from './chat-user-actions.service';
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -115,7 +116,7 @@ test('shopping HTTP integrates authenticated chat with the regular cart API', as
   const addresses = { list: async (userId: number) => [{ id: userId * 100, userId, fullName: `Người dùng ${userId}`, phone: '0900000000', address: 'Địa chỉ đã lưu', isDefault: true }] };
   const module = await Test.createTestingModule({
     controllers: [ChatController, CartController],
-    providers: [ChatService, ChatShoppingService, IntentService, SmallTalkService, JwtStrategy,
+    providers: [{ provide: ChatUserActionsService, useValue: { handle: async () => null } }, ChatService, ChatShoppingService, IntentService, SmallTalkService, JwtStrategy,
       { provide: CartService, useValue: cart }, { provide: ChatProductsService, useValue: productService },
       { provide: AddressesService, useValue: addresses },
       { provide: KnowledgeService, useValue: { candidates: async () => [], reviewedOrPending: async () => null } },

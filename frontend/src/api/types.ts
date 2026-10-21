@@ -160,9 +160,19 @@ export interface ChatResponse {
   checkout?: CheckoutReview;
   checkoutUrl?: '/checkout/info';
   error?: { code: string; retryable: boolean };
+  orders?: Order[];
+  addresses?: UserAddress[];
+  favorites?: Favorite[];
+  coupons?: Array<{ coupon: Coupon; active: boolean; eligible: boolean; reason: string; discountAmount?: number; finalAmount?: number }>;
+  addressForm?: { addressId?: number; values: ChatAddressInput; missingFields: string[] };
+  confirmation?: { id: string; summary: string };
 }
 
-export type ChatActionType = 'product_select' | 'cart_add' | 'cart_remove' | 'cart_update_quantity' | 'cart_view' | 'buy_now' | 'checkout_review' | 'checkout_confirm';
+export type ChatActionType = 'product_select' | 'cart_add' | 'cart_remove' | 'cart_update_quantity' | 'cart_view' | 'buy_now' | 'checkout_review' | 'checkout_confirm' |
+  'orders_list' | 'order_detail' | 'favorites_list' | 'favorite_add' | 'favorite_remove' | 'addresses_list' |
+  'address_create' | 'address_update' | 'address_delete' | 'address_default' | 'coupons_list' | 'coupon_detail' |
+  'cart_add_many' | 'cart_clear' | 'action_confirm' | 'action_cancel';
+export type ChatAddressInput = Partial<Pick<UserAddress, 'fullName' | 'phone' | 'address' | 'isDefault'>>;
 export interface ChatAction {
   type: ChatActionType;
   label: string;
@@ -170,6 +180,11 @@ export interface ChatAction {
   quantity?: number;
   reviewId?: string;
   addressId?: number;
+  orderId?: number;
+  code?: string;
+  confirmationId?: string;
+  address?: ChatAddressInput;
+  items?: Array<{ productId: number; quantity: number }>;
 }
 export type ChatRequestOptions = Partial<Omit<ChatAction, 'type' | 'label'>> & { action?: ChatActionType; requestId: string };
 export interface CheckoutReview {

@@ -1,5 +1,7 @@
 # Trợ lý mua sắm — cập nhật ngày 21/10/2026
 
+Bổ sung Đợt 1: [thao tác user, API tái sử dụng, file thay đổi, kiểm thử và giới hạn](CHATBOT-PHASE1.md).
+
 Chatbot đã nối vào nghiệp vụ thật: tìm → chọn → thêm/sửa/xóa/xem giỏ → xem trước mua ngay → xác nhận tóm tắt → tiếp tục checkout. Giá, tồn kho và tổng tiền đều lấy/tính ở backend. Không có lệnh tạo đơn hoặc thu tiền trong chatbot.
 
 ## Các luồng hiện tại

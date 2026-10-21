@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "test:chat": "node --experimental-strip-types --test scripts/chat-stream.test.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

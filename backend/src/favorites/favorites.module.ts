@@ -9,5 +9,6 @@ import { FavoritesService } from './favorites.service';
   imports: [TypeOrmModule.forFeature([Favorite]), ProductsModule],
   controllers: [FavoritesController],
   providers: [FavoritesService],
+  exports: [FavoritesService],
 })
 export class FavoritesModule {}

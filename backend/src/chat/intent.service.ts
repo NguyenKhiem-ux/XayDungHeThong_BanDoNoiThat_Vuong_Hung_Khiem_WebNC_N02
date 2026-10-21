@@ -5,10 +5,14 @@ import { ChatIntent, Classification, GeminiDraft, RiskLevel } from './chat.types
 import { SmallTalkService } from './small-talk.service';
 import { ChatActionType } from './chat.types';
 
-export function shoppingIntent(text: string): ChatActionType | undefined {
+export function shoppingVerb(text: string) {
+  return text.match(/^(?:(?:toi|minh|hay|ban|vui long|giup|cho|muon|lam on|co the|xin)\s+)*(them|luu moi|luu|danh dau|bo|xoa|go|dat|chon|doi|lam|cap nhat|tao|sua)\b/)?.[1];
+}
+
+export function shoppingIntent(text: string): Extract<ChatActionType, 'checkout_review' | 'buy_now' | 'cart_remove' | 'cart_update_quantity' | 'cart_add' | 'cart_view' | 'product_select'> | undefined {
   if (/\b(xem lai|kiem tra|tom tat|xac nhan)\b.*\b(mua hang|mua ngay|thanh toan|don hang|tom tat)\b|\b(checkout|xem lai thong tin mua)\b/.test(text)) return 'checkout_review';
   if (/\b(mua ngay|mua luon|lay luon)\b/.test(text)) return 'buy_now';
-  if (/\b(bo|xoa|go)\b.*\b(gio|san pham|vua chon|cai|chiec)\b/.test(text)) return 'cart_remove';
+  if (['bo', 'xoa', 'go'].includes(shoppingVerb(text) ?? '') && /\b(gio|san pham|vua chon|cai|chiec)\b/.test(text)) return 'cart_remove';
   if (/\b(cap nhat|doi|sua|tang|giam)\b.*\b(so luong|cai|chiec|len|xuong)\b|\bso luong\b.*\b(thanh|la)\b/.test(text)) return 'cart_update_quantity';
   if (/\bthem\b/.test(text) && /\b(gio|cai|chiec|san pham|cai nay|hai|mot|ba|bon|nam|sau|bay|tam|chin|muoi|\d+)\b/.test(text)) return 'cart_add';
   if (/\b(xem|kiem tra|tong tien|bao nhieu|gio cua toi)\b.*\bgio\b|\bgio hang\b.*\b(bao nhieu|tong tien)\b|\btong tien\b|^(gio hang|xem gio)$/.test(text)) return 'cart_view';
@@ -31,6 +35,7 @@ export function requestedQuantity(message: string) {
   const text = message.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd').toLowerCase();
   const number = '-?\\d+(?:[.,]\\d+)*|khong|mot|hai|ba|bon|nam|sau|bay|tam|chin|muoi';
   const value = text.match(new RegExp(`(?:so luong\\s*(?:thanh|la|len|xuong)?\\s*)(${number})(?=\\s|$|[!?])`))?.[1] ??
+    text.match(new RegExp(`so luong\\b.{1,100}?\\b(?:thanh|len|xuong)\\s+(${number})(?=\\s|$|[!?])`))?.[1] ??
     text.match(new RegExp(`(?:^|\\s)(${number})\\s*(?:cai|chiec|san pham)(?=\\s|$|[.!?])`))?.[1] ??
     text.match(new RegExp(`^\\s*(?:them(?: cho (?:toi|minh))?|(?:toi )?(?:muon )?mua ngay)\\s+(${number})\\s*[.!?]?\\s*$`))?.[1] ??
     text.match(new RegExp(`^\\s*(${number})\\s*[.!?]?\\s*$`))?.[1];
@@ -70,7 +75,7 @@ export class IntentService {
     }
     if (!privateData) {
       const shopping = shoppingIntent(text);
-      if (shopping) return { intent: shopping === 'checkout_confirm' ? 'checkout_review' : shopping, riskLevel: RiskLevel.HIGH, shouldStore: false };
+      if (shopping) return { intent: shopping, riskLevel: RiskLevel.HIGH, shouldStore: false };
     }
     for (const [intent, pattern] of BUSINESS_RULES) {
       if (pattern.test(text)) return { intent, riskLevel: RiskLevel.HIGH, shouldStore: !privateData };

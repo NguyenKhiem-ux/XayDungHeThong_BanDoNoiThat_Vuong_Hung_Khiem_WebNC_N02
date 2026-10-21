@@ -109,6 +109,7 @@ export function productResponse(context: ProductContext, intent: ChatIntent): Ch
     products: context.products.map(chatProduct), type: 'product_result',
     actions: context.products.flatMap(product => [
       { type: 'product_select' as const, label: 'Chọn sản phẩm', productId: Number(product.id) },
+      { type: 'favorite_add' as const, label: 'Yêu thích', productId: Number(product.id) },
       ...(product.stock > 0 ? [
         { type: 'cart_add' as const, label: 'Thêm vào giỏ', productId: Number(product.id) },
         { type: 'buy_now' as const, label: 'Mua ngay', productId: Number(product.id) },

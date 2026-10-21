@@ -124,10 +124,12 @@ export function ProfilePage() {
     orderApi.list().then(r => live && setOrders(r.data)).catch(() => live && setOrders([]));
     refreshFavorites();
     window.addEventListener('favorite-changed', refreshFavorites);
-    addressApi.list().then(r => live && setAddresses(r.data)).catch(() => live && setAddresses([]));
+    const refreshAddresses = () => addressApi.list().then(r => live && setAddresses(r.data)).catch(() => {});
+    refreshAddresses();
+    window.addEventListener('addresses-changed', refreshAddresses);
     couponApi.list().then(r => live && setCoupons(r.data)).catch(() => live && setCoupons([]));
-    return () => { live = false; window.removeEventListener('favorite-changed', refreshFavorites); };
-  }, []);
+    return () => { live = false; window.removeEventListener('favorite-changed', refreshFavorites); window.removeEventListener('addresses-changed', refreshAddresses); };
+  }, [user?.id]);
 
   if (!user) return null;
 
