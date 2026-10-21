@@ -2,6 +2,8 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Product } from '../database/entities/product.entity';
+import { Promotion, PromotionItem } from '../database/entities/promotion.entity';
+import { PromotionsService } from '../promotions/promotions.service';
 import { hashText, normalizeText } from './chat-matching';
 import type { ChatIntent, ChatProduct, ChatReply } from './chat.types';
 
@@ -39,19 +41,20 @@ export function productQuery(message: string) {
 }
 
 export interface ProductContext {
-  products: Array<{ id: number; name: string; price: string; stock: number; category: string | null; brand: string | null; description: string | null; specifications: string | null; origin: string | null; imageUrl?: string | null; isFeatured?: boolean }>;
+  products: Array<{ id: number; name: string; price: string; originalPrice?: number; discountPercent?: number; savings?: number; stock: number; category: string | null; brand: string | null; description: string | null; specifications: string | null; origin: string | null; imageUrl?: string | null; isFeatured?: boolean }>;
   hash: string;
   keyword?: string;
 }
 
 @Injectable()
 export class ChatProductsService {
-  constructor(@InjectRepository(Product) private readonly products: Repository<Product>) {}
+  constructor(@InjectRepository(Product) private readonly products: Repository<Product>, private readonly promotions: PromotionsService) {}
 
   async findById(id: number) {
     const product = await this.products.findOneBy({ id });
     if (!product) throw new NotFoundException('Không tìm thấy sản phẩm. Vui lòng tìm và chọn lại.');
-    return product;
+    const pricing = (await this.promotions.prices([product])).get(Number(product.id))!;
+    return { ...product, ...pricing, price: String(pricing.price) };
   }
 
   async context(message: string): Promise<ProductContext | null> {
@@ -60,8 +63,12 @@ export class ChatProductsService {
     const browsing = /\b(danh muc|cac loai san pham|san pham nao|nhung san pham|tat ca san pham)\b/.test(normalizeText(message));
     if (!query.related || (!query.terms.length && query.maxPrice === undefined && query.minPrice === undefined && !browsing)) return null;
 
-    const qb = this.products.createQueryBuilder('p').select([
-      'p.id AS id', 'p.name AS name', 'p.price AS price', 'p.stock AS stock',
+    const effectivePrice = 'CASE WHEN deal.id IS NOT NULL THEN ROUND(p.price * (100 - deal.discountPercent) / 100) ELSE p.price END';
+    const qb = this.products.createQueryBuilder('p')
+      .leftJoin(Promotion, 'sale', 'sale.status = :saleStatus AND sale.startsAt <= :saleNow AND sale.endsAt > :saleNow', { saleStatus: 'published', saleNow: new Date() })
+      .leftJoin(PromotionItem, 'deal', 'deal.promotionId = sale.id AND deal.productId = p.id').select([
+      'p.id AS id', 'p.name AS name', `${effectivePrice} AS price`, 'p.price AS originalPrice',
+      'COALESCE(deal.discountPercent, 0) AS discountPercent', 'p.stock AS stock',
       'p.category AS category', 'p.brand AS brand', 'p.origin AS origin',
       'p.imageUrl AS imageUrl', 'p.isFeatured AS isFeatured',
       'LEFT(p.description, 350) AS description', 'LEFT(p.specifications, 500) AS specifications',
@@ -71,10 +78,10 @@ export class ChatProductsService {
       qb.andWhere(`REPLACE(LOWER(CONCAT_WS(' ', p.name, p.category, p.brand, p.description)), 'đ', 'd') COLLATE utf8mb4_unicode_ci LIKE :term${index}`, { [`term${index}`]: `%${term}%` });
     });
     if (!query.includeOutOfStock) qb.andWhere('p.stock > 0');
-    if (query.minPrice !== undefined) qb.andWhere(`p.price ${query.minExclusive ? '>' : '>='} :minPrice`, { minPrice: query.minPrice });
-    if (query.maxPrice !== undefined) qb.andWhere(`p.price ${query.maxExclusive ? '<' : '<='} :maxPrice`, { maxPrice: query.maxPrice });
+    if (query.minPrice !== undefined) qb.andWhere(`${effectivePrice} ${query.minExclusive ? '>' : '>='} :minPrice`, { minPrice: query.minPrice });
+    if (query.maxPrice !== undefined) qb.andWhere(`${effectivePrice} ${query.maxExclusive ? '<' : '<='} :maxPrice`, { maxPrice: query.maxPrice });
     if (query.terms.length) qb.orderBy(`CASE WHEN REPLACE(LOWER(p.name), 'đ', 'd') COLLATE utf8mb4_unicode_ci LIKE :term0 THEN 0 ELSE 1 END`, 'ASC');
-    qb.addOrderBy('p.price', 'ASC').addOrderBy('p.id', 'ASC');
+    qb.addOrderBy(effectivePrice, 'ASC').addOrderBy('p.id', 'ASC');
     const products = await qb.limit(5).getRawMany<ProductContext['products'][number]>();
     if (!query.related && !products.length) return null;
     return { products, hash: hashText(JSON.stringify(products)), keyword: query.keyword };
@@ -88,8 +95,9 @@ export function productAnswer(context: ProductContext, details = false, intent =
       : 'Bạn đang tìm loại sản phẩm nào nhỉ? Ví dụ: nồi cơm điện, máy hút bụi hoặc máy xay sinh tố.';
   }
   const lines = context.products.map(product => {
-    const facts = `${product.name} — ${Number(product.price).toLocaleString('vi-VN')}đ; ${product.stock > 0 ? `còn ${product.stock} chiếc` : 'hiện hết hàng'}.`;
-    if (intent === 'product_price') return `Giá ${product.name} hiện là ${Number(product.price).toLocaleString('vi-VN')}đ.`;
+    const sale = product.discountPercent ? ` (giảm ${product.discountPercent}%, giá gốc ${Number(product.originalPrice).toLocaleString('vi-VN')}đ)` : '';
+    const facts = `${product.name} — ${Number(product.price).toLocaleString('vi-VN')}đ${sale}; ${product.stock > 0 ? `còn ${product.stock} chiếc` : 'hiện hết hàng'}.`;
+    if (intent === 'product_price') return `Giá ${product.name} hiện là ${Number(product.price).toLocaleString('vi-VN')}đ${sale}.`;
     if (intent === 'product_stock') return `${product.name} hiện ${product.stock > 0 ? `còn ${product.stock} chiếc` : 'đã hết hàng'}.`;
     return details ? `${facts}${product.category ? ` Danh mục: ${product.category}.` : ''}${product.brand ? ` Thương hiệu: ${product.brand}.` : ''}${product.origin ? ` Xuất xứ: ${product.origin}.` : ''}${product.specifications ? ` Thông số: ${product.specifications}` : ' Chưa có thông số chi tiết.'}` : facts;
   });

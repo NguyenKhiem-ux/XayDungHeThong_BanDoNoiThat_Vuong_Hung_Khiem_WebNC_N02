@@ -5,10 +5,12 @@ import { Brackets, Repository } from 'typeorm';
 import { Product } from '../database/entities/product.entity';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { PromotionsService } from '../promotions/promotions.service';
+import { reviewSummaries } from '../reviews/reviews.service';
 
 @Injectable()
 export class ProductsService {
-  constructor(@InjectRepository(Product) private readonly products: Repository<Product>) {}
+  constructor(@InjectRepository(Product) private readonly products: Repository<Product>, private readonly promotions: PromotionsService) {}
 
   async list(query?: { keyword?: string; category?: string }) {
     const qb = this.products.createQueryBuilder('p').orderBy('p.id', 'DESC');
@@ -24,12 +26,12 @@ export class ProductsService {
     }
     if (query?.category?.trim()) qb.andWhere('p.category = :category', { category: query.category.trim() });
     const items = await qb.getMany();
-    return items.map((item) => this.publicProduct(item));
+    return this.publicProducts(items);
   }
 
   async featured() {
     const items = await this.products.find({ where: { isFeatured: true }, order: { id: 'DESC' }, take: 8 });
-    return items.map((item) => this.publicProduct(item));
+    return this.publicProducts(items);
   }
 
   async findOne(id: number) {
@@ -93,7 +95,13 @@ export class ProductsService {
     return { message: 'Đã xóa sản phẩm' };
   }
 
-  publicProduct(product: Product) {
+  async publicProducts(products: Product[]) {
+    const [prices, reviews] = await Promise.all([this.promotions.prices(products), reviewSummaries(this.products.manager, products.map(product => Number(product.id)))]);
+    return products.map(product => ({ ...product, ...prices.get(Number(product.id)), ...reviews.get(Number(product.id)), isFeatured: !!product.isFeatured }));
+  }
+
+  async publicProduct(product: Product) {
+    const [prices, reviews] = await Promise.all([this.promotions.prices([product]), reviewSummaries(this.products.manager, [Number(product.id)])]);
     return {
       id: product.id,
       name: product.name,
@@ -108,6 +116,8 @@ export class ProductsService {
       isFeatured: !!product.isFeatured,
       createdAt: product.createdAt,
       updatedAt: product.updatedAt,
+      ...prices.get(Number(product.id)),
+      ...reviews.get(Number(product.id)),
     };
   }
 }

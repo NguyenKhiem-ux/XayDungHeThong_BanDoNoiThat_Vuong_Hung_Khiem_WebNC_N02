@@ -1,3 +1,5 @@
+const { PromotionsService } = require('../dist/promotions/promotions.service');
+const { Promotion, PromotionItem } = require('../dist/database/entities/promotion.entity');
 // Opt-in integration check: real MySQL, all test knowledge rolled back; --gemini makes one live AI call.
 require('reflect-metadata');
 const assert = require('node:assert/strict');
@@ -49,7 +51,7 @@ async function verify() {
     type: 'mysql', host: process.env.DB_HOST, port: Number(process.env.DB_PORT),
     username: process.env.DB_USERNAME, password: process.env.DB_PASSWORD, database: process.env.DB_NAME,
     ssl: { rejectUnauthorized: false }, connectTimeout: 10000, charset: 'utf8mb4',
-    entities: [Product, ChatbotKnowledge], synchronize: false, logging: false,
+    entities: [Product, ChatbotKnowledge, Promotion, PromotionItem], synchronize: false, logging: false,
   });
   if (process.argv.includes('--migration')) await verifyMigration(source.options);
   await source.initialize();
@@ -57,7 +59,7 @@ async function verify() {
   try {
     await runner.startTransaction();
     const repo = runner.manager.getRepository(ChatbotKnowledge);
-    const products = new ChatProductsService(runner.manager.getRepository(Product));
+    const products = new ChatProductsService(runner.manager.getRepository(Product), new PromotionsService({ manager: runner.manager }));
     const smallTalk = new SmallTalkService();
     const intents = new IntentService(smallTalk);
     const knowledge = new KnowledgeService(repo, products, intents);

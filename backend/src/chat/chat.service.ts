@@ -105,12 +105,12 @@ export class ChatService {
       }
       if (followUp && context) return productResponse(context, intent);
       if (context) { session.context = context; session.query = message; }
+      // The context hash includes current sale prices; stale product answers cannot match.
       const matching = candidates.find(row => row.contextHash === (context?.hash ?? '') && row.intent === intent);
       if (matching && await this.knowledge.use(matching)) {
         this.counters.knowledgeHits++;
         return { ...(context ? productResponse(context, intent) : {}), message: matching.answer, source: 'knowledge' as const, intent, cached: true, knowledgeId: matching.id };
       }
-      // Current product facts can be rendered directly: no model or additional knowledge row needed.
       if (context) return productResponse(context, intent);
 
       // Pending/rejected answers are never reused; only their existence suppresses another draft.

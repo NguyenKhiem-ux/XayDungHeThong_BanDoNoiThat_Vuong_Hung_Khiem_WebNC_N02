@@ -1,3 +1,4 @@
+import { PromotionsService } from '../promotions/promotions.service';
 import { ChatCheckoutService } from './chat-checkout.service';
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
@@ -92,11 +93,12 @@ function fixture() {
       return { hash: 'fixture', keyword: query.keyword, products: rows(Product).filter(p => query.terms.every(term => normalizeText(p.name).includes(term)) && (query.includeOutOfStock || p.stock > 0)) };
     },
   };
-  const cart = new CartService(repo(Cart), repo(CartItem));
-  const orders = new OrdersService({} as any, repo(Order), ...Array(6).fill({}) as [any, any, any, any, any, any]);
+  const promotions = new PromotionsService({ manager: {} } as any); promotions.active = async () => null;
+  const cart = new CartService(repo(Cart), repo(CartItem), promotions);
+  const orders = new OrdersService({} as any, repo(Order), ...Array(7).fill({}) as [any, any, any, any, any, any, any]);
   const favorites = new FavoritesService(repo(Favorite), { findOne: products.findById, publicProduct: (p: any) => ({ ...p, price: Number(p.price) }) } as any);
   const addresses = new AddressesService(repo(UserAddress));
-  const coupons = new CouponsService(repo(Coupon));
+  const coupons = new CouponsService(repo(Coupon), cart);
   return { rows, products, cart, orders, favorites, addresses, coupons };
 }
 

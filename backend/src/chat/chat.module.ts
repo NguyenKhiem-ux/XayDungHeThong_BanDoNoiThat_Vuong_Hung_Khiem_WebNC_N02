@@ -19,9 +19,10 @@ import { FavoritesModule } from '../favorites/favorites.module';
 import { CouponsModule } from '../coupon/coupons.module';
 import { PaymentModule } from '../payment/payment.module';
 import { ChatCheckoutService } from './chat-checkout.service';
+import { PromotionsModule } from '../promotions/promotions.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Product, ChatbotKnowledge]), CartModule, AddressesModule, OrdersModule, FavoritesModule, CouponsModule, PaymentModule],
+  imports: [TypeOrmModule.forFeature([Product, ChatbotKnowledge]), CartModule, AddressesModule, OrdersModule, FavoritesModule, CouponsModule, PaymentModule, PromotionsModule],
   controllers: [ChatController, KnowledgeController],
   providers: [ChatService, ChatProductsService, KnowledgeService, IntentService, SmallTalkService, GeminiService, ChatShoppingService, ChatUserActionsService, ChatCheckoutService],
 })

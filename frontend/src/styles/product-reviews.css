@@ -1,0 +1,110 @@
+.rating-stars { display: inline-flex; align-items: center; gap: 2px; vertical-align: middle; flex-shrink: 0; }
+.rating-star { position: relative; display: inline-block; }
+.rating-star-base { color: #d0d5d3; fill: #edf0ee; display: block; }
+.rating-star-fill { position: absolute; overflow: hidden; left: 0; top: 0; height: 100%; }
+.rating-star-fill svg { display: block; max-width: none; color: #e9a008; fill: #f5b219; }
+.product-rating { display: inline-flex; align-items: center; gap: 6px; width: fit-content; font-size: 11px; color: #69716e; line-height: 1.5; }
+.product-rating:hover { color: #0f4f3f; }
+.flash-sale .product-rating { flex-wrap: wrap; gap: 4px; font-size: 10px; }
+.detail-heading .product-rating { margin-top: 7px; }
+.product-reviews { margin-top: 40px; padding: 28px; border: 1px solid #dfe6e1; border-radius: 10px; background: white; scroll-margin-top: 135px; }
+.reviews-heading { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; padding-bottom: 23px; }
+.reviews-heading h2 { font-size: 25px; letter-spacing: -.7px; margin: 4px 0 0; color: #183c2b; }
+.reviews-heading .eyebrow { color: #5b7566; font-size: 10px; letter-spacing: 1.5px; }
+.reviews-verified { display: inline-flex; align-items: center; gap: 6px; color: #306546; font-size: 12px; }
+.reviews-overview { display: grid; grid-template-columns: 190px minmax(180px, 1fr) 240px; align-items: center; gap: 28px; border: 1px solid #e4eae4; border-radius: 8px; background: #fafcf9; padding: 25px; }
+.reviews-score { text-align: center; }
+.reviews-score > div { margin-bottom: 12px; font-variant-numeric: tabular-nums; }
+.reviews-score strong { font-size: 49px; color: #124d34; font-weight: 800; line-height: 1; letter-spacing: -2px; }
+.reviews-score > div > span { color: #758077; font-size: 18px; margin-left: 5px; }
+.reviews-score p { font-size: 11px; color: #647367; margin-bottom: 0; }
+.reviews-distribution { display: grid; gap: 7px; }
+.reviews-distribution button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 3px 0; font-size: 12px; border-radius: 4px; color: #5e6b61; }
+.reviews-distribution button > span:first-child { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+.reviews-distribution button svg { color: #d79509; }
+.reviews-distribution button[aria-pressed=true] { color: #0b613c; font-weight: 700; }
+.reviews-distribution button b { min-width: 24px; text-align: right; font-variant-numeric: tabular-nums; font-weight: 500; }
+.review-bar { display: block; flex: 1; min-width: 0; height: 7px; background: #e8ece5; border-radius: 5px; overflow: hidden; }
+.review-bar > span { display: block; height: 100%; background: #f2b11c; border-radius: 5px; }
+.reviews-overview-note { padding-left: 23px; border-left: 1px solid #dfe7dd; color: #62725e; }
+.reviews-overview-note > svg { color: #7a9676; margin-bottom: 10px; }
+.reviews-overview-note strong { display: block; font-size: 13px; line-height: 1.5; color: #3a5c36; }
+.reviews-overview-note p { font-size: 11px; line-height: 1.8; margin-bottom: 0; }
+.review-form { margin-top: 25px; padding: 24px; border: 1px solid #dce6dc; background: #fff; border-radius: 8px; }
+.review-form h3 { font-size: 17px; color: #244a33; margin: 0 0 6px; }
+.review-form > div > p { font-size: 12px; color: #677465; margin: 0 0 18px; }
+.review-rating-picker { display: flex; align-items: center; gap: 7px; margin: 0 0 19px; padding: 0; border: 0; min-width: 0; }
+.review-rating-picker legend { font-size: 12px; font-weight: 650; margin-bottom: 10px; color: #3a4f3d; }
+.review-rating-picker label { position: relative; cursor: pointer; }
+.review-rating-picker input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.review-rating-picker label > span { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 5px; color: #c88b07; }
+.review-rating-picker input:focus-visible + span { outline: 2px solid #0f4f3f; outline-offset: 2px; }
+.review-rating-picker label:hover > span { background: #fff7dd; }
+.review-rating-picker small { margin-left: 5px; font-size: 11px; color: #61725c; }
+.review-comment-label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 9px; color: #40523f; }
+.review-comment-label > span { color: #70806b; font-weight: 400; }
+.review-form textarea { display: block; width: 100%; min-height: 95px; padding: 13px; color: #2e422e; border: 1px solid #cedccc; border-radius: 6px; background: #fff; resize: vertical; font-size: 13px; line-height: 1.7; }
+.review-form textarea::placeholder { color: #6d7869; }
+.review-form textarea:focus-visible { outline: 2px solid #0f4f3f; outline-offset: 2px; }
+.review-form-footer { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-top: 12px; }
+.review-form-footer > span { font-size: 10px; color: #687562; line-height: 1.7; }
+.review-form-footer > button { flex-shrink: 0; font-size: 12px; min-height: 40px; }
+.review-access-note { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; margin: 22px 0; padding: 16px; border-radius: 6px; background: #f5f8f3; color: #5d7258; font-size: 12px; line-height: 1.8; }
+.review-access-note a { color: #0b5a34; text-decoration: underline; text-underline-offset: 3px; font-weight: 600; }
+.reviews-error { display: flex; align-items: center; gap: 10px; margin-top: 15px; padding: 12px 15px; font-size: 12px; color: #a13927; background: #fff4ed; border: 1px solid #efd5c7; border-radius: 5px; }
+.reviews-error > button { display: inline-flex; align-items: center; gap: 5px; margin-left: auto; color: #923b2b; font-weight: 700; font-size: 12px; white-space: nowrap; }
+.review-saved { display: flex; align-items: center; gap: 6px; color: #246338; font-size: 12px; padding: 10px; background: #eff8eb; border-radius: 5px; }
+.reviews-filters { display: flex; flex-wrap: wrap; gap: 8px; padding: 25px 0 20px; border-bottom: 1px solid #e6ece4; }
+.reviews-filters > button { padding: 9px 13px; color: #667160; font-size: 11px; border: 1px solid #dce5d8; border-radius: 5px; background: #fff; }
+.reviews-filters > button[aria-pressed=true] { border-color: #0f6740; color: #0d5b35; background: #f0f7eb; font-weight: 650; }
+.reviews-list[aria-busy=true] { opacity: .6; }
+.review-item { padding: 23px 0; border-bottom: 1px solid #e8ede5; }
+.review-item-top { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.review-avatar { display: grid; place-items: center; width: 35px; height: 35px; border-radius: 50%; background: #ecf3e7; color: #497044; font-weight: 700; font-size: 13px; }
+.review-item-top strong { display: block; font-size: 13px; font-weight: 650; color: #354c32; }
+.review-item-top > div > span { display: flex; align-items: center; gap: 3px; font-size: 10px; color: #407345; margin-top: 4px; }
+.review-item-top time { font-size: 11px; color: #6d7867; margin-left: auto; }
+.review-item p { margin: 10px 0 0; color: #43503d; font-size: 13px; line-height: 1.85; white-space: pre-wrap; overflow-wrap: anywhere; }
+.reviews-empty { padding: 38px 15px; text-align: center; color: #6c7a65; }
+.reviews-empty > svg { color: #8b9c80; }
+.reviews-empty h3 { color: #40583a; font-size: 16px; margin: 14px 0 9px; }
+.reviews-empty p { font-size: 12px; }
+.reviews-pagination { display: flex; align-items: center; justify-content: flex-end; gap: 15px; padding-top: 20px; font-size: 12px; color: #62725b; }
+.reviews-pagination button { display: flex; align-items: center; gap: 4px; padding: 8px 10px; border: 1px solid #dfe7da; border-radius: 5px; font-size: 12px; color: #33562b; }
+.reviews-pagination button:disabled { opacity: .4; cursor: default; }
+.product-reviews :is(a, button):focus-visible { outline: 2px solid #0f4f3f; outline-offset: 3px; }
+.reviews-skeleton { display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 20px; padding: 25px; background: #f7faf5; border-radius: 8px; }
+.reviews-skeleton > div { height: 135px; background: #e5ecdf; border-radius: 7px; animation: sale-pulse 1.6s infinite ease-in-out; }
+.order-review-links { margin-top: 25px; padding: 24px; background: #fff; border: 1px solid #dfe8da; border-radius: 8px; }
+.order-review-links h2 { font-size: 20px; color: #33592b; margin: 0; }
+.order-review-links > p { font-size: 13px; color: #65765d; }
+.order-review-links > a { display: flex; align-items: center; justify-content: space-between; gap: 20px; border-top: 1px solid #e8ede3; padding: 14px 0; color: #3c5635; font-size: 13px; }
+.order-review-links > a > span { color: #0e6438; font-size: 12px; font-weight: 650; }
+@media (max-width: 900px) { .reviews-overview { grid-template-columns: 160px minmax(0, 1fr); gap: 20px; } .reviews-overview-note { display: none; } }
+@media (max-width: 640px) {
+  .product-reviews { margin-top: 25px; padding: 18px 13px; scroll-margin-top: 135px; }
+  .reviews-heading h2 { font-size: 22px; }
+  .reviews-heading { gap: 9px; }
+  .reviews-verified { font-size: 10px; }
+  .reviews-overview { grid-template-columns: 108px minmax(0, 1fr); gap: 14px; padding: 18px 12px; }
+  .reviews-score strong { font-size: 39px; }
+  .reviews-score > div > span { font-size: 14px; }
+  .reviews-score p { font-size: 9px; }
+  .reviews-score .rating-stars { gap: 0; transform: scale(.82); }
+  .reviews-distribution button { gap: 6px; font-size: 11px; }
+  .reviews-distribution button b { min-width: 15px; }
+  .review-form { padding: 17px 12px; }
+  .review-form h3 { font-size: 16px; }
+  .review-form-footer { align-items: flex-start; flex-direction: column; }
+  .review-form-footer > button { width: 100%; }
+  .review-rating-picker { gap: 3px; }
+  .review-rating-picker label > span { width: 32px; }
+  .review-rating-picker small { font-size: 10px; }
+  .reviews-filters { gap: 6px; }
+  .reviews-filters > button { padding: 8px 9px; font-size: 10px; }
+  .reviews-skeleton { grid-template-columns: 1fr 1fr; gap: 10px; padding: 15px; }
+  .reviews-skeleton > div:last-child { display: none; }
+  .order-review-links { padding: 18px 13px; }
+  .order-review-links > a { align-items: flex-start; flex-direction: column; gap: 8px; }
+}
+@media (prefers-reduced-motion: reduce) { .reviews-skeleton > div { animation: none; } }

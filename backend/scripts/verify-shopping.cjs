@@ -1,3 +1,5 @@
+const { PromotionsService } = require('../dist/promotions/promotions.service');
+const { Promotion, PromotionItem } = require('../dist/database/entities/promotion.entity');
 // Real MySQL repositories; connection-local temporary tables keep customer carts, products and addresses untouched.
 require('reflect-metadata');
 const assert = require('node:assert/strict');
@@ -30,21 +32,23 @@ async function verify() {
   const runner = source.createQueryRunner();
   try {
     await runner.connect();
-    const productService = new ChatProductsService(runner.manager.getRepository(Product));
+    const productService = new ChatProductsService(runner.manager.getRepository(Product), new PromotionsService({ manager: runner.manager }));
     const catalog = await productService.context('Tất cả sản phẩm');
     assert.ok(catalog && catalog.products.length <= 5);
     console.log('Catalog PASS: bounded search on the existing product table.');
-    for (const name of ['products', 'carts', 'cart_items', 'user_addresses']) {
+    for (const name of ['products', 'product_reviews', 'promotions', 'promotion_items', 'carts', 'cart_items', 'user_addresses']) {
       // MySQL rejects CREATE ... LIKE with identical source and destination names.
       await runner.query(`CREATE TEMPORARY TABLE shopping_verify_${name} LIKE ${name}`);
       await runner.query(`CREATE TEMPORARY TABLE ${name} LIKE shopping_verify_${name}`);
       await runner.query(`DROP TEMPORARY TABLE shopping_verify_${name}`);
+      const [definition] = await runner.query(`SHOW CREATE TABLE ${name}`);
+      assert.match(definition['Create Table'], /CREATE TEMPORARY TABLE/i);
     }
     await runner.startTransaction();
     const productRepo = runner.manager.getRepository(Product);
     const first = await productRepo.save(productRepo.create({ name: 'Bàn học kiểm thử gỗ', category: 'Bàn học', price: '500000', stock: 8 }));
     const second = await productRepo.save(productRepo.create({ name: 'Bàn học kiểm thử trắng', category: 'Bàn học', price: '800000', stock: 6 }));
-    const cart = new CartService(runner.manager.getRepository(Cart), runner.manager.getRepository(CartItem));
+    const cart = new CartService(runner.manager.getRepository(Cart), runner.manager.getRepository(CartItem), new PromotionsService({ manager: runner.manager }));
     const addresses = new AddressesService(runner.manager.getRepository(UserAddress));
     await runner.manager.getRepository(UserAddress).save({ userId: 1, fullName: 'Người nhận kiểm thử', phone: '0900000000', address: 'Địa chỉ kiểm thử', isDefault: true });
     const smallTalk = new SmallTalkService();

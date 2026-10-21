@@ -1,3 +1,4 @@
+import { Promotion, PromotionItem } from '../database/entities/promotion.entity';
 import { ChatCheckoutService } from './chat-checkout.service';
 import { ChatUserActionsService } from './chat-user-actions.service';
 import 'reflect-metadata';
@@ -102,7 +103,7 @@ test('product budgets parse Vietnamese amounts and do not interpret greetings as
 });
 
 test('product lookup emits bounded parameterized MySQL with current price/stock filters', async () => {
-  const source = new DataSource({ type: 'mysql', database: 'chat_test_metadata_only', entities: [Product, ChatbotKnowledge] });
+  const source = new DataSource({ type: 'mysql', database: 'chat_test_metadata_only', entities: [Product, ChatbotKnowledge, Promotion, PromotionItem] });
   await (source as unknown as { buildMetadatas(): Promise<void> }).buildMetadatas();
   let queries = 0;
   let sql = '';
@@ -111,7 +112,7 @@ test('product lookup emits bounded parameterized MySQL with current price/stock 
     const qb = source.getRepository(Product).createQueryBuilder('p');
     qb.getRawMany = async () => { queries++; [sql, params] = qb.getQueryAndParameters(); return []; };
     return qb;
-  } } as unknown as Repository<Product>);
+  } } as unknown as Repository<Product>, {} as any);
   assert.equal(await products.context('Xin chào'), null);
   assert.equal(await products.context('Sản phẩm này giá bao nhiêu?'), null);
   assert.equal(await products.context('Sản phẩm này còn hàng không?'), null);
@@ -120,8 +121,10 @@ test('product lookup emits bounded parameterized MySQL with current price/stock 
   assert.deepEqual(context?.products, []);
   assert.match(sql, /LIMIT 5/);
   assert.match(sql, /`p`\.`stock` > 0/);
-  assert.match(sql, /`p`\.`price` <= \?/);
-  assert.deepEqual(params, ['%ghe%', 2000000, '%ghe%']);
+  assert.match(sql, /ROUND\(/);
+  assert.match(sql, /END <= \?/);
+  assert.equal(params[0], 'published'); assert.ok(params[1] instanceof Date);
+  assert.deepEqual(params.slice(3), ['%ghe%', 2000000, '%ghe%']);
   assert.ok(!sql.includes('2000000'));
   await products.context('Ghế còn hàng không?');
   assert.ok(!sql.includes('`p`.`stock` > 0')); // Must be able to report an existing out-of-stock product.

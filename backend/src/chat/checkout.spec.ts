@@ -9,6 +9,9 @@ import { JwtService } from '@nestjs/jwt';
 import { getMetadataArgsStorage } from 'typeorm';
 import { PayOS } from '@payos/node';
 import * as bcrypt from 'bcryptjs';
+import { PromotionsService } from '../promotions/promotions.service';
+import { Promotion } from '../database/entities/promotion.entity';
+import { promotionPhase, salePrice } from '../promotions/promotion-price';
 import { Cart } from '../database/entities/cart.entity';
 import { CartItem } from '../database/entities/cart-item.entity';
 import { Product } from '../database/entities/product.entity';
@@ -42,7 +45,7 @@ import { normalizeText } from './chat-matching';
 // Isolated transactional repository model: rollback + serialization, no .env, MySQL or provider calls.
 // It verifies application invariants/lock requests, not MySQL's lock implementation.
 function fixture() {
-  const tables = new Map<any, any[]>([Cart, CartItem, Product, UserAddress, User, Order, OrderItem, Payment, Coupon, CheckoutRecord].map(entity => [entity, []]));
+  const tables = new Map<any, any[]>([Cart, CartItem, Product, UserAddress, User, Order, OrderItem, Payment, Coupon, CheckoutRecord, Promotion].map(entity => [entity, []]));
   const rows = (entity: any): any[] => tables.get(entity)!;
   const locks: Array<{ entity: any; mode: string }> = [];
   const match = (row: any, where: any): boolean => Array.isArray(where) ? where.some(w => match(row, w)) : Object.entries(where ?? {}).every(([key, value]: any) =>
@@ -58,7 +61,7 @@ function fixture() {
       } finally { inTransaction = false; }
     }); tail = result; return result;
   } };
-  const manager: any = { getRepository: (entity: any) => repo(entity), create: (entity: any, data: any) => repo(entity).create(data), save: (entity: any, data: any) => repo(entity).save(data) };
+  const manager: any = { query: async () => { assert.ok(inTransaction); return [{ id: 1 }]; }, getRepository: (entity: any) => repo(entity), create: (entity: any, data: any) => repo(entity).create(data), save: (entity: any, data: any) => repo(entity).save(data) };
   const repo = (entity: any): any => {
     if (repositories.has(entity)) return repositories.get(entity);
     const repository: any = {
@@ -72,6 +75,7 @@ function fixture() {
         return found;
       },
       findOne: async (options: any) => (await repository.find(options))[0] ?? null,
+      findOneBy: async (where: any) => repository.findOne({ where }),
       findOneOrFail: async (options: any) => { const row = await repository.findOne(options); if (!row) throw new NotFoundException(); return row; },
       findOneByOrFail: (where: any) => repository.findOneOrFail({ where }),
       existsBy: async (where: any) => rows(entity).some(row => match(row, where)),
@@ -102,7 +106,10 @@ function fixture() {
   const coupon = { id: 1, userId: null, code: 'SALE10', discountType: 'percentage', discountValue: 10, minOrderAmount: 500000, maxDiscountAmount: 100000, usageLimit: 5, usedCount: 0, isActive: true, startDate: new Date(Date.now() - 86400000), endDate: new Date(Date.now() + 86400000), freeShipping: false };
   rows(Coupon).push(coupon, { ...coupon, id: 2, code: 'OTHER2', userId: 2 }, { ...coupon, id: 3, code: 'EXPIRED', endDate: new Date(0) });
   const config = new ConfigService({ JWT_SECRET: 'checkout-fixture', GEMINI_API_KEY: 'fixture', PAYOS_CLIENT_ID: 'fixture', PAYOS_API_KEY: 'fixture', PAYOS_CHECKSUM_KEY: 'fixture-checksum', PAYOS_CANCEL_URL: 'https://example.test/cart', PAYOS_RETURN_URL: 'https://example.test/checkout/success' });
-  const makeOrders = () => new OrdersService(source, repo(Order), repo(Product), repo(Cart), repo(CartItem), repo(OrderItem), repo(Payment), repo(User));
+  source.manager = manager;
+  const promotions = new PromotionsService(source);
+  promotions.active = async () => rows(Promotion).find(event => promotionPhase(event) === 'active') ?? null;
+  const makeOrders = () => new OrdersService(source, repo(Order), repo(Product), repo(Cart), repo(CartItem), repo(OrderItem), repo(Payment), repo(User), promotions);
   const orders = makeOrders();
   const payment = new PaymentService(source, config, repo(Order), repo(Payment), repo(User));
   const payos = new PayOS({ clientId: 'fixture', apiKey: 'fixture', checksumKey: 'fixture-checksum' });
@@ -116,7 +123,7 @@ function fixture() {
     return { ...link, paymentLinkId: link.id, checkoutUrl: `https://pay.payos.vn/web/${link.id}` };
   };
   (payment as any).payos = payos;
-  const cart = new CartService(repo(Cart), repo(CartItem)); const addresses = new AddressesService(repo(UserAddress)); const coupons = new CouponsService(repo(Coupon));
+  const cart = new CartService(repo(Cart), repo(CartItem), promotions); const addresses = new AddressesService(repo(UserAddress)); const coupons = new CouponsService(repo(Coupon), cart);
   const products: any = {
     findById: async (id: number) => { const product = rows(Product).find(row => row.id === id); if (!product) throw new NotFoundException(); return product; },
     context: async (message: string) => { const query = productQuery(message); return query.related ? { hash: 'fixture', keyword: query.keyword, products: rows(Product).filter(p => query.terms.every(term => normalizeText(p.name).includes(term)) && p.stock > 0) } : null; },
@@ -134,7 +141,7 @@ function fixture() {
     const signature = await payos.crypto.createSignatureFromObj(data, 'fixture-checksum');
     return { code: '00', desc: 'success', success: true, data, signature } as any;
   };
-  return { rows, repo, locks, source, config, cart, orders, makeOrders, payment, products, addresses, coupons, userActions, checkout, gemini, favorites, makeChat, handle, quote, remote, webhook, creates: () => creates, loseResponse: () => { loseCreateResponse = true; } };
+  return { rows, repo, locks, source, config, promotions, cart, orders, makeOrders, payment, products, addresses, coupons, userActions, checkout, gemini, favorites, makeChat, handle, quote, remote, webhook, creates: () => creates, loseResponse: () => { loseCreateResponse = true; } };
 }
 
 test('single-product checkout collects own address/voucher/method; only explicit confirmation creates order', async () => {
@@ -281,7 +288,9 @@ test('failure after stock/order writes rolls back everything; retry commits once
   assert.equal(f.rows(Order).length, 0); assert.equal(f.rows(OrderItem).length, 0); assert.equal(f.rows(Payment).length, 0); assert.equal(f.rows(Product)[0].stock, 8); assert.equal(f.rows(Coupon)[0].usedCount, 0); assert.equal(f.rows(CartItem)[0].quantity, 1);
   await f.orders.confirmCheckout(1, quote.id, quote.hash); assert.equal(f.rows(Order).length, 1);
   const ordinary = fixture(); await ordinary.cart.add(1, 10, 1);
-  const created = await ordinary.orders.create(1, { fullName: 'Nguyễn An', email: 'u1@example.test', phone: '0901111111', address: 'Hà Nội', paymentMethod: PaymentMethod.CASH, couponCode: 'SALE10' });
+  const input = { fullName: 'Nguyễn An', email: 'u1@example.test', phone: '0901111111', address: 'Hà Nội', paymentMethod: PaymentMethod.CASH, couponCode: 'SALE10' };
+  const quoted = await ordinary.orders.previewCheckout(1, input);
+  const created = await ordinary.orders.create(1, { ...input, quoteId: quoted.id, quoteHash: quoted.hash });
   assert.equal(created.totalAmount, 450000); assert.equal(created.discountAmount, evaluateCoupon(ordinary.rows(Coupon)[0], 500000, 1).discountAmount);
   const base = ordinary.rows(Coupon)[0];
   assert.equal(evaluateCoupon({ ...base, discountValue: 25 } as any, 2000000, 1).discountAmount, 100000);
@@ -405,4 +414,79 @@ test('additive migration is repeatable and checks primary/unique constraints mat
   const metadata = getMetadataArgsStorage(); assert.ok(metadata.columns.some(column => column.target === CheckoutRecord && column.propertyName === 'id' && column.options.primary));
   assert.ok(metadata.indices.some(index => index.target === CheckoutRecord && index.name === 'UQ_checkout_order' && index.unique));
   assert.ok(metadata.indices.some(index => index.target === Payment && index.name === 'UQ_payment_payos_link' && index.unique));
+});
+
+test('promotion price uses exact integer rounding and event boundaries are start-inclusive/end-exclusive', () => {
+  assert.equal(salePrice(2000000, 35), 1300000);
+  assert.equal(salePrice(101, 50), 51);
+  assert.equal(salePrice(999999999999999, 99), 10000000000000);
+  for (const discount of [0, 100, -1, 1.5, NaN]) assert.throws(() => salePrice(1000, discount), BadRequestException);
+  assert.throws(() => salePrice(1.5, 20), BadRequestException);
+  const event = { status: 'published', startsAt: new Date(1000), endsAt: new Date(2000) };
+  assert.equal(promotionPhase(event, new Date(999)), 'scheduled');
+  assert.equal(promotionPhase(event, new Date(1000)), 'active');
+  assert.equal(promotionPhase(event, new Date(2000)), 'ended');
+  assert.equal(promotionPhase({ ...event, status: 'paused' }, new Date(1500)), 'paused');
+});
+
+function activateSale(f: ReturnType<typeof fixture>, discountPercent = 40) {
+  const event = { id: 1, title: 'Ưu đãi kiểm thử', description: '', status: 'published', startsAt: new Date(Date.now() - 60000), endsAt: new Date(Date.now() + 60000),
+    items: [{ productId: 10, discountPercent }] };
+  f.rows(Promotion).push(event);
+  return event;
+}
+
+test('sale prices agree across cart and chatbot; pause/expiry restore original without writing it', async () => {
+  const f = fixture(); const event = activateSale(f);
+  const products = new ChatProductsService(f.repo(Product), f.promotions);
+  await f.cart.add(1, 10, 2);
+  const cart = await f.cart.get(1), product = await products.findById(10);
+  assert.equal(cart.total, 600000); assert.equal(cart.saleSavings, 400000); assert.equal(cart.couponEligibleTotal, 0);
+  assert.equal(cart.items[0].product.price, Number(product.price)); assert.equal(product.originalPrice, 500000);
+  assert.equal(f.rows(Product)[0].price, '500000');
+  event.status = 'paused'; assert.equal(Number((await products.findById(10)).price), 500000);
+  event.status = 'published'; event.endsAt = new Date(0); assert.equal((await f.cart.get(1)).total, 1000000);
+});
+
+test('coupons apply only to regular lines and ignore a client-supplied inflated order amount', async () => {
+  const f = fixture(); activateSale(f); f.rows(Coupon)[0].minOrderAmount = 0;
+  await f.cart.add(1, 10, 1);
+  await assert.rejects(f.coupons.validateCoupon('SALE10', 999999999, 1), /không thuộc sự kiện/);
+  await f.cart.add(1, 20, 2);
+  const validated = await f.coupons.validateCoupon('SALE10', 999999999, 1), quote = await f.quote(1, PaymentMethod.CASH, 'SALE10');
+  assert.equal(validated.discountAmount, 40000); assert.equal(validated.finalAmount, 660000);
+  assert.equal(quote.discountAmount, validated.discountAmount); assert.equal(quote.total, validated.finalAmount);
+  const { order } = await f.orders.confirmCheckout(1, quote.id, quote.hash);
+  assert.equal(order!.items.find(item => item.productId === 10)!.price, 300000);
+});
+
+test('web checkout re-quotes expired/edited promotions, requires another click and persists the confirmed order amount', async () => {
+  const f = fixture(); const event = activateSale(f);
+  await f.cart.add(1, 10, 1);
+  const input = { fullName: 'Người nhận', email: 'u1@example.test', phone: '0901111111', address: 'Hà Nội', paymentMethod: PaymentMethod.CASH, note: 'Gọi trước khi giao' };
+  await assert.rejects(f.orders.create(1, input), ConflictException);
+  const first = await f.orders.previewCheckout(1, input);
+  assert.equal(first.total, 300000);
+  event.endsAt = new Date(0);
+  let replacement: any;
+  await assert.rejects(f.orders.create(1, { ...input, quoteId: first.id, quoteHash: first.hash }), (error: any) => {
+    assert.ok(error instanceof ConflictException); replacement = (error.getResponse() as any).quote; return true;
+  });
+  assert.equal(replacement.total, 500000); assert.equal(f.rows(Order).length, 0); assert.equal(f.rows(Product)[0].stock, 8);
+  const accepted = await f.orders.create(1, { ...input, quoteId: replacement.id, quoteHash: replacement.hash });
+  assert.equal(accepted.totalAmount, 500000); assert.equal(accepted.note, input.note);
+  event.endsAt = new Date(Date.now() + 60000); event.items[0].discountPercent = 60;
+  assert.equal((await f.orders.getOneForUser(1, accepted.id)).items[0].price, 500000);
+  const replay = await f.orders.create(1, { ...input, quoteId: replacement.id, quoteHash: replacement.hash });
+  assert.equal(replay.id, accepted.id); assert.equal(f.rows(Order).length, 1); assert.equal(f.rows(Product)[0].stock, 7);
+});
+
+test('chat checkout promotion edits require re-confirmation and stock errors never create an order', async () => {
+  const f = fixture(); const event = activateSale(f); await f.cart.add(1, 10, 1);
+  const before = await f.quote(); event.items[0].discountPercent = 50;
+  const changed = await f.orders.confirmCheckout(1, before.id, before.hash);
+  assert.equal(changed.changed, true); assert.equal(changed.quote!.total, 250000); assert.equal(f.rows(Order).length, 0);
+  f.rows(Product)[0].stock = 0;
+  await assert.rejects(f.orders.confirmCheckout(1, changed.quote!.id, changed.quote!.hash), /tồn kho/);
+  assert.equal(f.rows(Order).length, 0); assert.equal(f.rows(Payment).length, 0);
 });

@@ -2,6 +2,9 @@
 import {
   ChatbotKnowledge,
   CheckoutRecord,
+  Promotion,
+  PromotionItem,
+  ProductReview,
   Coupon,
   Cart,
   CartItem,
@@ -16,4 +19,4 @@ import {
   UserAddress,
 } from './entities/index';
 
-export const entities = [User, Product, Cart, CartItem, Order, OrderItem, Payment, ContactMessage, PasswordResetToken, UserAddress, Favorite, ChatbotKnowledge, Coupon, CheckoutRecord];
+export const entities = [User, Product, Cart, CartItem, Order, OrderItem, Payment, ContactMessage, PasswordResetToken, UserAddress, Favorite, ChatbotKnowledge, Coupon, CheckoutRecord, Promotion, PromotionItem, ProductReview];

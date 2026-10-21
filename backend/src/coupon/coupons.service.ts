@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Repository } from 'typeorm';
+import { CartService } from '../cart/cart.service';
 import {
   Coupon,
   CouponDiscountType,
@@ -15,6 +16,7 @@ export class CouponsService {
   constructor(
     @InjectRepository(Coupon)
     private readonly couponRepository: Repository<Coupon>,
+    private readonly cart: CartService,
   ) {}
 
   async findAll(userId?: number): Promise<Coupon[]> {
@@ -109,7 +111,11 @@ export class CouponsService {
       },
     });
 
-    return evaluateCoupon(coupon, orderAmount, userId);
+    const cart = userId === undefined ? null : await this.cart.get(userId);
+    const eligible = cart?.couponEligibleTotal ?? orderAmount;
+    if (eligible <= 0) throw new BadRequestException('Mã giảm giá chỉ áp dụng cho sản phẩm không thuộc sự kiện ưu đãi.');
+    const result = evaluateCoupon(coupon, eligible, userId);
+    return { ...result, finalAmount: (cart?.total ?? orderAmount) - result.discountAmount };
   }
 }
 

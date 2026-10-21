@@ -2,7 +2,7 @@ import { PaymentMethod } from '../database/entities/enums';
 
 export interface CheckoutSelection { addressId: number; paymentMethod: PaymentMethod; couponCode?: string }
 export interface CheckoutSnapshot {
-  items: Array<{ productId: number; name: string; imageUrl: string | null; price: number; quantity: number; subtotal: number }>;
+  items: Array<{ productId: number; name: string; imageUrl: string | null; price: number; quantity: number; subtotal: number; originalPrice?: number; promotionId?: number | null }>;
   address: { id?: number; fullName: string; phone: string; address: string };
   email: string;
   paymentMethod: PaymentMethod;

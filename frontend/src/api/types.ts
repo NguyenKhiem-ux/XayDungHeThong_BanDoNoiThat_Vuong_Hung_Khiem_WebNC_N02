@@ -37,18 +37,31 @@ export interface User {
 }
 
 export interface Product {
+  averageRating?: number;
+  reviewCount?: number;
   id: number;
   name: string;
   description: string | null;
   specifications: string | null;
   origin: string | null;
   price: number;
+  originalPrice?: number;
+  discountPercent?: number;
+  savings?: number;
+  promotionId?: number | null;
+  promotionTitle?: string | null;
+  saleEndsAt?: string | null;
   stock: number;
   category: string | null;
   brand: string | null;
   imageUrl: string | null;
   isFeatured: boolean;
 }
+
+export interface ReviewSummary { averageRating: number; reviewCount: number; ratingCounts: Record<number, number> }
+export interface ProductReview { id: number; rating: number; comment: string; author: string; createdAt: string; updatedAt: string }
+export interface ReviewPage { summary: ReviewSummary; reviews: ProductReview[]; total: number; page: number; pageSize: number }
+export interface OwnReview { canReview: boolean; review: { rating: number; comment: string } | null }
 
 export interface Favorite {
   id: number;
@@ -94,7 +107,7 @@ export interface CartItem {
   productId: number;
   quantity: number;
   subtotal: number;
-  product: Pick<Product, 'id' | 'name' | 'price' | 'stock' | 'imageUrl' | 'category' | 'brand'>;
+  product: Pick<Product, 'id' | 'name' | 'price' | 'stock' | 'imageUrl' | 'category' | 'brand' | 'originalPrice' | 'discountPercent' | 'savings' | 'promotionId' | 'saleEndsAt'>;
 }
 
 export interface Cart {
@@ -102,6 +115,37 @@ export interface Cart {
   items: CartItem[];
   itemCount: number;
   total: number;
+  couponEligibleTotal?: number;
+  saleSavings?: number;
+}
+
+export interface PromotionEvent {
+  bannerDiscountPercent?: number | null;
+  displayDiscountPercent?: number;
+  id: number;
+  title: string;
+  description: string;
+  status: 'draft' | 'published' | 'paused';
+  phase: 'draft' | 'paused' | 'scheduled' | 'active' | 'ended';
+  startsAt: string;
+  endsAt: string;
+  maxDiscountPercent: number;
+  products: Product[];
+}
+
+export interface PromotionInput {
+  bannerDiscountPercent?: number | null;
+  title: string;
+  description: string;
+  status: PromotionEvent['status'];
+  startsAt: string;
+  endsAt: string;
+  items: Array<{ productId: number; discountPercent: number }>;
+}
+
+export interface OrderInput {
+  fullName: string; email: string; phone: string; address: string; paymentMethod: string;
+  note?: string; couponCode?: string; quoteId?: string; quoteHash?: string;
 }
 
 export type OrderStatus = 'PENDING' | 'CONFIRMED' | 'DELIVERED' | 'CANCELLED';

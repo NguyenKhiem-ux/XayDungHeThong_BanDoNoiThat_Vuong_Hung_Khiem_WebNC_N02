@@ -1,5 +1,9 @@
 # Hung Vuong Gia dụng
 
+Sự kiện ưu đãi: xem [hướng dẫn quản trị, nâng cấp database và kiểm thử](PROMOTIONS.md).
+
+Đánh giá sau mua: xem [điều kiện đánh giá, thống kê sao và nâng cấp database](REVIEWS.md).
+
 > Website thương mại điện tử bán đồ gia dụng và thiết bị nhà bếp, xây dựng trong khuôn khổ **Đồ án Liên ngành**. Dự án có giao diện mua sắm cho khách hàng và khu vực quản trị để vận hành cửa hàng.
 
 ## Thành viên

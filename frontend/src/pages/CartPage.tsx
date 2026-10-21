@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { formatVnd, imageUrl } from '../api/client';
 import { useCart } from '../context/CartContext';
+import { ProductPrice } from '../components/ProductPrice';
 
 export function CartPage(){
  const {cart,loading,update,remove}=useCart(); const navigate=useNavigate();
@@ -12,7 +13,7 @@ export function CartPage(){
   <section className="section cart-layout">
    {cart?.items?.length ? <div className="cart-panel reveal-left">{cart.items.map(item=><div className="cart-row" key={item.id}>
     <Link className="cart-thumb" to={`/products/${item.product.id}`}>{item.product.imageUrl?<img src={imageUrl(item.product.imageUrl)} alt={item.product.name}/>:<i className="fa-solid fa-house"/>}</Link>
-    <div><p className="cart-name">{item.product.name}</p><span className="product-category">{item.product.category}</span><div className="cart-price">{formatVnd(item.product.price)}</div></div>
+    <div><p className="cart-name">{item.product.name}</p><span className="product-category">{item.product.category}</span><ProductPrice product={item.product} /></div>
     <div className="qty-control"><button className="qty-btn" onClick={()=>update(item.productId,Math.max(1,item.quantity-1))}>-</button><input className="qty-input" value={item.quantity} min={1} onChange={e=>update(item.productId,Math.max(1,Number(e.target.value)||1))}/><button className="qty-btn" onClick={()=>update(item.productId,item.quantity+1)}>+</button></div>
     <button className="icon-btn" onClick={()=>remove(item.productId)} aria-label="Xóa sản phẩm"><i className="fa-solid fa-trash"/></button>
    </div>)}</div>:

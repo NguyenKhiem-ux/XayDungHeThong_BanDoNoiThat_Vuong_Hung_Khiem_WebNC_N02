@@ -53,5 +53,6 @@ export function OrderDetailPage() {
         <div className="review-band compact"><PackageCheck size={20} /> Đơn hàng đang được xử lý theo trạng thái hiện tại.</div>
       </div>
     </div>
+    {order.status === 'DELIVERED' && order.paymentStatus === 'PAID' && <div className="order-review-links"><h2>Chia sẻ trải nghiệm sau khi mua</h2><p>Đơn đã hoàn tất. Bạn có thể đánh giá hoặc cập nhật đánh giá cho từng sản phẩm.</p>{order.items.filter(item => item.productId).map(item => <Link key={item.id} to={`/products/${item.productId}#product-reviews`}>{item.productName}<span>Đánh giá sản phẩm →</span></Link>)}</div>}
   </div></section>;
 }

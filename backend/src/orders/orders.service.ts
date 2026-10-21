@@ -18,6 +18,7 @@ import { CheckoutRecord } from '../database/entities/checkout-record.entity';
 import { UserAddress } from '../database/entities/user-address.entity';
 import { CheckoutQuote, CheckoutSelection, CheckoutSnapshot } from './checkout.types';
 import { evaluateCoupon } from '../coupon/coupons.service';
+import { PromotionsService } from '../promotions/promotions.service';
  
 @Injectable()
 export class OrdersService {
@@ -30,13 +31,17 @@ export class OrdersService {
     @InjectRepository(OrderItem) private readonly orderItems: Repository<OrderItem>,
     @InjectRepository(Payment) private readonly payments: Repository<Payment>,
     @InjectRepository(User) private readonly users: Repository<User>,
+    private readonly promotions: PromotionsService,
   ) {}
  
   async create(userId: number, dto: CreateOrderDto) {
-    return this.dataSource.transaction(async manager => this.writeOrder(manager, userId, await this.calculate(manager, userId, dto)));
+    if (!dto.quoteId || !dto.quoteHash) throw new ConflictException('Hãy xem báo giá và xác nhận trước khi tạo đơn.');
+    const result = await this.confirmCheckout(userId, dto.quoteId, dto.quoteHash);
+    if (result.changed) throw new ConflictException({ message: 'Giá hoặc thông tin mua hàng đã thay đổi. Hãy xem và xác nhận lại báo giá mới.', quote: result.quote });
+    return result.order!;
   }
 
-  async previewCheckout(userId: number, selection: CheckoutSelection, id?: string): Promise<CheckoutQuote> {
+  async previewCheckout(userId: number, selection: CheckoutSelection | CreateOrderDto, id?: string): Promise<CheckoutQuote> {
     return this.dataSource.transaction(async manager => {
       const records = manager.getRepository(CheckoutRecord);
       let record = id ? await records.findOne({ where: { id, userId }, lock: { mode: 'pessimistic_write' } }) : null;
@@ -56,10 +61,12 @@ export class OrdersService {
       const records = manager.getRepository(CheckoutRecord);
       const record = await records.findOne({ where: { id, userId }, lock: { mode: 'pessimistic_write' } });
       if (!record) throw new NotFoundException('Không tìm thấy checkout của bạn.');
-      if (hash !== record.hash) throw new ConflictException('Nội dung checkout đã thay đổi. Hãy xem và xác nhận bản mới nhất.');
+      if (hash !== record.hash) throw new ConflictException({ message: 'Nội dung checkout đã thay đổi. Hãy xem và xác nhận bản mới nhất.', quote: this.quote(record) });
       if (record.orderId) return { order: await this.getOneForUser(userId, record.orderId, manager.getRepository(Order)), changed: false };
       if (record.state !== 'ready' || record.expiresAt.getTime() < Date.now()) throw new ConflictException('Checkout đã bị hủy hoặc hết hạn. Hãy bắt đầu lại.');
-      const selection: CheckoutSelection = { addressId: record.snapshot.address.id!, paymentMethod: record.snapshot.paymentMethod, couponCode: record.snapshot.couponCode ?? undefined };
+      const selection: CheckoutSelection | CreateOrderDto = record.snapshot.address.id
+        ? { addressId: record.snapshot.address.id, paymentMethod: record.snapshot.paymentMethod, couponCode: record.snapshot.couponCode ?? undefined }
+        : { ...record.snapshot.address, email: record.snapshot.email, paymentMethod: record.snapshot.paymentMethod, couponCode: record.snapshot.couponCode ?? undefined, note: record.snapshot.note ?? undefined };
       const calculated = await this.calculate(manager, userId, selection);
       const currentHash = this.snapshotHash(calculated.snapshot);
       if (currentHash !== record.hash) {
@@ -88,6 +95,7 @@ export class OrdersService {
   private quote(record: CheckoutRecord): CheckoutQuote { return { ...record.snapshot, id: record.id, hash: record.hash, expiresAt: record.expiresAt.toISOString() }; }
 
   private async calculate(manager: EntityManager, userId: number, selection: CheckoutSelection | CreateOrderDto) {
+    await this.promotions.lock(manager);
     if (!Object.values(PaymentMethod).includes(selection.paymentMethod)) throw new BadRequestException('Phương thức thanh toán không hợp lệ.');
     const cart = await manager.getRepository(Cart).findOne({ where: { userId }, lock: { mode: 'pessimistic_write' } });
     if (!cart) throw new BadRequestException('Giỏ hàng đang trống');
@@ -101,8 +109,13 @@ export class OrdersService {
       if (!product) throw new NotFoundException('Sản phẩm không còn tồn tại.');
       if (product.stock < row.quantity) throw new BadRequestException(`${product.name}: không đủ tồn kho (còn ${product.stock}).`);
       products.push(product);
-      const price = Number(product.price);
-      items.push({ productId: product.id, name: product.name, imageUrl: product.imageUrl, price, quantity: row.quantity, subtotal: price * row.quantity });
+    }
+    const prices = await this.promotions.prices(products, manager);
+    for (const row of rows) {
+      const product = products.find(product => Number(product.id) === Number(row.productId))!;
+      const pricing = prices.get(Number(product.id))!;
+      items.push({ productId: product.id, name: product.name, imageUrl: product.imageUrl, price: pricing.price, quantity: row.quantity,
+        subtotal: pricing.price * row.quantity, originalPrice: pricing.originalPrice, promotionId: pricing.promotionId });
     }
     let address: CheckoutSnapshot['address'];
     let email: string;
@@ -120,12 +133,14 @@ export class OrdersService {
     let coupon: Coupon | null = null;
     let discountAmount = 0;
     if (selection.couponCode?.trim()) {
+      const eligibleSubtotal = items.reduce((sum, item) => sum + (item.promotionId ? 0 : item.subtotal), 0);
+      if (eligibleSubtotal <= 0) throw new BadRequestException('Mã giảm giá chỉ áp dụng cho sản phẩm không thuộc sự kiện ưu đãi. Hãy bỏ mã để tiếp tục.');
       coupon = await manager.getRepository(Coupon).findOne({ where: { code: selection.couponCode.trim().toUpperCase() }, lock: { mode: 'pessimistic_write' } });
-      discountAmount = evaluateCoupon(coupon, subtotal, userId).discountAmount;
+      discountAmount = evaluateCoupon(coupon, eligibleSubtotal, userId).discountAmount;
     }
     const snapshot: CheckoutSnapshot = { items, address, email, paymentMethod: selection.paymentMethod, couponCode: coupon?.code ?? null,
       subtotal, discountAmount, shippingFee: 0, total: subtotal - discountAmount, note: 'note' in selection ? selection.note ?? null : null };
-    if ('addressId' in selection && [PaymentMethod.QR, PaymentMethod.PAYOS].includes(selection.paymentMethod) && snapshot.total <= 0) throw new BadRequestException('Tổng tiền bằng 0 không dùng PayOS. Hãy chọn tiền mặt.');
+    if ([PaymentMethod.QR, PaymentMethod.PAYOS].includes(selection.paymentMethod) && snapshot.total <= 0) throw new BadRequestException('Tổng tiền bằng 0 không dùng PayOS. Hãy chọn tiền mặt.');
     return { snapshot, cart, products, coupon };
   }
 

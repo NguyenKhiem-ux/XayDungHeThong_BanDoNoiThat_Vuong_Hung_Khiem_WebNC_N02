@@ -1,3 +1,4 @@
+import { PromotionsService } from '../promotions/promotions.service';
 import { ChatCheckoutService } from './chat-checkout.service';
 import { ChatUserActionsService } from './chat-user-actions.service';
 import 'reflect-metadata';
@@ -58,7 +59,8 @@ function cartFixture() {
   const productRepo = { findOne: async ({ where, lock }: any) => { locks.push(lock); return products.find(row => match(row, where)) ?? null; } };
   const manager = { getRepository: (entity: unknown) => entity === Cart ? cartRepo : entity === CartItem ? itemRepo : productRepo };
   cartRepo.manager = { transaction: async (work: any) => work(manager) };
-  return { products, rows, locks, cart: new CartService(cartRepo, itemRepo), saves: () => saves, fail: (value: boolean) => { failSave = value; } };
+  const promotions = new PromotionsService({ manager: {} } as any); promotions.active = async () => null;
+  return { products, rows, locks, cart: new CartService(cartRepo, itemRepo, promotions), saves: () => saves, fail: (value: boolean) => { failSave = value; } };
 }
 
 test('shopping intent and Vietnamese references/quantities', () => {

@@ -5,12 +5,14 @@ import { EntityManager, Repository } from 'typeorm';
 import { Cart } from '../database/entities/cart.entity';
 import { CartItem } from '../database/entities/cart-item.entity';
 import { Product } from '../database/entities/product.entity';
+import { PromotionsService } from '../promotions/promotions.service';
 
 @Injectable()
 export class CartService {
   constructor(
     @InjectRepository(Cart) private readonly carts: Repository<Cart>,
     @InjectRepository(CartItem) private readonly items: Repository<CartItem>,
+    private readonly promotions: PromotionsService,
   ) {}
 
   async get(userId: number) {
@@ -118,7 +120,8 @@ export class CartService {
     });
   }
 
-  private serialize(cart: Cart, items: CartItem[]) {
+  private async serialize(cart: Cart, items: CartItem[]) {
+    const prices = await this.promotions.prices(items.map(item => item.product));
     const serializedItems = items.map((item) => ({
       id: item.id,
       productId: item.productId,
@@ -131,14 +134,17 @@ export class CartService {
         imageUrl: item.product.imageUrl,
         category: item.product.category,
         brand: item.product.brand,
+        ...prices.get(Number(item.productId)),
       },
-      subtotal: Number(item.product.price) * item.quantity,
+      subtotal: prices.get(Number(item.productId))!.price * item.quantity,
     }));
     return {
       id: cart.id,
       items: serializedItems,
       itemCount: serializedItems.reduce((sum, item) => sum + item.quantity, 0),
       total: serializedItems.reduce((sum, item) => sum + item.subtotal, 0),
+      couponEligibleTotal: serializedItems.reduce((sum, item) => sum + (item.product.discountPercent ? 0 : item.subtotal), 0),
+      saleSavings: serializedItems.reduce((sum, item) => sum + (item.product.savings ?? 0) * item.quantity, 0),
     };
   }
 }
