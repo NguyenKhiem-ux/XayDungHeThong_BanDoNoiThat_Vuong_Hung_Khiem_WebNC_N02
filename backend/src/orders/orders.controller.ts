@@ -14,6 +14,11 @@ import { OrdersService } from './orders.service';
 export class OrdersController {
   constructor(private readonly orders: OrdersService) {}
 
+  @Post('orders/preview')
+  preview(@CurrentUser() user: AuthUser, @Body() dto: CreateOrderDto) {
+    return this.orders.previewCheckout(user.id, dto, dto.quoteId);
+  }
+
   @Post('orders')
   create(@CurrentUser() user: AuthUser, @Body() dto: CreateOrderDto) {
     return this.orders.create(user.id, dto);

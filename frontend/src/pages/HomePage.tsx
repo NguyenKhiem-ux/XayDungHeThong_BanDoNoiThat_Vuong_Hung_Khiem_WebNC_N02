@@ -5,6 +5,8 @@ import { ArrowRight, Pause, Play, RotateCw } from 'lucide-react';
 import { productApi } from '../api/services';
 import type { Product } from '../api/types';
 import { ProductCard, ProductCardSkeleton } from '../components/ProductCard';
+import { FlashSale } from '../components/FlashSale';
+import { usePriceRevision } from '../hooks/usePriceRevision';
 
 const slides = [
   {
@@ -37,6 +39,7 @@ const categories = [
 ];
 
 export function HomePage() {
+  const priceRevision = usePriceRevision();
   const [current, setCurrent] = useState(0);
   const [featured, setFeatured] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,7 +55,7 @@ export function HomePage() {
       .catch(() => { if (active) { setFeatured([]); setFailed(true); } })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [retry]);
+  }, [retry, priceRevision]);
 
   useEffect(() => {
     const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -126,6 +129,8 @@ export function HomePage() {
       </div>
     </section>
 
+    <FlashSale />
+
     <section className="section">
       <div className="section-heading reveal">
         <div><h2>Sản phẩm nổi bật</h2></div>
@@ -134,22 +139,6 @@ export function HomePage() {
       {loading ? <div className="product-grid" role="status" aria-label="Đang tải sản phẩm" aria-busy="true">{Array.from({ length: 4 }, (_, i) => <ProductCardSkeleton key={i} />)}</div> :
         featured.length ? <div className="product-grid">{featured.map((p, i) => <ProductCard key={p.id} product={p} home index={i} />)}</div> :
         <div className="empty-state" role="status"><h3>{failed ? 'Chưa thể tải sản phẩm' : 'Chưa có sản phẩm nổi bật'}</h3><p>{failed ? 'Vui lòng kiểm tra kết nối và thử lại.' : 'Khám phá thêm các sản phẩm trong cửa hàng.'}</p>{failed ? <button className="btn btn-outline" onClick={() => setRetry(v => v + 1)}><RotateCw size={16} /> Thử lại</button> : <Link to="/products" className="btn btn-primary">Xem tất cả sản phẩm</Link>}</div>}
-    </section>
-
-    <section className="promo-banner reveal">
-      <img className="promo-bg" src="https://images.unsplash.com/photo-1556911220-bff31c812dba?auto=format&fit=crop&w=1600&q=80" alt="Không gian bếp hiện đại" />
-      <div className="promo-overlay" />
-      <div className="promo-body">
-        <span className="promo-kicker"><i className="fa-solid fa-bolt" /> Flash Sale</span>
-        <h2>Ưu đãi cuối tuần<br />Giảm đến <em>30%</em></h2>
-        <p className="promo-products">Nồi cơm điện & Robot hút bụi</p>
-        <p>Số lượng có hạn. Miễn phí vận chuyển toàn quốc cho đơn từ 3 triệu.</p>
-        <div className="promo-actions">
-          <Link to="/products" className="btn btn-primary"><i className="fa-solid fa-fire" /> Xem ưu đãi ngay</Link>
-          <Link to="/products?category=Nồi cơm điện" className="btn-ghost-white"><i className="fa-solid fa-bowl-food" /> Xem Nồi cơm điện</Link>
-        </div>
-      </div>
-      <div className="promo-stats"><div className="promo-stat-card"><strong>30%</strong><span>Giảm tối đa</span></div><div className="promo-stat-card"><strong>500+</strong><span>Sản phẩm sale</span></div><div className="promo-stat-card"><strong>48h</strong><span>Còn lại</span></div></div>
     </section>
 
     <section className="feature-split section">

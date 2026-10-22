@@ -53,7 +53,7 @@ export class ChatShoppingService {
       return null;
     }
 
-    const replyIntent: ChatIntent = action === 'checkout_confirm' ? 'checkout_review' : action;
+    const replyIntent = (action === 'checkout_confirm' ? 'checkout_review' : action) as ChatIntent;
     if (!dto.sessionId) return this.reply(replyIntent, 'Phiên trò chuyện chưa sẵn sàng. Vui lòng mở lại chatbot và chọn sản phẩm.');
     if (!['product_select'].includes(action) && !user) {
       return { ...this.reply(replyIntent, 'Bạn cần đăng nhập trước khi xem giỏ hàng hoặc thực hiện thao tác mua sắm.'),
@@ -80,7 +80,11 @@ export class ChatShoppingService {
       if (!id) return this.reply(replyIntent, 'Không có sản phẩm ở vị trí đó trong kết quả gần nhất. Bạn hãy chọn lại.');
     }
     if (!id) {
-      const words = text.replace(/\b(toi|minh|muon|hay|vui|long|giup|cho|lay|chon|them|vao|gio|hang|bo|xoa|go|san|pham|vua|nay|do|ay|di|cai|chiec|mua|ngay|luon|cap|nhat|doi|sua|tang|giam|so|luong|thanh|la|len|xuong|mot|hai|ba|bon|nam|sau|bay|tam|chin|muoi|khong|nhe|nha|a|\d+)\b/g, ' ')
+      const named = candidates.filter(product => text.includes(normalizeText(product.name)));
+      if (named.length === 1) id = Number(named[0].id);
+    }
+    if (!id) {
+      const words = text.replace(/\b(toi|minh|muon|hay|vui|long|giup|cho|lay|chon|them|vao|khoi|gio|hang|bo|xoa|go|san|pham|vua|nay|do|ay|di|cai|chiec|mua|ngay|luon|cap|nhat|doi|sua|tang|giam|so|luong|thanh|la|len|xuong|mot|hai|ba|bon|nam|sau|bay|tam|chin|muoi|khong|nhe|nha|a|\d+)\b/g, ' ')
         .split(/\s+/).filter(Boolean);
       const named = words.length ? candidates.filter(product => words.every(word => normalizeText(product.name).includes(word))) : [];
       if (named.length === 1) id = Number(named[0].id);
@@ -205,9 +209,9 @@ export class ChatShoppingService {
 
   private cartReply(intent: ChatIntent, message: string, cart: Awaited<ReturnType<CartService['get']>>): ChatReply {
     return { ...this.reply(intent, message), type: 'cart', cart,
-      actions: cart.items.flatMap(item => [
+      actions: [...cart.items.flatMap(item => [
         { type: 'cart_update_quantity' as const, label: 'Đổi số lượng', productId: item.productId, quantity: item.quantity },
         { type: 'cart_remove' as const, label: 'Xóa', productId: item.productId },
-      ]) };
+      ]), ...(cart.items.length ? [{ type: 'checkout_start' as const, label: 'Checkout giỏ hàng' }, { type: 'cart_clear' as const, label: 'Xóa toàn bộ giỏ' }] : [])] };
   }
 }

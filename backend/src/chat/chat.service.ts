@@ -9,8 +9,10 @@ import { normalizeText } from './chat-matching';
 import { AuthUser } from '../common/types/auth-user.type';
 import { ChatDto } from './dto/chat.dto';
 import { ChatShoppingService, ShoppingSession } from './chat-shopping.service';
+import { ChatUserActionsService, UserActionSession, hasChatSecret } from './chat-user-actions.service';
+import { ChatCheckoutService, CheckoutSession } from './chat-checkout.service';
 
-type ChatSession = ShoppingSession & { expiresAt: number; requests: Map<string, { fingerprint: string; result: Promise<ChatReply> }> };
+type ChatSession = ShoppingSession & UserActionSession & CheckoutSession & { expiresAt: number; requests: Map<string, { fingerprint: string; result: Promise<ChatReply> }> };
 const SESSION_TTL = 30 * 60 * 1000;
 const MAX_SESSIONS = 1000;
 
@@ -26,14 +28,16 @@ export class ChatService {
 
   constructor(private readonly knowledge: KnowledgeService, private readonly products: ChatProductsService,
     private readonly intents: IntentService, private readonly smallTalk: SmallTalkService, private readonly gemini: GeminiService,
-    private readonly shopping: ChatShoppingService) {}
+    private readonly shopping: ChatShoppingService, private readonly userActions: ChatUserActionsService, private readonly checkout: ChatCheckoutService) {}
 
   async stats() {
     const rate = (count: number) => this.counters.totalQuestions ? Math.round(count / this.counters.totalQuestions * 10000) / 100 : 0;
-    return { ...this.counters, ...await this.knowledge.counts(), knowledgeHitRate: rate(this.counters.knowledgeHits), geminiUsageRate: rate(this.counters.geminiCalls) };
+    const geminiCalls = this.counters.geminiCalls + (this.gemini.actionCalls ?? 0);
+    return { ...this.counters, geminiCalls, ...await this.knowledge.counts(), knowledgeHitRate: rate(this.counters.knowledgeHits), geminiUsageRate: rate(geminiCalls) };
   }
 
   async send(message: string, sessionId?: string, user?: AuthUser, options?: ChatDto, stream?: ChatStream): Promise<ChatReply> {
+    if (hasChatSecret(message)) return { message: 'Đừng gửi mật khẩu, OTP, PIN, token hoặc thông tin thẻ vào chatbot. Hãy dùng trang tài khoản/thanh toán.', source: 'system', intent: 'account', cached: false };
     const dto: ChatDto = { ...options, message: message.trim().replace(/\s+/g, ' '), sessionId };
     const scope = `${user ? `user:${user.id}` : 'guest'}:${sessionId ?? ''}`;
     const session = sessionId ? this.getSession(scope) : this.newSession();
@@ -60,6 +64,14 @@ export class ChatService {
     try {
       const classification = this.intents.classify(message);
       let { intent } = classification;
+      const checkoutReply = await this.checkout.handle(dto, session, user, stream?.signal);
+      if (checkoutReply) return checkoutReply;
+      const accountReply = await this.userActions.handle(dto, session, user, stream?.signal);
+      if (accountReply) return accountReply;
+      session.confirmation = undefined;
+      session.addressDraft = undefined;
+      session.pendingSelection = undefined;
+      session.userDomain = undefined;
       const shopping = await this.shopping.handle(dto, intent, session, user);
       if (shopping) return shopping;
       const small = this.smallTalk.match(message);
@@ -93,12 +105,12 @@ export class ChatService {
       }
       if (followUp && context) return productResponse(context, intent);
       if (context) { session.context = context; session.query = message; }
+      // The context hash includes current sale prices; stale product answers cannot match.
       const matching = candidates.find(row => row.contextHash === (context?.hash ?? '') && row.intent === intent);
       if (matching && await this.knowledge.use(matching)) {
         this.counters.knowledgeHits++;
         return { ...(context ? productResponse(context, intent) : {}), message: matching.answer, source: 'knowledge' as const, intent, cached: true, knowledgeId: matching.id };
       }
-      // Current product facts can be rendered directly: no model or additional knowledge row needed.
       if (context) return productResponse(context, intent);
 
       // Pending/rejected answers are never reused; only their existence suppresses another draft.
