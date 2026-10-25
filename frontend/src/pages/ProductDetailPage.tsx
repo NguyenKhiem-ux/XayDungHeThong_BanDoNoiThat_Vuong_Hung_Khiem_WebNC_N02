@@ -2,17 +2,23 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { productApi } from '../api/services';
-import { formatVnd, imageUrl } from '../api/client';
+import { imageUrl } from '../api/client';
 import type { Product } from '../api/types';
 import { useCart } from '../context/CartContext';
+import { FavoriteButton } from '../components/FavoriteButton';
+import { ProductPrice } from '../components/ProductPrice';
+import { usePriceRevision } from '../hooks/usePriceRevision';
+import { ProductReviews } from '../components/ProductReviews';
+import { ProductRating } from '../components/ProductRating';
 
 export function ProductDetailPage() {
+  const priceRevision = usePriceRevision();
   const { id } = useParams();
   const navigate = useNavigate();
   const { add } = useCart();
   const [product, setProduct] = useState<Product | null>(null);
   const [qty, setQty] = useState(1);
-  useEffect(() => { if (id) productApi.detail(Number(id)).then(r=>setProduct(r.data)).catch(()=>navigate('/products')); }, [id]);
+  useEffect(() => { let active = true; if (id) productApi.detail(Number(id)).then(r=>{ if (active) setProduct(r.data); }).catch(()=>{ if (active) navigate('/products'); }); return () => { active = false; }; }, [id, priceRevision]);
   if (!product) return <div className="loading-page">Đang tải sản phẩm...</div>;
   const soldOut = product.stock <= 0;
   const addCart = async () => { if (!soldOut) { await add(product.id, qty); navigate('/cart'); } };
@@ -39,12 +45,15 @@ export function ProductDetailPage() {
         <div className="detail-heading">
           <span className="product-category">{product.category || 'Gia dụng'}</span>
           <h1>{product.name}</h1>
+          <ProductRating product={product} />
+          <FavoriteButton productId={product.id} className="detail-favorite-button" />
           {product.brand && <p className="detail-brand">Thương hiệu: <strong>{product.brand}</strong></p>}
         </div>
         <div className="price-stock-row">
-          <strong className="detail-price">{formatVnd(product.price)}</strong>
+          <ProductPrice product={product} />
           {!soldOut ? <p className="stock ok"><i className="fa-solid fa-circle-check" /> Còn {product.stock}</p> : <p className="stock out"><i className="fa-solid fa-circle-xmark" /> Hết hàng</p>}
         </div>
+        {!!product.discountPercent && <p className="detail-sale-note">{product.promotionTitle} · Đến {new Date(product.saleEndsAt!).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}. Giá được kiểm tra lại khi xác nhận đơn.</p>}
         {product.description && <p className="detail-desc">{product.description}</p>}
         {!soldOut && <div className="buy-box">
           <div className="buy-row"><label>Số lượng</label><div className="qty-control">
@@ -63,5 +72,6 @@ export function ProductDetailPage() {
       </div>
     </div>
     {product.specifications && <div className="spec-card reveal"><div><span className="product-category">Specifications</span><h2>Thông số kỹ thuật</h2></div><p>{product.specifications}</p></div>}
+    <ProductReviews key={product.id} productId={product.id} onChange={summary => setProduct(current => current?.id === product.id ? { ...current, ...summary } : current)} />
   </section>;
 }

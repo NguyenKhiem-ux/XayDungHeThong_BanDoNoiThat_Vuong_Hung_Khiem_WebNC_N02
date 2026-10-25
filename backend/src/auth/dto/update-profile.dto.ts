@@ -19,6 +19,10 @@ export class UpdateProfileDto {
   birthDate?: string | null;
 
   @IsOptional()
+  @IsString()
+  address?: string | null;
+
+  @IsOptional()
   @IsEnum(UserGender)
   gender?: UserGender | null;
 }

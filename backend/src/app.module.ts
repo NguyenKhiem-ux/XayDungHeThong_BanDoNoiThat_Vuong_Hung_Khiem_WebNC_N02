@@ -15,12 +15,17 @@ import { EmailModule } from './email/email.module';
 import { PaymentModule } from './payment/payment.module';
 import { AddressesModule } from './addresses/addresses.module';
 import { FavoritesModule } from './favorites/favorites.module';
+import { ChatModule } from './chat/chat.module';
+import { PromotionsModule } from './promotions/promotions.module';
+import { ReviewsModule } from './reviews/reviews.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     ServeStaticModule.forRoot({ rootPath: join(process.cwd(), 'uploads'), serveRoot: '/uploads' }),
     DatabaseModule,
+    PromotionsModule,
+    ReviewsModule,
     AuthModule,
     ProductsModule,
     CartModule,
@@ -32,6 +37,7 @@ import { FavoritesModule } from './favorites/favorites.module';
     PaymentModule,
     AddressesModule,
     FavoritesModule,
+    ChatModule,
   ],
 })
 export class AppModule {}

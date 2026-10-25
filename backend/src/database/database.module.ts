@@ -24,7 +24,8 @@ import { entities } from './entities';
         },
 
         entities,
-        synchronize: true,
+        // Schema changes go through the additive setup scripts before application startup.
+        synchronize: config.get<string>('DB_SYNCHRONIZE', 'false') === 'true',
         charset: 'utf8mb4',
         supportBigNumbers: true,
         bigNumberStrings: false,
