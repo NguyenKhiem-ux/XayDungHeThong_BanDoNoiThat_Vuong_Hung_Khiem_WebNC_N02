@@ -99,12 +99,14 @@ export class CouponsService {
     code: string,
     orderAmount: number,
     userId?: number,
+    productId?: number,
   ): Promise<{
     valid: boolean;
     coupon: Coupon;
     discountAmount: number;
     finalAmount: number;
   }> {
+    if (productId !== undefined && (!Number.isSafeInteger(productId) || productId < 1)) throw new BadRequestException('Sản phẩm không hợp lệ.');
     const coupon = await this.couponRepository.findOne({
       where: {
         code: code.trim().toUpperCase(),
@@ -112,10 +114,13 @@ export class CouponsService {
     });
 
     const cart = userId === undefined ? null : await this.cart.get(userId);
-    const eligible = cart?.couponEligibleTotal ?? orderAmount;
+    const items = productId === undefined ? cart?.items : cart?.items.filter(item => item.productId === productId);
+    if (productId !== undefined && !items?.length) throw new BadRequestException('Sản phẩm không có trong giỏ hàng.');
+    const total = items?.reduce((sum, item) => sum + item.subtotal, 0) ?? orderAmount;
+    const eligible = items?.reduce((sum, item) => sum + (item.product.discountPercent ? 0 : item.subtotal), 0) ?? orderAmount;
     if (eligible <= 0) throw new BadRequestException('Mã giảm giá chỉ áp dụng cho sản phẩm không thuộc sự kiện ưu đãi.');
     const result = evaluateCoupon(coupon, eligible, userId);
-    return { ...result, finalAmount: (cart?.total ?? orderAmount) - result.discountAmount };
+    return { ...result, finalAmount: total - result.discountAmount };
   }
 }
 

@@ -67,9 +67,9 @@ export function UserLayout() {
         </div>
 
         <nav className="navbar" id="mainNav">
-          <Link className="brand" to="/" aria-label="Hung Vuong Gia dụng">
+          <Link className="brand" to="/" aria-label="Gia dụng Việt">
             <span className="brand-mark"><i className="fa-solid fa-bolt" /></span>
-            <span className="brand-copy">Hung Vuong<span>Gia dụng</span></span>
+            <span className="brand-copy">Gia dụng <span>Việt</span></span>
           </Link>
 
           <form className="nav-search" role="search" onSubmit={search}>
@@ -152,7 +152,7 @@ export function UserLayout() {
           <div className="footer-brand">
             <Link className="brand" to="/">
               <span className="brand-mark"><i className="fa-solid fa-bolt" /></span>
-              <span className="brand-copy">Hung Vuong<span>Gia dụng</span></span>
+              <span className="brand-copy">Gia dụng <span>Việt</span></span>
             </Link>
             <p>Shop thương mại điện tử chuyên đồ gia dụng, thiết bị nhà bếp và thiết bị chăm sóc nhà cửa chính hãng.</p>
             <div className="socials">
@@ -182,12 +182,12 @@ export function UserLayout() {
             <h3>Liên hệ</h3>
             <p><i className="fa-solid fa-location-dot" /> 123 Nguyễn Trãi, Thanh Xuân, Hà Nội</p>
             <p><i className="fa-solid fa-phone" /> 1800 6868</p>
-            <p><i className="fa-solid fa-envelope" /> support@hunggiadung.vn</p>
+            <p><i className="fa-solid fa-envelope" /> support@giadungviet.vn</p>
             <p><i className="fa-solid fa-clock" /> 8:00 - 22:00 mỗi ngày</p>
           </div>
         </div>
         <div className="footer-bottom">
-          <span>© 2026 Hung Vuong Gia dụng. All rights reserved.</span>
+          <span>© 2023 Gia dụng Việt. All rights reserved.</span>
           <span>Thẻ, chuyển khoản & thanh toán khi nhận hàng</span>
         </div>
       </footer>

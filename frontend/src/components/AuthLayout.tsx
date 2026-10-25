@@ -12,11 +12,11 @@ export function AuthLayout({ children, variant = 'recovery', step }: {
   return <section className={`auth-experience auth-experience--${variant}`}>
     <div className="auth-page-top">
       <Link to="/" className="auth-home-link"><ArrowLeft size={16} aria-hidden="true" /> Về cửa hàng</Link>
-      <span><ShieldCheck size={16} aria-hidden="true" /> {variant === 'admin' ? 'Khu vực quản trị' : 'Tài khoản Hung Vuong Gia dụng'}</span>
+      <span><ShieldCheck size={16} aria-hidden="true" /> {variant === 'admin' ? 'Khu vực quản trị' : 'Tài khoản Gia dụng Việt'}</span>
     </div>
     <div className="auth-page-body">
       <div className="auth-form-area">
-        <Link to="/" className="auth-wordmark" aria-label="Hung Vuong Gia dụng - Trang chủ"><span><Zap size={23} aria-hidden="true" /></span><strong>Hung Vuong <small>Gia dụng</small></strong></Link>
+        <Link to="/" className="auth-wordmark" aria-label="Gia dụng Việt - Trang chủ"><span><Zap size={23} aria-hidden="true" /></span><strong>Gia dụng <small>Việt</small></strong></Link>
         {step !== undefined && <ol className="auth-steps" aria-label="Khôi phục mật khẩu">{['Email', 'Xác thực OTP', 'Mật khẩu mới'].map((label, i) => <li key={label} aria-current={i === step ? 'step' : undefined} className={i <= step ? 'reached' : ''}><span>{i + 1}</span>{label}</li>)}</ol>}
         {children}
       </div>

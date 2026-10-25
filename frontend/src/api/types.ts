@@ -144,6 +144,7 @@ export interface PromotionInput {
 }
 
 export interface OrderInput {
+  productId?: number;
   fullName: string; email: string; phone: string; address: string; paymentMethod: string;
   note?: string; couponCode?: string; quoteId?: string; quoteHash?: string;
 }
@@ -239,6 +240,7 @@ export interface ChatAction {
 }
 export type ChatRequestOptions = Partial<Omit<ChatAction, 'type' | 'label'>> & { action?: ChatActionType; requestId: string };
 export interface ChatCheckoutQuote {
+  productId?: number;
   id: string;
   hash: string;
   expiresAt: string;

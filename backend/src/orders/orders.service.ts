@@ -67,7 +67,7 @@ export class OrdersService {
       const selection: CheckoutSelection | CreateOrderDto = record.snapshot.address.id
         ? { addressId: record.snapshot.address.id, paymentMethod: record.snapshot.paymentMethod, couponCode: record.snapshot.couponCode ?? undefined }
         : { ...record.snapshot.address, email: record.snapshot.email, paymentMethod: record.snapshot.paymentMethod, couponCode: record.snapshot.couponCode ?? undefined, note: record.snapshot.note ?? undefined };
-      const calculated = await this.calculate(manager, userId, selection);
+      const calculated = await this.calculate(manager, userId, { ...selection, productId: record.snapshot.productId });
       const currentHash = this.snapshotHash(calculated.snapshot);
       if (currentHash !== record.hash) {
         record.snapshot = calculated.snapshot; record.hash = currentHash;
@@ -95,12 +95,14 @@ export class OrdersService {
   private quote(record: CheckoutRecord): CheckoutQuote { return { ...record.snapshot, id: record.id, hash: record.hash, expiresAt: record.expiresAt.toISOString() }; }
 
   private async calculate(manager: EntityManager, userId: number, selection: CheckoutSelection | CreateOrderDto) {
+    if (selection.productId !== undefined && (!Number.isSafeInteger(selection.productId) || selection.productId < 1)) throw new BadRequestException('Sản phẩm không hợp lệ.');
     await this.promotions.lock(manager);
     if (!Object.values(PaymentMethod).includes(selection.paymentMethod)) throw new BadRequestException('Phương thức thanh toán không hợp lệ.');
     const cart = await manager.getRepository(Cart).findOne({ where: { userId }, lock: { mode: 'pessimistic_write' } });
     if (!cart) throw new BadRequestException('Giỏ hàng đang trống');
-    const rows = await manager.getRepository(CartItem).find({ where: { cartId: cart.id }, order: { productId: 'ASC' } });
-    if (!rows.length) throw new BadRequestException('Giỏ hàng đang trống');
+    const selectedProduct = selection.productId === undefined ? {} : { productId: selection.productId };
+    const rows = await manager.getRepository(CartItem).find({ where: { cartId: cart.id, ...selectedProduct }, order: { productId: 'ASC' } });
+    if (!rows.length) throw new BadRequestException(selection.productId === undefined ? 'Giỏ hàng đang trống' : 'Sản phẩm không có trong giỏ hàng.');
     const products: Product[] = [];
     const items: CheckoutSnapshot['items'] = [];
     for (const row of rows) {
@@ -138,7 +140,7 @@ export class OrdersService {
       coupon = await manager.getRepository(Coupon).findOne({ where: { code: selection.couponCode.trim().toUpperCase() }, lock: { mode: 'pessimistic_write' } });
       discountAmount = evaluateCoupon(coupon, eligibleSubtotal, userId).discountAmount;
     }
-    const snapshot: CheckoutSnapshot = { items, address, email, paymentMethod: selection.paymentMethod, couponCode: coupon?.code ?? null,
+    const snapshot: CheckoutSnapshot = { ...selectedProduct, items, address, email, paymentMethod: selection.paymentMethod, couponCode: coupon?.code ?? null,
       subtotal, discountAmount, shippingFee: 0, total: subtotal - discountAmount, note: 'note' in selection ? selection.note ?? null : null };
     if ([PaymentMethod.QR, PaymentMethod.PAYOS].includes(selection.paymentMethod) && snapshot.total <= 0) throw new BadRequestException('Tổng tiền bằng 0 không dùng PayOS. Hãy chọn tiền mặt.');
     return { snapshot, cart, products, coupon };
@@ -157,7 +159,7 @@ export class OrdersService {
     await manager.save(Payment, manager.create(Payment, { orderId: order.id, method: snapshot.paymentMethod, amount: String(snapshot.total), status: PaymentRecordStatus.PENDING,
       transactionId: null, paidAt: null, payosLinkId: null, payosCheckoutUrl: null, payosLeaseUntil: null }));
     if (coupon) { coupon.usedCount++; await manager.save(Coupon, coupon); }
-    await manager.getRepository(CartItem).delete({ cartId: cart.id });
+    await manager.getRepository(CartItem).delete({ cartId: cart.id, ...(snapshot.productId === undefined ? {} : { productId: snapshot.productId }) });
     return this.getOneForUser(userId, order.id, manager.getRepository(Order));
   }
  

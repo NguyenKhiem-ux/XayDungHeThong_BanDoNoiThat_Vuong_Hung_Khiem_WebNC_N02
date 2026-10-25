@@ -481,6 +481,60 @@ test('web checkout re-quotes expired/edited promotions, requires another click a
   assert.equal(replay.id, accepted.id); assert.equal(f.rows(Order).length, 1); assert.equal(f.rows(Product)[0].stock, 7);
 });
 
+test('web buy-one checkout charges only the selected line and preserves other cart lines on confirmation and replay', async () => {
+  const f = fixture();
+  await f.cart.add(1, 10, 1); await f.cart.add(1, 20, 2); await f.cart.add(2, 20, 1);
+  f.rows(Coupon)[0].minOrderAmount = 300000;
+  const input = { fullName: 'Người nhận', email: 'u1@example.test', phone: '0901111111', address: 'Hà Nội', paymentMethod: PaymentMethod.CASH, productId: 20, couponCode: 'SALE10' };
+  const quote = await f.orders.previewCheckout(1, input);
+  assert.deepEqual(quote.items.map(item => [item.productId, item.quantity]), [[20, 2]]);
+  assert.equal(quote.productId, 20); assert.equal(quote.subtotal, 400000); assert.equal(quote.total, 360000);
+  const coupon = await f.coupons.validateCoupon('SALE10', 999999999, 1, 20);
+  assert.equal(coupon.discountAmount, quote.discountAmount); assert.equal(coupon.finalAmount, quote.total);
+  await f.cart.update(1, 10, 3); f.rows(Product)[0].stock = 0;
+  const request = { ...input, quoteId: quote.id, quoteHash: quote.hash };
+  const order = await f.orders.create(1, request);
+  assert.deepEqual(order.items.map(item => [item.productId, item.quantity]), [[20, 2]]);
+  assert.equal(order.totalAmount, 360000); assert.equal(f.rows(Product)[1].stock, 8); assert.equal(f.rows(Product)[0].stock, 0);
+  assert.deepEqual((await f.cart.get(1)).items.map(item => [item.productId, item.quantity]), [[10, 3]]);
+  assert.equal((await f.cart.get(2)).itemCount, 1);
+  assert.equal((await f.orders.create(1, request)).id, order.id);
+  assert.equal(f.rows(Order).length, 1); assert.equal(f.rows(Payment).length, 1); assert.equal(f.rows(Coupon)[0].usedCount, 1);
+  assert.equal((await f.cart.get(1)).itemCount, 3);
+});
+
+test('buy-one checkout rejects invalid, foreign and removed cart selections without consuming the remaining cart', async () => {
+  const f = fixture(); await f.cart.add(1, 10, 1); await f.cart.add(2, 20, 1);
+  const input = { addressId: 101, paymentMethod: PaymentMethod.CASH };
+  for (const productId of [0, -1, 1.5, NaN, null, '10', 20, 999]) {
+    await assert.rejects(f.orders.previewCheckout(1, { ...input, productId } as any), BadRequestException);
+    await assert.rejects(f.coupons.validateCoupon('SALE10', 999999999, 1, productId as any), BadRequestException);
+  }
+  const quote = await f.orders.previewCheckout(1, { ...input, productId: 10 });
+  await f.cart.add(1, 20, 1); await f.cart.remove(1, 10);
+  await assert.rejects(f.orders.confirmCheckout(1, quote.id, quote.hash), /không có trong giỏ/);
+  assert.deepEqual((await f.cart.get(1)).items.map(item => item.productId), [20]);
+  assert.equal(f.rows(Order).length, 0); assert.equal(f.rows(Payment).length, 0); assert.equal(f.rows(Product)[0].stock, 8);
+});
+
+test('buy-one re-quotes keep the same product selection and never count unrelated lines for vouchers', async () => {
+  const f = fixture(); await f.cart.add(1, 10, 1); await f.cart.add(1, 20, 2);
+  await assert.rejects(f.coupons.validateCoupon('SALE10', 999999999, 1, 20), /tối thiểu/);
+  await assert.rejects(f.orders.previewCheckout(1, { addressId: 101, paymentMethod: PaymentMethod.CASH, productId: 20, couponCode: 'SALE10' }), /tối thiểu/);
+  const quote = await f.orders.previewCheckout(1, { addressId: 101, paymentMethod: PaymentMethod.CASH, productId: 20 });
+  await f.cart.update(1, 20, 3); f.rows(Product)[1].price = '300000';
+  const changed = await f.orders.confirmCheckout(1, quote.id, quote.hash);
+  assert.equal(changed.changed, true); assert.equal(changed.quote?.productId, 20); assert.equal(changed.quote?.total, 900000);
+  assert.deepEqual(changed.quote?.items.map(item => item.productId), [20]);
+  const created = await f.orders.confirmCheckout(1, changed.quote!.id, changed.quote!.hash);
+  assert.equal(created.order?.totalAmount, 900000);
+  assert.deepEqual((await f.cart.get(1)).items.map(item => item.productId), [10]);
+  const sale = fixture(); activateSale(sale); await sale.cart.add(1, 10, 1); await sale.cart.add(1, 20, 3);
+  await assert.rejects(sale.coupons.validateCoupon('SALE10', 999999999, 1, 10), /không thuộc sự kiện/);
+  await assert.rejects(sale.orders.previewCheckout(1, { addressId: 101, paymentMethod: PaymentMethod.CASH, productId: 10, couponCode: 'SALE10' }), /không thuộc sự kiện/);
+  assert.equal((await sale.orders.previewCheckout(1, { addressId: 101, paymentMethod: PaymentMethod.CASH, productId: 10 })).total, 300000);
+});
+
 test('chat checkout promotion edits require re-confirmation and stock errors never create an order', async () => {
   const f = fixture(); const event = activateSale(f); await f.cart.add(1, 10, 1);
   const before = await f.quote(); event.items[0].discountPercent = 50;
