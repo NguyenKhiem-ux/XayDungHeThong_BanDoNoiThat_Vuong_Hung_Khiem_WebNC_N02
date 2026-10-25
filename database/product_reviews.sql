@@ -1,0 +1,16 @@
+CREATE TABLE IF NOT EXISTS product_reviews (
+  id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  product_id BIGINT NOT NULL,
+  user_id BIGINT NOT NULL,
+  order_id BIGINT NOT NULL,
+  rating TINYINT UNSIGNED NOT NULL,
+  comment VARCHAR(2000) NOT NULL DEFAULT '',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT UQ_review_buyer_product UNIQUE (user_id, product_id),
+  INDEX IX_review_product_rating (product_id, rating),
+  CONSTRAINT CK_review_rating CHECK (rating BETWEEN 1 AND 5),
+  CONSTRAINT FK_review_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+  CONSTRAINT FK_review_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT FK_review_order FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

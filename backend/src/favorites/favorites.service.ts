@@ -17,7 +17,7 @@ export class FavoritesService {
       relations: ['product'],
       order: { createdAt: 'DESC' },
     });
-    return favorites.map((favorite) => this.serialize(favorite));
+    return Promise.all(favorites.map((favorite) => this.serialize(favorite)));
   }
 
   async add(userId: number, productId: number) {
@@ -33,12 +33,12 @@ export class FavoritesService {
     return { message: 'Da xoa san pham khoi danh sach yeu thich' };
   }
 
-  private serialize(favorite: Favorite) {
+  private async serialize(favorite: Favorite) {
     return {
       id: favorite.id,
       productId: favorite.productId,
       createdAt: favorite.createdAt,
-      product: this.products.publicProduct(favorite.product),
+      product: await this.products.publicProduct(favorite.product),
     };
   }
 }

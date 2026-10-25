@@ -1,10 +1,12 @@
 // file định nghĩa layout user dùng để tạo khung giao diện chung cho các trang.
 import { FormEvent, useEffect, useState } from 'react';
+import { ArrowUp } from 'lucide-react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { useReveal } from '../hooks/useReveal';
 import { productApi } from '../api/services';
+import { ChatWidget } from '../components/ChatWidget';
 
 export function UserLayout() {
   const { user, logout } = useAuth();
@@ -13,6 +15,7 @@ export function UserLayout() {
   const [keyword, setKeyword] = useState('');
   const [categories, setCategories] = useState<string[]>([]);
   const [mobileCategoriesOpen, setMobileCategoriesOpen] = useState(false);
+  const [showTopButton, setShowTopButton] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const selectedCategory = new URLSearchParams(location.search).get('category');
@@ -31,8 +34,15 @@ export function UserLayout() {
   }, [location.pathname]);
 
   useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [location.pathname, location.search]);
+
+  useEffect(() => {
     const header = document.querySelector('.site-header');
-    const sync = () => header?.classList.toggle('scrolled', window.scrollY > 12);
+    const sync = () => {
+      header?.classList.toggle('scrolled', window.scrollY > 12);
+      setShowTopButton(window.scrollY > 400);
+    };
     sync();
     window.addEventListener('scroll', sync, { passive: true });
     return () => window.removeEventListener('scroll', sync);
@@ -57,9 +67,9 @@ export function UserLayout() {
         </div>
 
         <nav className="navbar" id="mainNav">
-          <Link className="brand" to="/" aria-label="Hung Gia dụng Shop">
+          <Link className="brand" to="/" aria-label="Gia dụng Việt">
             <span className="brand-mark"><i className="fa-solid fa-bolt" /></span>
-            <span className="brand-copy">Hung<span>Gia dụng</span></span>
+            <span className="brand-copy">Gia dụng <span>Việt</span></span>
           </Link>
 
           <form className="nav-search" role="search" onSubmit={search}>
@@ -142,7 +152,7 @@ export function UserLayout() {
           <div className="footer-brand">
             <Link className="brand" to="/">
               <span className="brand-mark"><i className="fa-solid fa-bolt" /></span>
-              <span className="brand-copy">Hung<span>Gia dụng</span></span>
+              <span className="brand-copy">Gia dụng <span>Việt</span></span>
             </Link>
             <p>Shop thương mại điện tử chuyên đồ gia dụng, thiết bị nhà bếp và thiết bị chăm sóc nhà cửa chính hãng.</p>
             <div className="socials">
@@ -164,23 +174,25 @@ export function UserLayout() {
             <h3>Hỗ trợ</h3>
             <Link to="/about">Về chúng tôi</Link>
             <Link to="/contact">Liên hệ</Link>
-            <a href="#warranty">Chính sách bảo hành</a>
-            <a href="#returns">Đổi trả 7 ngày</a>
-            <a href="#guide">Hướng dẫn mua hàng</a>
+            <Link to="/policies">Chính sách giao hàng</Link>
+            <Link to="/policies">Chính sách đổi trả</Link>
+            <Link to="/policies">Chính sách bảo hành & thanh toán</Link>
           </div>
           <div>
             <h3>Liên hệ</h3>
             <p><i className="fa-solid fa-location-dot" /> 123 Nguyễn Trãi, Thanh Xuân, Hà Nội</p>
             <p><i className="fa-solid fa-phone" /> 1800 6868</p>
-            <p><i className="fa-solid fa-envelope" /> support@hunggiadung.vn</p>
+            <p><i className="fa-solid fa-envelope" /> support@giadungviet.vn</p>
             <p><i className="fa-solid fa-clock" /> 8:00 - 22:00 mỗi ngày</p>
           </div>
         </div>
         <div className="footer-bottom">
-          <span>© 2026 Hung Gia dụng Shop. All rights reserved.</span>
+          <span>© 2023 Gia dụng Việt. All rights reserved.</span>
           <span>Thẻ, chuyển khoản & thanh toán khi nhận hàng</span>
         </div>
       </footer>
+      {showTopButton && <button type="button" className="scroll-top" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} aria-label="Lên đầu trang" title="Lên đầu trang"><ArrowUp size={18} /></button>}
+      <ChatWidget />
     </div>
   );
 }

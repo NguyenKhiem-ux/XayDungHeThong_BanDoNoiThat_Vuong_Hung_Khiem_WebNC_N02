@@ -27,6 +27,11 @@ import { OrdersAdminPage } from './pages/admin/OrdersAdminPage';
 import { ProductAdminPage } from './pages/admin/ProductAdminPage';
 import { RevenueAdminPage } from './pages/admin/RevenueAdminPage';
 import { UsersAdminPage } from './pages/admin/UsersAdminPage';
+import { ChatbotKnowledgePage } from './pages/admin/ChatbotKnowledgePage';
+import { CouponsAdminPage } from './pages/admin/CouponsAdminPage';
+import { PoliciesPage } from './pages/PoliciesPage';
+import { FlashSale } from './components/FlashSale';
+import { PromotionsAdminPage } from './pages/admin/PromotionsAdminPage';
 
 export function App() {
   return <BrowserRouter>
@@ -37,17 +42,22 @@ export function App() {
           <Route index element={<AdminDashboardPage />} />
           <Route path="products" element={<ProductAdminPage />} />
           <Route path="orders" element={<OrdersAdminPage />} />
+          <Route path="coupons" element={<CouponsAdminPage />} />
+          <Route path="promotions" element={<PromotionsAdminPage />} />
           <Route path="users" element={<UsersAdminPage />} />
           <Route path="messages" element={<MessagesAdminPage />} />
           <Route path="revenue" element={<RevenueAdminPage />} />
+          <Route path="chatbot/knowledge" element={<ChatbotKnowledgePage />} />
         </Route>
       </Route>
       <Route element={<UserLayout />}>
         <Route index element={<HomePage />} />
+        <Route path="offers" element={<FlashSale all />} />
         <Route path="products" element={<ProductListPage />} />
         <Route path="products/:id" element={<ProductDetailPage />} />
         <Route path="about" element={<AboutPage />} />
         <Route path="contact" element={<ContactPage />} />
+        <Route path="policies" element={<PoliciesPage />} />
         <Route path="login" element={<LoginPage />} />
         <Route path="register" element={<RegisterPage />} />
         <Route path="forgot-password" element={<ForgotPasswordPage />} />

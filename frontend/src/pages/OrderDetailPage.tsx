@@ -1,10 +1,10 @@
-// file là trang orderdetail của giao diện người dùng.
 import { useEffect, useState } from 'react';
 import { ArrowLeft, MapPin, PackageCheck } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { formatVnd, imageUrl } from '../api/client';
-import { orderApi } from '../api/services';
+import { orderApi, paymentApi } from '../api/services';
 import type { Order } from '../api/types';
+import { DemoCardPaymentForm } from '../components/DemoCardPaymentForm';
 
 const labels: Record<Order['status'], string> = {
   PENDING: 'Chờ xử lý',
@@ -16,7 +16,43 @@ const labels: Record<Order['status'], string> = {
 export function OrderDetailPage() {
   const { id } = useParams();
   const [order, setOrder] = useState<Order | null>(null);
-  useEffect(() => { if (id) orderApi.detail(Number(id)).then(r => setOrder(r.data)); }, [id]);
+  const [paying, setPaying] = useState(false);
+  const [paymentError, setPaymentError] = useState('');
+
+  useEffect(() => { if (id) orderApi.detail(Number(id)).then(r => setOrder(r.data)).catch(() => setOrder(null)); }, [id]);
+
+  const retryPayment = async () => {
+    if (!order || paying) return;
+    setPaying(true);
+    setPaymentError('');
+    try {
+      if (order.paymentMethod === 'QR' || order.paymentMethod === 'PAYOS') {
+        const { data } = await paymentApi.createPayOSPaymentLink(order.id);
+        window.location.assign(data.checkoutUrl);
+        return;
+      }
+    } catch (error) {
+      setPaymentError((error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Chưa thể thanh toán. Vui lòng thử lại.');
+    } finally { setPaying(false); }
+  };
+
   if (!order) return <div className="loading-page">Đang tải đơn hàng...</div>;
-  return <section className="section order-detail"><div className="container"><Link to="/orders" className="text-link"><ArrowLeft size={16} /> Quay lại</Link><div className="section-heading"><div><div className="eyebrow">ORDER #{order.id}</div><h1>Chi tiết đơn hàng</h1></div><span className={`status-badge status-${order.status.toLowerCase()}`}>{labels[order.status]}</span></div><div className="detail-grid"><div className="card"><h3>Sản phẩm</h3>{order.items.map(item => <div className="product-row" key={item.id}><img src={imageUrl(item.productImage)} alt={item.productName} /><div className="product-info"><h3>{item.productName}</h3><span>{formatVnd(item.price)} × {item.quantity}</span></div><strong>{formatVnd(item.subtotal)}</strong></div>)}<div className="buy-box"><span>Tổng cộng</span><strong>{formatVnd(order.totalAmount)}</strong></div></div><div className="card"><h3><MapPin size={17} /> Thông tin nhận hàng</h3><p><b>{order.fullName}</b></p><p>{order.phone} • {order.email}</p><p>{order.address}</p><p>Thanh toán: {order.paymentMethod}</p><p>Trạng thái thanh toán: {order.paymentStatus}</p>{order.note && <p>Ghi chú: {order.note}</p>}<div className="review-band compact"><PackageCheck size={20} /> Đơn hàng đang được xử lý theo trạng thái hiện tại.</div></div></div></div></section>;
+  const canRetry = order.paymentStatus === 'UNPAID' && order.status !== 'CANCELLED'
+    && (order.paymentMethod === 'QR' || order.paymentMethod === 'PAYOS' || order.paymentMethod === 'CARD');
+
+  return <section className="section order-detail"><div className="container">
+    <Link to="/orders" className="text-link"><ArrowLeft size={16} /> Quay lại</Link>
+    <div className="section-heading"><div><div className="eyebrow">ORDER #{order.id}</div><h1>Chi tiết đơn hàng</h1></div><span className={`status-badge status-${order.status.toLowerCase()}`}>{labels[order.status]}</span></div>
+    <div className="detail-grid">
+      <div className="card"><h3>Sản phẩm</h3>{order.items.map(item => <div className="product-row" key={item.id}><img src={imageUrl(item.productImage)} alt={item.productName} /><div className="product-info"><h3>{item.productName}</h3><span>{formatVnd(item.price)} × {item.quantity}</span></div><strong>{formatVnd(item.subtotal)}</strong></div>)}<div className="order-price-breakdown"><div><span>Tạm tính</span><strong>{formatVnd(order.subtotalAmount || order.totalAmount)}</strong></div>{order.discountAmount > 0 && <div><span>Voucher {order.couponCode}</span><strong>−{formatVnd(order.discountAmount)}</strong></div>}<div className="order-final-total"><span>Thành tiền</span><strong>{formatVnd(order.totalAmount)}</strong></div></div></div>
+      <div className="card"><h3><MapPin size={17} /> Thông tin nhận hàng</h3><p><b>{order.fullName}</b></p><p>{order.phone} • {order.email}</p><p>{order.address}</p><p>Thanh toán: {order.paymentMethod === 'CARD' ? 'Thẻ mô phỏng' : order.paymentMethod}</p><p>Trạng thái thanh toán: {order.paymentStatus === 'PAID' ? 'Đã thanh toán' : 'Chưa thanh toán'}</p>{order.note && <p>Ghi chú: {order.note}</p>}
+        {canRetry && (order.paymentMethod === 'CARD'
+          ? <DemoCardPaymentForm key={order.id} orderId={order.id} onPaid={async () => { const { data } = await orderApi.detail(order.id); setOrder(data); }} />
+          : <button type="button" className="btn btn-primary" onClick={retryPayment} disabled={paying}>{paying ? 'Đang mở thanh toán…' : 'Thanh toán lại bằng QR'}</button>)}
+        {paymentError && <p role="alert" style={{ color: '#b42318' }}>{paymentError}</p>}
+        <div className="review-band compact"><PackageCheck size={20} /> Đơn hàng đang được xử lý theo trạng thái hiện tại.</div>
+      </div>
+    </div>
+    {order.status === 'DELIVERED' && order.paymentStatus === 'PAID' && <div className="order-review-links"><h2>Chia sẻ trải nghiệm sau khi mua</h2><p>Đơn đã hoàn tất. Bạn có thể đánh giá hoặc cập nhật đánh giá cho từng sản phẩm.</p>{order.items.filter(item => item.productId).map(item => <Link key={item.id} to={`/products/${item.productId}#product-reviews`}>{item.productName}<span>Đánh giá sản phẩm →</span></Link>)}</div>}
+  </div></section>;
 }
