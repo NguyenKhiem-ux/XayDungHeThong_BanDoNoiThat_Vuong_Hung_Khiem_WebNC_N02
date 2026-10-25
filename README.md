@@ -1,4 +1,4 @@
-# Hung Vuong Gia dụng
+# Gia dụng Việt
 
 Sự kiện ưu đãi: xem [hướng dẫn quản trị, nâng cấp database và kiểm thử](PROMOTIONS.md).
 
@@ -15,7 +15,7 @@ Sự kiện ưu đãi: xem [hướng dẫn quản trị, nâng cấp database v�
 
 ## Dự án làm về gì?
 
-Hung Vuong Gia dụng mô phỏng quy trình mua sắm trực tuyến từ lúc khách tìm sản phẩm đến khi cửa hàng tiếp nhận và xử lý đơn. Người mua có thể duyệt danh mục, tìm kiếm, xem thông tin sản phẩm, lưu sản phẩm yêu thích, quản lý giỏ hàng, áp mã giảm giá và theo dõi đơn hàng. Quản trị viên có thể cập nhật sản phẩm, xử lý đơn, quản lý người dùng và xem báo cáo doanh thu.
+Gia dụng Việt mô phỏng quy trình mua sắm trực tuyến từ lúc khách tìm sản phẩm đến khi cửa hàng tiếp nhận và xử lý đơn. Người mua có thể duyệt danh mục, tìm kiếm, xem thông tin sản phẩm, lưu sản phẩm yêu thích, quản lý giỏ hàng, áp mã giảm giá và theo dõi đơn hàng. Quản trị viên có thể cập nhật sản phẩm, xử lý đơn, quản lý người dùng và xem báo cáo doanh thu.
 
 Hệ thống được chia thành hai phần:
 

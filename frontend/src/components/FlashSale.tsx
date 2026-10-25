@@ -26,7 +26,7 @@ export function FlashSaleView({ event, clock, preview = false, all = false }: { 
   const titleWords = (event.title || 'Tên sự kiện').trim().split(/\s+/);
   return <section className={`flash-sale${preview ? ' flash-preview' : ''}`} aria-label={preview ? 'Xem trước sự kiện ưu đãi' : event.title}>
     <div className="flash-banner">
-      <div className="flash-banner-copy"><span className="flash-banner-kicker"><Zap size={27} fill="currentColor" /> FLASH SALE</span><h2><span>{titleWords.slice(0, 2).join(' ')}</span>{titleWords.length > 2 && <> <strong>{titleWords.slice(2).join(' ')}</strong></>}</h2>{event.description && <p>{event.description}</p>}<span className="flash-banner-brand">HUNG VUONG GIA DỤNG</span></div>
+      <div className="flash-banner-copy"><span className="flash-banner-kicker"><Zap size={27} fill="currentColor" /> FLASH SALE</span><h2><span>{titleWords.slice(0, 2).join(' ')}</span>{titleWords.length > 2 && <> <strong>{titleWords.slice(2).join(' ')}</strong></>}</h2>{event.description && <p>{event.description}</p>}<span className="flash-banner-brand">GIA DỤNG VIỆT</span></div>
       <div className="flash-banner-offer">{percent > 0 && <><span>Giảm đến</span><strong>{percent}<sup>%</sup></strong></>}<small>Ưu đãi có thời hạn</small></div>
     </div>
     <div className="flash-sale-panel">

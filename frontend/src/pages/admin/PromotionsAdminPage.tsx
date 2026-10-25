@@ -86,7 +86,7 @@ export function PromotionsAdminPage() {
   } catch { /* Incomplete datetime input has no preview until valid. */ }
 
   return <div className="admin-page-shell promotion-admin">
-    <div className="admin-page-header"><div><div className="eyebrow">HUNG VUONG · MARKETING</div><h1>Sự kiện ưu đãi</h1><p>Chọn sản phẩm tốt, đặt mức giảm rõ ràng và chủ động lịch bán hàng.</p></div><button type="button" className="promotion-button secondary" onClick={reset} disabled={busy}><Plus size={17} /> Tạo sự kiện</button></div>
+    <div className="admin-page-header"><div><div className="eyebrow">GIA DỤNG VIỆT · MARKETING</div><h1>Sự kiện ưu đãi</h1><p>Chọn sản phẩm tốt, đặt mức giảm rõ ràng và chủ động lịch bán hàng.</p></div><button type="button" className="promotion-button secondary" onClick={reset} disabled={busy}><Plus size={17} /> Tạo sự kiện</button></div>
     {notice && <div className="promotion-notice" role="status"><Check size={18} />{notice}</div>}
     {error && <div className="promotion-error" role="alert"><span>{error}</span>{!products.length && <button type="button" onClick={() => void load()}><RotateCw size={15} /> Thử lại</button>}</div>}
 

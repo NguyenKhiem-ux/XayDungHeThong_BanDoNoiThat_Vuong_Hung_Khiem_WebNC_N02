@@ -19,10 +19,20 @@ type CheckoutForm = {
 };
 
 export function CheckoutPage() {
-  const { cart, refresh, loading: cartLoading } = useCart();
+  const { cart: fullCart, refresh, loading: cartLoading } = useCart();
   const { user } = useAuth();
   const loc = useLocation();
   const nav = useNavigate();
+  const selectedProductId = new URLSearchParams(loc.search).get('productId');
+  const productId = selectedProductId === null ? undefined : Number(selectedProductId);
+  const items = fullCart?.items.filter(item => productId === undefined || item.productId === productId) ?? [];
+  const cart = !fullCart || productId === undefined ? fullCart : {
+    ...fullCart, items,
+    itemCount: items.reduce((sum, item) => sum + item.quantity, 0),
+    total: items.reduce((sum, item) => sum + item.subtotal, 0),
+    couponEligibleTotal: items.reduce((sum, item) => sum + (item.product.discountPercent ? 0 : item.subtotal), 0),
+    saleSavings: items.reduce((sum, item) => sum + (item.product.savings ?? 0) * item.quantity, 0),
+  };
   const [form, setForm] = useState<CheckoutForm>(() => {
     const initial: CheckoutForm = {
       fullName: user?.fullName || '',
@@ -71,12 +81,12 @@ export function CheckoutPage() {
     let active = true;
     setQuote(null); setQuoteLoading(true); setPriceChanged(false); setOrderError('');
     orderApi.preview({ fullName: form.fullName, email: form.email, phone: form.phone, address: deliveryAddress,
-      paymentMethod: form.paymentMethod, note: form.note, couponCode: appliedCoupon?.coupon.code })
+      paymentMethod: form.paymentMethod, note: form.note, couponCode: appliedCoupon?.coupon.code, productId })
       .then(({ data }) => { if (active) setQuote(data); })
       .catch(error => { if (active) setOrderError((error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Chưa thể kiểm tra giá. Vui lòng thử lại.'); })
       .finally(() => { if (active) setQuoteLoading(false); });
     return () => { active = false; };
-  }, [step, form.fullName, form.email, form.phone, deliveryAddress, form.paymentMethod, form.note, appliedCoupon?.coupon.code, quoteRetry, pendingOrderId]);
+  }, [step, form.fullName, form.email, form.phone, deliveryAddress, form.paymentMethod, form.note, appliedCoupon?.coupon.code, productId, quoteRetry, pendingOrderId]);
 
   useEffect(() => { couponApi.list().then((response) => setAvailableCoupons(response.data)).catch(() => setAvailableCoupons([])); }, []);
   useEffect(() => { sessionStorage.removeItem('giadung_checkout_card_demo'); }, []);
@@ -104,7 +114,7 @@ export function CheckoutPage() {
 
   const go = (nextStep: number) => {
     setStep(nextStep);
-    nav(nextStep === 1 ? '/checkout/info' : nextStep === 2 ? '/checkout/payment' : '/checkout/invoice');
+    nav({ pathname: nextStep === 1 ? '/checkout/info' : nextStep === 2 ? '/checkout/payment' : '/checkout/invoice', search: loc.search });
   };
 
   const nextInfo = (event: FormEvent) => {
@@ -121,7 +131,7 @@ export function CheckoutPage() {
     setCouponBusy(true);
     setCouponError('');
     try {
-      const { data } = await couponApi.validate(code, cart.total);
+      const { data } = await couponApi.validate(code, cart.total, productId);
       setAppliedCoupon({ coupon: data.coupon, discountAmount: data.discountAmount, finalAmount: data.finalAmount });
       setCouponCode(data.coupon.code);
       sessionStorage.setItem('giadung_checkout_coupon', data.coupon.code);
@@ -162,7 +172,7 @@ export function CheckoutPage() {
     if (!savedCode || !cart) return;
     let active = true;
     setCouponBusy(true);
-    couponApi.validate(savedCode, cart.total).then(({ data }) => {
+    couponApi.validate(savedCode, cart.total, productId).then(({ data }) => {
       if (!active) return;
       setAppliedCoupon({ coupon: data.coupon, discountAmount: data.discountAmount, finalAmount: data.finalAmount });
       setCouponCode(data.coupon.code);
@@ -174,7 +184,7 @@ export function CheckoutPage() {
       if (active) setCouponBusy(false);
     });
     return () => { active = false; };
-  }, [cart?.total]);
+  }, [cart?.total, cart?.couponEligibleTotal, productId]);
 
   if (!cart?.items?.length) return pendingOrderId ? <section className="section"><div className="empty-state" role="status"><h1>Đơn #{pendingOrderId} đã được tạo</h1><p>{orderError || 'Đang chuẩn bị bước thanh toán tiếp theo…'}</p><Link className="btn btn-primary" to={`/orders/${pendingOrderId}`}>Xem đơn và tiếp tục thanh toán</Link></div></section> : null;
 
@@ -199,6 +209,7 @@ export function CheckoutPage() {
         couponCode: appliedCoupon?.coupon.code,
         quoteId: quote.id,
         quoteHash: quote.hash,
+        productId,
       });
       setPendingOrderId(order.id);
 
@@ -238,7 +249,7 @@ export function CheckoutPage() {
       <section className="page-hero compact">
         <span className="eyebrow dark">Checkout</span>
         <h1>Thông tin giao hàng</h1>
-        <p>Nhập đầy đủ thông tin. Dấu sao chuyển xanh khi trường hợp lệ.</p>
+        <p>{productId === undefined ? 'Nhập đầy đủ thông tin. Dấu sao chuyển xanh khi trường hợp lệ.' : `Mua riêng ${cart.items[0].product.name} · Số lượng: ${cart.itemCount}. Các sản phẩm khác vẫn giữ trong giỏ hàng.`}</p>
       </section>
       <section className="checkout-wrap">
         <form className="checkout-card" onSubmit={nextInfo}>
@@ -333,12 +344,12 @@ export function CheckoutPage() {
 
     {step === 3 && <div className="invoice-container">
       <div className="invoice-header">
-        <span className="eyebrow dark">HUNG VUONG GIA DỤNG · ĐƠN HÀNG</span>
+        <span className="eyebrow dark">GIA DỤNG VIỆT · ĐƠN HÀNG</span>
         <h1><i className="fa-solid fa-file-invoice" /> Hóa Đơn Xác Nhận</h1>
         <p>Kiểm tra đầy đủ thông tin giao hàng, sản phẩm và thanh toán trước khi đặt hàng.</p>
       </div>
       <form className="invoice-box" onSubmit={confirm}>
-        <div className="invoice-brand-row"><div><strong>HUNG VUONG GIA DỤNG</strong><span>Hóa đơn tạm tính · Mã đơn sẽ được tạo sau khi xác nhận</span></div><span className="invoice-status"><i className="fa-solid fa-circle-check" /> Chờ xác nhận</span></div>
+        <div className="invoice-brand-row"><div><strong>GIA DỤNG VIỆT</strong><span>Hóa đơn tạm tính · Mã đơn sẽ được tạo sau khi xác nhận</span></div><span className="invoice-status"><i className="fa-solid fa-circle-check" /> Chờ xác nhận</span></div>
         <div className="invoice-section">
           <div className="invoice-section-title">Thông tin giao hàng</div>
           <div className="invoice-info">

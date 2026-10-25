@@ -12,7 +12,7 @@ export function RegisterPage() {
   <div className="auth-header"><h1><i className="fa-solid fa-user-plus" /> Đăng ký</h1><p>Tạo tài khoản để mua sắm và theo dõi đơn hàng.</p></div>
   {error&&<div className="auth-message error">{error}</div>}
   <div className="form-group"><label>Họ tên</label><input value={form.fullName} onChange={e=>set('fullName',e.target.value)} required/></div>
-  <div className="form-group"><label>Tên đăng nhập</label><input value={form.username} onChange={e=>set('username',e.target.value)} placeholder="ví dụ: hunggiadung" required/></div>
+  <div className="form-group"><label>Tên đăng nhập</label><input value={form.username} onChange={e=>set('username',e.target.value)} placeholder="ví dụ: giadungviet" required/></div>
   <div className="form-group"><label>Email</label><input type="email" value={form.email} onChange={e=>set('email',e.target.value)} required/></div>
   <div className="form-group"><label>Số điện thoại</label><input type="tel" value={form.phone} onChange={e=>set('phone',e.target.value)}/></div>
   <div className="form-group"><label>Mật khẩu</label><div className="password-field"><input type={show1?'text':'password'} value={form.password} onChange={e=>set('password',e.target.value)} required/><button type="button" className="password-toggle" onClick={()=>setShow1(v=>!v)}><i className={`fa-solid ${show1?'fa-eye-slash':'fa-eye'}`} /></button></div></div>
