@@ -179,3 +179,8 @@ NestJS controllers → services → TypeORM → MySQL
       ├── Gemini API → trả lời chatbot (nếu đã cấu hình)
       └── Resend → gửi email (nếu đã cấu hình)
 ```
+
+## Giấy phép (License)
+
+Dự án này được phát hành dưới giấy phép [MIT](LICENSE). Xem chi tiết tại file [LICENSE](LICENSE).
+

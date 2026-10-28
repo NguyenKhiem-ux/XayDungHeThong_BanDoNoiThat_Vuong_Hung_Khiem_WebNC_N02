@@ -23,7 +23,7 @@ export function AdminLayout() {
   ];
 
   return <div className="admin-app">
-    <header className="admin-navbar"><div className="admin-navbar-inner"><div className="admin-logo"><Link to="/admin">Hung Gia dụng <small>QUẢN TRỊ</small></Link></div><nav className="admin-nav-menu" aria-label="Điều hướng quản trị">{nav.map(({ to, label, icon: Icon, end }) => <NavLink key={to} to={to} end={end} className="admin-nav-link"><Icon size={16} />{label}</NavLink>)}</nav><div className="admin-nav-right"><ThemeToggle /><span className="admin-user">{user.username || user.email}</span><button className="admin-nav-logout" onClick={() => { logout(); navigate('/login'); }}><LogOut size={15} />Đăng xuất</button></div></div></header>
+    <header className="admin-navbar"><div className="admin-navbar-inner"><div className="admin-logo"><Link to="/admin">Gia dụng Việt <small>QUẢN TRỊ</small></Link></div><nav className="admin-nav-menu" aria-label="Điều hướng quản trị">{nav.map(({ to, label, icon: Icon, end }) => <NavLink key={to} to={to} end={end} className="admin-nav-link"><Icon size={16} />{label}</NavLink>)}</nav><div className="admin-nav-right"><ThemeToggle /><span className="admin-user">{user.username || user.email}</span><button className="admin-nav-logout" onClick={() => { logout(); navigate('/login'); }}><LogOut size={15} />Đăng xuất</button></div></div></header>
     {location.pathname !== '/admin' && <div className="admin-breadcrumb"><FileText size={14} /> Quản trị / {location.pathname.split('/').filter(Boolean).slice(1).join(' / ')}</div>}
     <main className="admin-page"><Outlet /></main>
   </div>;
