@@ -61,7 +61,11 @@ export class GeminiService {
       if (value.ordinal !== undefined && (!Number.isSafeInteger(value.ordinal) || value.ordinal === 0 || value.ordinal < -1)) return null;
       if (['query', 'code'].some(key => value[key] !== undefined && (typeof value[key] !== 'string' || value[key].length > 150))) return null;
       if (value.items !== undefined && (!Array.isArray(value.items) || !value.items.length || value.items.length > 20 ||
-        value.items.some((item: any) => !item || typeof item.query !== 'string' || !item.query.trim() || item.query.length > 150 || !Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 9999))) return null;
+        value.items.some((item: unknown) => {
+          if (!item || typeof item !== 'object' || !('query' in item) || !('quantity' in item)) return true;
+          return typeof item.query !== 'string' || !item.query.trim() || item.query.length > 150 ||
+            typeof item.quantity !== 'number' || !Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 9999;
+        }))) return null;
       return { action: value.action, ordinal: value.ordinal, query: value.query, code: value.code, items: value.items };
     } catch {
       if (signal?.aborted) throw new DOMException('Request aborted', 'AbortError');

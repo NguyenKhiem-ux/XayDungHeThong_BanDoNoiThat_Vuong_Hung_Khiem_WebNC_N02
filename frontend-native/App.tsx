@@ -8,6 +8,7 @@ import { ChatWidget } from './src/components/ChatWidget';
 import { Header } from './src/components/Header';
 import { ProductCard, ProductSkeleton } from './src/components/ProductCard';
 import { useStore } from './src/store';
+import { withTypography } from './src/typography';
 import type { Product, PromotionEvent } from './src/types';
 
 export default function HomeScreen() {
@@ -196,7 +197,7 @@ function ErrorState({ title, message, onRetry }: { title: string; message: strin
   return <View accessibilityRole="alert" style={styles.errorState}><Ionicons name="cloud-offline-outline" size={30} color="#9A6C4D" /><Text style={styles.errorTitle}>{title}</Text><Text style={styles.errorMessage}>{message}</Text><SecondaryButton label="Thử lại" onPress={onRetry} /></View>;
 }
 
-const styles = StyleSheet.create({
+const styles = StyleSheet.create(withTypography({
   app: { flex: 1, backgroundColor: '#F6EFE6' },
   scroll: { flex: 1 },
   page: { minHeight: '100%', backgroundColor: '#F6EFE6' },
@@ -217,9 +218,9 @@ const styles = StyleSheet.create({
   heroCopy: { width: '58%', maxWidth: 590, paddingHorizontal: 48, paddingVertical: 68, gap: 13 },
   heroCopyCompact: { width: '100%', paddingHorizontal: 24, paddingVertical: 52 },
   eyebrow: { color: '#F7E8D3', fontSize: 11, lineHeight: 16, letterSpacing: 1.2, fontWeight: '800' },
-  heroTitle: { color: '#fff', fontFamily: 'serif', fontSize: 44, lineHeight: 51, fontWeight: '900', textShadowColor: 'rgba(30, 18, 10, .35)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 6 },
+  heroTitle: { color: '#fff', fontSize: 44, lineHeight: 51, fontWeight: '900', textShadowColor: 'rgba(30, 18, 10, .35)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 6 },
   heroTitleCompact: { fontSize: 34, lineHeight: 41 },
-  heroSubtitle: { color: '#FFF2E2', fontFamily: 'serif', fontSize: 23, lineHeight: 28, fontWeight: '800' },
+  heroSubtitle: { color: '#FFF2E2', fontSize: 23, lineHeight: 28, fontWeight: '800' },
   heroDescription: { color: '#FFF8EF', fontSize: 15, lineHeight: 23, maxWidth: 430 },
   heroActions: { marginTop: 7, flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   primaryButton: { minHeight: 42, alignSelf: 'flex-start', paddingHorizontal: 17, borderRadius: 10, backgroundColor: '#755036', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
@@ -255,7 +256,7 @@ const styles = StyleSheet.create({
   flashCompact: { flexDirection: 'column' },
   flashIntro: { width: 270, padding: 24, justifyContent: 'center', alignItems: 'flex-start', gap: 8, backgroundColor: '#F6D9A4' },
   flashIntroCompact: { width: '100%' },
-  flashKicker: { color: '#7C4E20', fontFamily: 'serif', fontSize: 26, fontWeight: '900' },
+  flashKicker: { color: '#7C4E20', fontSize: 26, fontWeight: '900' },
   flashTitle: { color: '#30251D', fontSize: 19, fontWeight: '900' },
   flashDescription: { color: '#604B3A', fontSize: 12, lineHeight: 18 },
   flashProducts: { padding: 14, gap: 10, alignItems: 'stretch' },
@@ -272,7 +273,7 @@ const styles = StyleSheet.create({
   lifestyleImage: { position: 'absolute', inset: 0, width: '100%', height: '100%' },
   lifestyleOverlay: { position: 'absolute', inset: 0, backgroundColor: 'rgba(70,43,24,.4)' },
   lifestyleCopy: { width: '92%', maxWidth: 530, marginLeft: '5%', gap: 10 },
-  lifestyleTitle: { color: '#fff', fontFamily: 'serif', fontSize: 32, lineHeight: 38, fontWeight: '900' },
+  lifestyleTitle: { color: '#fff', fontSize: 32, lineHeight: 38, fontWeight: '900' },
   lifestyleTitleCompact: { fontSize: 27, lineHeight: 33 },
   lifestyleText: { color: '#FFF8EF', fontSize: 13, lineHeight: 20, maxWidth: 450 },
   brands: { gap: 9 },
@@ -316,4 +317,4 @@ const styles = StyleSheet.create({
   toast: { position: 'absolute', top: 96, alignSelf: 'center', maxWidth: '90%', paddingHorizontal: 15, paddingVertical: 11, borderRadius: 10, backgroundColor: '#755036', flexDirection: 'row', alignItems: 'center', gap: 8, zIndex: 120, boxShadow: '0 10px 30px rgba(48,37,29,.22)' },
   toastText: { color: '#fff', fontSize: 12, fontWeight: '700' },
   pressed: { opacity: 0.76 },
-});
+}));

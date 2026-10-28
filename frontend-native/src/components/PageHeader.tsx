@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import { openLegacy } from '../api';
 import { useStore } from '../store';
+import { withTypography } from '../typography';
 
 export function PageHeader({ back = false }: { back?: boolean }) {
   const router = useRouter();
@@ -20,14 +20,14 @@ export function PageHeader({ back = false }: { back?: boolean }) {
         </Pressable>
         <View style={styles.actions}>
           {user ? <>{!compact && <Text numberOfLines={1} style={styles.userName}>{user.fullName}</Text>}<Pressable accessibilityRole="button" accessibilityLabel="Đăng xuất" onPress={() => void logout()} style={styles.iconButton}><Ionicons name="log-out-outline" size={21} color="#755036" /></Pressable></> : <Pressable accessibilityRole="link" accessibilityLabel="Đăng nhập" onPress={() => router.push('/login')} style={styles.login}><Ionicons name="person-outline" size={19} color="#755036" />{!compact && <Text style={styles.loginText}>Đăng nhập</Text>}</Pressable>}
-          <Pressable accessibilityRole="link" accessibilityLabel="Giỏ hàng" onPress={() => void openLegacy('/cart')} style={styles.iconButton}><Ionicons name="bag-handle-outline" size={22} color="#30251D" />{!!cart?.itemCount && <View style={styles.count}><Text style={styles.countText}>{cart.itemCount}</Text></View>}</Pressable>
+          <Pressable accessibilityRole="link" accessibilityLabel="Giỏ hàng" onPress={() => router.push('/cart')} style={styles.iconButton}><Ionicons name="bag-handle-outline" size={22} color="#30251D" />{!!cart?.itemCount && <View style={styles.count}><Text style={styles.countText}>{cart.itemCount}</Text></View>}</Pressable>
         </View>
       </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const styles = StyleSheet.create(withTypography({
   shell: { width: '100%', backgroundColor: '#FFFCF7', borderBottomWidth: 1, borderBottomColor: '#E6D8C7' },
   inner: { width: '100%', maxWidth: 1240, minHeight: 72, alignSelf: 'center', paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', gap: 10 },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 8 },
@@ -41,4 +41,4 @@ const styles = StyleSheet.create({
   loginText: { color: '#755036', fontSize: 12, fontWeight: '800' },
   count: { position: 'absolute', top: 1, right: 0, minWidth: 18, height: 18, paddingHorizontal: 4, borderRadius: 9, backgroundColor: '#A56E2D', alignItems: 'center', justifyContent: 'center' },
   countText: { color: '#fff', fontSize: 10, fontWeight: '900' },
-});
+}));

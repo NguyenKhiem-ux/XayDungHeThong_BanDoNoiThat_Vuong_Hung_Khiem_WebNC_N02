@@ -1,9 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { openLegacy } from '../api';
 import { useStore } from '../store';
+import { withTypography } from '../typography';
 
 export function Header({ compact, categories }: { compact: boolean; categories: string[] }) {
   const router = useRouter();
@@ -13,7 +14,7 @@ export function Header({ compact, categories }: { compact: boolean; categories: 
 
   const search = () => {
     const value = keyword.trim();
-    void openLegacy(`/products${value ? `?keyword=${encodeURIComponent(value)}` : ''}`);
+    router.push({ pathname: '/products', params: value ? { keyword: value } : {} });
   };
 
   return (
@@ -32,7 +33,7 @@ export function Header({ compact, categories }: { compact: boolean; categories: 
         <View style={styles.actions}>
           <Pressable accessibilityRole="link" accessibilityLabel={user ? 'Tài khoản' : 'Đăng nhập'} onPress={() => user ? void openLegacy('/profile') : router.push('/login')} style={styles.actionButton}><Ionicons name="person-outline" size={22} color="#30251D" />{!compact && <Text numberOfLines={1} style={styles.actionLabel}>{user?.fullName || 'Đăng nhập'}</Text>}</Pressable>
           {!!user && <Pressable accessibilityRole="button" accessibilityLabel="Đăng xuất" onPress={() => void logout()} style={styles.iconButton}><Ionicons name="log-out-outline" size={22} color="#755036" /></Pressable>}
-          <Pressable accessibilityRole="link" accessibilityLabel="Giỏ hàng" onPress={() => void openLegacy('/cart')} style={styles.iconButton}><Ionicons name="bag-handle-outline" size={23} color="#30251D" />{!!cart?.itemCount && <View style={styles.count}><Text style={styles.countText}>{cart.itemCount}</Text></View>}</Pressable>
+          <Pressable accessibilityRole="link" accessibilityLabel="Giỏ hàng" onPress={() => router.push('/cart')} style={styles.iconButton}><Ionicons name="bag-handle-outline" size={23} color="#30251D" />{!!cart?.itemCount && <View style={styles.count}><Text style={styles.countText}>{cart.itemCount}</Text></View>}</Pressable>
           {compact && <Pressable accessibilityRole="button" accessibilityLabel={menuOpen ? 'Đóng menu' : 'Mở menu'} onPress={() => setMenuOpen(value => !value)} style={styles.iconButton}><Ionicons name={menuOpen ? 'close' : 'menu'} size={26} color="#30251D" /></Pressable>}
         </View>
       </View>
@@ -45,10 +46,12 @@ export function Header({ compact, categories }: { compact: boolean; categories: 
 }
 
 function Nav({ label, path }: { label: string; path: string }) {
-  return <Pressable accessibilityRole="link" onPress={() => void openLegacy(path)} style={({ pressed }) => [styles.navLink, pressed && styles.pressed]}><Text style={styles.navLinkText}>{label}</Text></Pressable>;
+  const router = useRouter();
+  const open = () => path.startsWith('/products') ? router.push(path as Href) : void openLegacy(path);
+  return <Pressable accessibilityRole="link" onPress={open} style={({ pressed }) => [styles.navLink, pressed && styles.pressed]}><Text style={styles.navLinkText}>{label}</Text></Pressable>;
 }
 
-const styles = StyleSheet.create({
+const styles = StyleSheet.create(withTypography({
   shell: { width: '100%', backgroundColor: '#FFFCF7', borderBottomColor: '#E6D8C7', borderBottomWidth: 1, zIndex: 20 },
   topStrip: { minHeight: 32, backgroundColor: '#E8D5BA', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 28, gap: 28 },
   topText: { fontSize: 11, color: '#493629', fontWeight: '600' },
@@ -74,4 +77,4 @@ const styles = StyleSheet.create({
   countText: { color: '#fff', fontSize: 10, fontWeight: '900' },
   menu: { paddingHorizontal: 14, paddingBottom: 14, borderTopWidth: 1, borderTopColor: '#E6D8C7', flexDirection: 'row', flexWrap: 'wrap', gap: 2 },
   pressed: { opacity: 0.65 },
-});
+}));

@@ -1,6 +1,6 @@
 import * as SecureStore from 'expo-secure-store';
 import { Linking, Platform } from 'react-native';
-import type { Cart, ChatAction, ChatResponse, Favorite, Product, PromotionResponse, User } from './types';
+import type { Cart, ChatAction, ChatResponse, CheckoutQuote, Favorite, OwnReview, Order, PaymentMethod, Product, PromotionResponse, ReviewPage, ReviewSummary, User, UserAddress } from './types';
 
 const DEFAULT_BACKEND_ORIGIN = 'http://localhost:3000';
 const API_BASE = process.env.EXPO_PUBLIC_API_URL || (Platform.OS === 'web' ? '/api' : `${DEFAULT_BACKEND_ORIGIN}/api`);
@@ -80,16 +80,60 @@ export const authApi = {
 };
 
 export const productApi = {
+  list: (keyword?: string, category?: string, signal?: AbortSignal) => {
+    const params = new URLSearchParams();
+    if (keyword) params.set('keyword', keyword);
+    if (category) params.set('category', category);
+    const query = params.toString();
+    return request<Product[]>(`/products${query ? `?${query}` : ''}`, { signal });
+  },
+  categories: (signal?: AbortSignal) => request<string[]>('/products/categories/list', { signal }),
   detail: (id: number) => request<Product>(`/products/${id}`),
+};
+
+export const reviewApi = {
+  list: (productId: number, page: number, rating?: number, signal?: AbortSignal) => request<ReviewPage>(`/products/${productId}/reviews?page=${page}${rating ? `&rating=${rating}` : ''}`, { signal }),
+  mine: (productId: number, signal?: AbortSignal) => request<OwnReview>(`/products/${productId}/reviews/mine`, { signal }),
+  save: (productId: number, rating: number, comment: string) => request<OwnReview & { summary: ReviewSummary }>(`/products/${productId}/reviews`, {
+    method: 'PUT',
+    body: JSON.stringify({ rating, comment }),
+  }),
 };
 
 export const accountApi = {
   me: () => request<User>('/auth/me'),
+  addresses: () => request<UserAddress[]>('/addresses'),
   favorites: () => request<Favorite[]>('/favorites'),
   cart: () => request<Cart>('/cart'),
   addToCart: (productId: number, quantity = 1) => request<Cart>('/cart/add', { method: 'POST', body: JSON.stringify({ productId, quantity }) }),
+  updateCart: (productId: number, quantity: number) => request<Cart>('/cart/update', { method: 'PUT', body: JSON.stringify({ productId, quantity }) }),
+  removeFromCart: (productId: number) => request<Cart>(`/cart/remove/${productId}`, { method: 'DELETE' }),
   addFavorite: (productId: number) => request<Favorite>(`/favorites/${productId}`, { method: 'POST' }),
   removeFavorite: (productId: number) => request<void>(`/favorites/${productId}`, { method: 'DELETE' }),
+};
+
+export interface OrderInput {
+  productId?: number;
+  quoteId?: string;
+  quoteHash?: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  address: string;
+  paymentMethod: PaymentMethod;
+  note?: string;
+  couponCode?: string;
+}
+
+export const orderApi = {
+  preview: (data: OrderInput) => request<CheckoutQuote>('/orders/preview', { method: 'POST', body: JSON.stringify(data) }),
+  create: (data: OrderInput) => request<Order>('/orders', { method: 'POST', body: JSON.stringify(data) }),
+  detail: (id: number) => request<Order>(`/orders/${id}`),
+};
+
+export const paymentApi = {
+  createPayOSPaymentLink: (orderId: number) => request<{ checkoutUrl: string }>(`/payment/payos/create-link/${orderId}`, { method: 'POST' }),
+  confirmCardPayment: (orderId: number, pin: string) => request<{ success: boolean; simulated: boolean }>(`/payment/card/confirm/${orderId}`, { method: 'POST', body: JSON.stringify({ pin }) }),
 };
 
 export const chatApi = {

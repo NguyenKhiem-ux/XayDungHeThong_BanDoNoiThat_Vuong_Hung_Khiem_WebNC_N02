@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import { formatVnd, imageUrl } from '../api';
 import { useStore } from '../store';
+import { withTypography } from '../typography';
 import type { Product } from '../types';
 
 interface Props {
@@ -82,7 +83,7 @@ export function ProductSkeleton({ style }: { style?: ViewStyle }) {
   return <View style={[styles.card, styles.skeletonCard, style]} accessibilityLabel="Đang tải sản phẩm"><View style={[styles.media, styles.skeleton]} /><View style={styles.info}><View style={[styles.skeletonLine, { width: '40%' }]} /><View style={[styles.skeletonLine, { width: '88%' }]} /><View style={[styles.skeletonLine, { width: '65%' }]} /></View></View>;
 }
 
-const styles = StyleSheet.create({
+const styles = StyleSheet.create(withTypography({
   card: {
     minWidth: 178,
     backgroundColor: '#FFFCF7',
@@ -118,4 +119,4 @@ const styles = StyleSheet.create({
   skeletonCard: { pointerEvents: 'none' },
   skeleton: { backgroundColor: '#EDE3D7' },
   skeletonLine: { height: 13, borderRadius: 8, backgroundColor: '#EDE3D7', marginVertical: 3 },
-});
+}));

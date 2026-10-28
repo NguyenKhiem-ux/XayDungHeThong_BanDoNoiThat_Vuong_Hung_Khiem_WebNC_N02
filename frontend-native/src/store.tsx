@@ -1,18 +1,27 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { accountApi, ApiError, authApi, clearToken, getToken, saveToken, type RegisterInput } from './api';
-import type { Cart, ChatResponse, User } from './types';
+import type { Cart, ChatResponse, CheckoutShipping, User } from './types';
 
 interface StoreValue {
   user: User | null;
   authReady: boolean;
   cart: Cart | null;
+  checkoutShipping: CheckoutShipping | null;
+  checkoutPaymentPin: string;
+  cartLoading: boolean;
+  cartError: string;
   favoriteIds: number[];
   notice: string;
   setNotice: (message: string) => void;
+  setCheckoutShipping: (shipping: CheckoutShipping | null) => void;
+  setCheckoutPaymentPin: (pin: string) => void;
   login: (usernameOrEmail: string, password: string) => Promise<User>;
   register: (data: RegisterInput) => Promise<User>;
   logout: () => Promise<void>;
+  refreshCart: () => Promise<void>;
   addToCart: (productId: number, quantity?: number) => Promise<boolean>;
+  updateCart: (productId: number, quantity: number) => Promise<boolean>;
+  removeFromCart: (productId: number) => Promise<boolean>;
   toggleFavorite: (productId: number) => Promise<boolean>;
   syncChat: (response: ChatResponse) => void;
 }
@@ -23,6 +32,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [cart, setCart] = useState<Cart | null>(null);
+  const [checkoutShipping, setCheckoutShipping] = useState<CheckoutShipping | null>(null);
+  const [checkoutPaymentPin, setCheckoutPaymentPin] = useState('');
+  const [cartLoading, setCartLoading] = useState(false);
+  const [cartError, setCartError] = useState('');
   const [favoriteIds, setFavoriteIds] = useState<number[]>([]);
   const [notice, setNoticeState] = useState('');
 
@@ -32,9 +45,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const loadAccountData = useCallback(async () => {
+    setCartLoading(true);
+    setCartError('');
     const [cartResult, favoriteResult] = await Promise.allSettled([accountApi.cart(), accountApi.favorites()]);
     if (cartResult.status === 'fulfilled') setCart(cartResult.value);
+    else setCartError(cartResult.reason instanceof Error ? cartResult.reason.message : 'Không thể tải giỏ hàng.');
     if (favoriteResult.status === 'fulfilled') setFavoriteIds(favoriteResult.value.map(item => item.productId));
+    setCartLoading(false);
   }, []);
 
   useEffect(() => {
@@ -75,9 +92,32 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     await clearToken();
     setUser(null);
     setCart(null);
+    setCheckoutShipping(null);
+    setCheckoutPaymentPin('');
+    setCartError('');
+    setCartLoading(false);
     setFavoriteIds([]);
     setNotice('Đã đăng xuất.');
   }, [setNotice]);
+
+  const refreshCart = useCallback(async () => {
+    if (!user) {
+      setCart(null);
+      setCartError('');
+      return;
+    }
+    setCartLoading(true);
+    setCartError('');
+    try {
+      setCart(await accountApi.cart());
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Không thể tải giỏ hàng.';
+      setCartError(message);
+      throw error;
+    } finally {
+      setCartLoading(false);
+    }
+  }, [user]);
 
   const requireAccount = useCallback(() => {
     if (user) return true;
@@ -93,6 +133,28 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       return true;
     } catch (error) {
       setNotice(error instanceof Error ? error.message : 'Không thể thêm sản phẩm.');
+      return false;
+    }
+  }, [requireAccount, setNotice]);
+
+  const updateCart = useCallback(async (productId: number, quantity: number) => {
+    if (!requireAccount()) return false;
+    try {
+      setCart(await accountApi.updateCart(productId, quantity));
+      return true;
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Không thể cập nhật giỏ hàng.');
+      return false;
+    }
+  }, [requireAccount, setNotice]);
+
+  const removeFromCart = useCallback(async (productId: number) => {
+    if (!requireAccount()) return false;
+    try {
+      setCart(await accountApi.removeFromCart(productId));
+      return true;
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Không thể xóa sản phẩm khỏi giỏ hàng.');
       return false;
     }
   }, [requireAccount, setNotice]);
@@ -117,7 +179,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (response.favorites) setFavoriteIds(response.favorites.map(item => item.productId));
   }, []);
 
-  const value = useMemo(() => ({ user, authReady, cart, favoriteIds, notice, setNotice, login, register, logout, addToCart, toggleFavorite, syncChat }), [user, authReady, cart, favoriteIds, notice, setNotice, login, register, logout, addToCart, toggleFavorite, syncChat]);
+  const value = useMemo(() => ({ user, authReady, cart, checkoutShipping, checkoutPaymentPin, cartLoading, cartError, favoriteIds, notice, setNotice, setCheckoutShipping, setCheckoutPaymentPin, login, register, logout, refreshCart, addToCart, updateCart, removeFromCart, toggleFavorite, syncChat }), [user, authReady, cart, checkoutShipping, checkoutPaymentPin, cartLoading, cartError, favoriteIds, notice, setNotice, setCheckoutShipping, setCheckoutPaymentPin, login, register, logout, refreshCart, addToCart, updateCart, removeFromCart, toggleFavorite, syncChat]);
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }
 

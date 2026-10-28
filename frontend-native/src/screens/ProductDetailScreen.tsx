@@ -1,65 +1,21 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View, type ImageStyle } from 'react-native';
-import { formatVnd, imageUrl, productApi } from '../api';
+import { formatVnd, imageUrl } from '../api';
+import { ChatWidget } from '../components/ChatWidget';
 import { PageHeader } from '../components/PageHeader';
-import { useStore } from '../store';
-import type { Product } from '../types';
+import { ProductFooter } from '../components/ProductFooter';
+import { ProductReviews } from '../components/ProductReviews';
+import { useProductDetail } from '../hooks/useProductDetail';
+import { withTypography } from '../typography';
 
 export default function ProductDetailScreen() {
-  const router = useRouter();
-  const params = useLocalSearchParams<{ id?: string | string[] }>();
   const { width } = useWindowDimensions();
   const compact = width < 820;
   const mobileWidth = Math.max(280, width - 40);
-  const { addToCart, favoriteIds, notice, setNotice, toggleFavorite, user } = useStore();
-  const rawId = Array.isArray(params.id) ? params.id[0] : params.id;
-  const productId = Number(rawId);
-  const [product, setProduct] = useState<Product | null>(null);
-  const [quantity, setQuantity] = useState(1);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const { add, cartBusy, changeQuantity, error, favoriteIds, load, loading, notice, product, quantity, router, toggleSaved, updateSummary } = useProductDetail();
   const [imageFailed, setImageFailed] = useState(false);
-  const [cartBusy, setCartBusy] = useState(false);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    setImageFailed(false);
-    try {
-      if (!Number.isInteger(productId) || productId <= 0) throw new Error('Sản phẩm không hợp lệ.');
-      const nextProduct = await productApi.detail(productId);
-      setProduct(nextProduct);
-      setQuantity(1);
-    } catch (failure) {
-      setProduct(null);
-      setError(failure instanceof Error ? failure.message : 'Không thể tải thông tin sản phẩm.');
-    } finally {
-      setLoading(false);
-    }
-  }, [productId]);
-
-  useEffect(() => { void load(); }, [load]);
-
-  const requireAccount = () => {
-    if (user) return true;
-    setNotice('Vui lòng đăng nhập để tiếp tục.');
-    router.push({ pathname: '/login', params: { redirect: `/products/${productId}` } });
-    return false;
-  };
-
-  const add = async () => {
-    if (!product || product.stock <= 0 || cartBusy || !requireAccount()) return;
-    setCartBusy(true);
-    await addToCart(product.id, quantity);
-    setCartBusy(false);
-  };
-
-  const changeQuantity = (value: number) => {
-    if (!product) return;
-    setQuantity(Math.max(1, Math.min(product.stock, Number.isFinite(value) ? value : 1)));
-  };
+  useEffect(() => setImageFailed(false), [product?.id]);
 
   const soldOut = !!product && product.stock <= 0;
   const saved = !!product && favoriteIds.includes(product.id);
@@ -82,7 +38,7 @@ export default function ProductDetailScreen() {
             </View>
 
             <View style={[styles.info, compact && styles.fullWidth, compact && { width: mobileWidth }]}>
-              <View style={styles.headingRow}><View style={styles.headingCopy}><Text style={styles.category}>{product.category || 'Gia dụng'}</Text><Text style={[styles.title, compact && styles.titleCompact]}>{product.name}</Text></View><Pressable accessibilityRole="button" accessibilityLabel={saved ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'} accessibilityState={{ selected: saved }} onPress={() => { if (requireAccount()) void toggleFavorite(product.id); }} style={({ pressed }) => [styles.favorite, pressed && styles.pressed]}><Ionicons name={saved ? 'heart' : 'heart-outline'} size={23} color={saved ? '#9B382F' : '#755036'} /></Pressable></View>
+              <View style={styles.headingRow}><View style={styles.headingCopy}><Text style={styles.category}>{product.category || 'Gia dụng'}</Text><Text style={[styles.title, compact && styles.titleCompact]}>{product.name}</Text></View><Pressable accessibilityRole="button" accessibilityLabel={saved ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'} accessibilityState={{ selected: saved }} onPress={() => void toggleSaved()} style={({ pressed }) => [styles.favorite, pressed && styles.pressed]}><Ionicons name={saved ? 'heart' : 'heart-outline'} size={23} color={saved ? '#9B382F' : '#755036'} /></Pressable></View>
               <View style={styles.rating}><Text style={styles.stars}>★★★★★</Text><Text style={styles.ratingText}>{product.averageRating?.toFixed(1) || '0.0'} · {product.reviewCount ?? 0} đánh giá</Text></View>
               {!!product.brand && <Text style={styles.brand}>Thương hiệu: <Text style={styles.brandStrong}>{product.brand}</Text></Text>}
 
@@ -104,9 +60,12 @@ export default function ProductDetailScreen() {
           </View>
 
           {!!product.specifications && <View style={styles.specCard}><Text style={styles.category}>THÔNG SỐ KỸ THUẬT</Text><Text style={styles.specTitle}>Chi tiết sản phẩm</Text><Text style={styles.specText}>{product.specifications}</Text></View>}
+          <ProductReviews key={product.id} productId={product.id} onChange={updateSummary} />
         </View>}
+        {!loading && !error && !!product && <ProductFooter />}
       </ScrollView>
       {!!notice && <View accessibilityLiveRegion="polite" style={styles.toast}><Ionicons name="checkmark-circle" size={18} color="#fff" /><Text style={styles.toastText}>{notice}</Text></View>}
+      <ChatWidget compact={compact} />
     </View>
   );
 }
@@ -119,7 +78,7 @@ function SecondaryButton({ label, onPress }: { label: string; onPress: () => voi
   return <Pressable onPress={onPress} style={styles.secondaryButton}><Text style={styles.secondaryButtonText}>{label}</Text></Pressable>;
 }
 
-const styles = StyleSheet.create({
+const styles = StyleSheet.create(withTypography({
   page: { flex: 1, backgroundColor: '#F6EFE6' },
   scroll: { flexGrow: 1, paddingHorizontal: 20, paddingVertical: 22 },
   scrollCompact: { paddingHorizontal: 12, paddingVertical: 16 },
@@ -143,7 +102,7 @@ const styles = StyleSheet.create({
   headingRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   headingCopy: { flex: 1 },
   category: { color: '#9A6C4D', fontSize: 11, fontWeight: '900', letterSpacing: 1, textTransform: 'uppercase' },
-  title: { color: '#30251D', fontFamily: 'serif', fontSize: 34, lineHeight: 41, fontWeight: '900', marginTop: 8 },
+  title: { color: '#30251D', fontSize: 34, lineHeight: 41, fontWeight: '900', marginTop: 8 },
   titleCompact: { fontSize: 27, lineHeight: 34 },
   favorite: { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F6EFE6', borderWidth: 1, borderColor: '#DCC9B4' },
   rating: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 },
@@ -177,7 +136,7 @@ const styles = StyleSheet.create({
   trustItem: { width: '48%', minHeight: 43, flexDirection: 'row', alignItems: 'center', gap: 7 },
   trustText: { flex: 1, color: '#625247', fontSize: 11, fontWeight: '700' },
   specCard: { marginTop: 24, borderRadius: 18, padding: 24, backgroundColor: '#FFFCF7', borderWidth: 1, borderColor: '#E1CFBA' },
-  specTitle: { color: '#30251D', fontFamily: 'serif', fontSize: 23, fontWeight: '900', marginTop: 6, marginBottom: 12 },
+  specTitle: { color: '#30251D', fontSize: 23, fontWeight: '900', marginTop: 6, marginBottom: 12 },
   specText: { color: '#5F5147', fontSize: 13, lineHeight: 22 },
   state: { width: '100%', maxWidth: 520, minHeight: 420, alignSelf: 'center', alignItems: 'center', justifyContent: 'center', gap: 12 },
   errorTitle: { color: '#30251D', fontSize: 20, fontWeight: '900' },
@@ -191,4 +150,4 @@ const styles = StyleSheet.create({
   toastText: { color: '#fff', fontSize: 12, fontWeight: '800' },
   disabled: { opacity: 0.56 },
   pressed: { opacity: 0.74 },
-});
+}));

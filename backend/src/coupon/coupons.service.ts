@@ -159,7 +159,7 @@ export function evaluateCoupon(coupon: Coupon | null, orderAmount: number, userI
     );
   }
 
-  let discountAmount = 0;
+  let discountAmount: number;
 
   if (coupon.discountType === CouponDiscountType.PERCENTAGE) {
     discountAmount = (orderAmount * Number(coupon.discountValue)) / 100;

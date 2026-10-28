@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { chatApi, formatVnd, openLegacy } from '../api';
 import { useStore } from '../store';
+import { withTypography } from '../typography';
 import type { ChatAction, ChatResponse } from '../types';
 
 interface Message {
@@ -104,7 +105,7 @@ export function ChatWidget({ compact }: { compact: boolean }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = StyleSheet.create(withTypography({
   layer: { position: 'absolute', inset: 0, zIndex: 100 },
   panel: { position: 'absolute', right: 24, bottom: 86, width: 390, maxHeight: 590, minHeight: 480, borderRadius: 18, overflow: 'hidden', backgroundColor: '#FFFCF7', borderWidth: 1, borderColor: '#DCC9B4', boxShadow: '0 20px 60px rgba(48, 37, 29, .24)' },
   panelCompact: { left: 10, right: 10, bottom: 76, width: 'auto', maxHeight: '75%' },
@@ -140,4 +141,4 @@ const styles = StyleSheet.create({
   toggle: { position: 'absolute', right: 24, bottom: 22, width: 54, height: 54, borderRadius: 27, backgroundColor: '#9A6326', alignItems: 'center', justifyContent: 'center', boxShadow: '0 10px 30px rgba(48, 37, 29, .25)' },
   disabled: { opacity: 0.45 },
   pressed: { transform: [{ scale: 0.96 }] },
-});
+}));

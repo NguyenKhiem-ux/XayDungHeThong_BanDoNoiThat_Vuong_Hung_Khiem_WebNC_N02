@@ -5,6 +5,7 @@ import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollVie
 import { ApiError } from '../api';
 import { PageHeader } from '../components/PageHeader';
 import { useStore } from '../store';
+import { withTypography } from '../typography';
 
 type Mode = 'login' | 'register';
 
@@ -145,7 +146,7 @@ function PrimaryButton({ label, busy, onPress }: { label: string; busy: boolean;
   return <Pressable accessibilityRole="button" accessibilityState={{ disabled: busy }} disabled={busy} onPress={onPress} style={({ pressed }) => [styles.submit, busy && styles.disabled, pressed && styles.pressed]}>{busy ? <ActivityIndicator color="#fff" /> : <><Text style={styles.submitText}>{label}</Text><Ionicons name="arrow-forward" size={18} color="#fff" /></>}</Pressable>;
 }
 
-const styles = StyleSheet.create({
+const styles = StyleSheet.create(withTypography({
   page: { flex: 1, backgroundColor: '#F6EFE6' },
   flex: { flex: 1 },
   scroll: { flexGrow: 1, padding: 24, justifyContent: 'center' },
@@ -156,7 +157,7 @@ const styles = StyleSheet.create({
   storyCompact: { maxWidth: '100%', alignSelf: 'stretch', padding: 28 },
   storyIcon: { width: 58, height: 58, borderRadius: 18, backgroundColor: '#A56E2D', alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
   eyebrow: { color: '#E8D5BA', fontSize: 11, fontWeight: '900', letterSpacing: 1.4 },
-  storyTitle: { color: '#FFFCF7', fontFamily: 'serif', fontSize: 34, lineHeight: 41, fontWeight: '900', marginTop: 12 },
+  storyTitle: { color: '#FFFCF7', fontSize: 34, lineHeight: 41, fontWeight: '900', marginTop: 12 },
   storyTitleCompact: { fontSize: 27, lineHeight: 33, flexShrink: 1 },
   storyText: { color: '#F0E4D7', fontSize: 14, lineHeight: 22, marginTop: 16 },
   benefits: { marginTop: 28, gap: 12 },
@@ -164,7 +165,7 @@ const styles = StyleSheet.create({
   benefitText: { flex: 1, color: '#FFFCF7', fontSize: 12, lineHeight: 17, fontWeight: '600' },
   formCard: { flex: 1, padding: 48, justifyContent: 'center' },
   formCardCompact: { flexGrow: 0, flexShrink: 0, flexBasis: 'auto', maxWidth: '100%', alignSelf: 'stretch', padding: 25 },
-  formTitle: { color: '#30251D', fontFamily: 'serif', fontSize: 31, fontWeight: '900' },
+  formTitle: { color: '#30251D', fontSize: 31, fontWeight: '900' },
   formSubtitle: { color: '#77685D', fontSize: 13, lineHeight: 20, marginTop: 7, marginBottom: 24 },
   field: { gap: 7, marginBottom: 15 },
   label: { color: '#493629', fontSize: 12, fontWeight: '800' },
@@ -185,4 +186,4 @@ const styles = StyleSheet.create({
   signedIcon: { width: 58, height: 58, borderRadius: 29, backgroundColor: '#537B55', alignItems: 'center', justifyContent: 'center' },
   disabled: { opacity: 0.58 },
   pressed: { opacity: 0.78 },
-});
+}));

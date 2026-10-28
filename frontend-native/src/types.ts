@@ -4,7 +4,71 @@ export interface User {
   username: string | null;
   email: string;
   phone?: string | null;
+  address?: string | null;
+  savedCard?: SavedDemoCard | null;
+  hasTransactionPin?: boolean;
   role?: 'USER' | 'ADMIN';
+}
+
+export interface SavedDemoCard {
+  holder: string;
+  type: 'DOMESTIC' | 'INTERNATIONAL';
+  provider: string;
+  last4: string;
+  expMonth: number;
+  expYear: number;
+}
+
+export interface UserAddress {
+  id: number;
+  userId: number;
+  fullName: string;
+  phone: string;
+  address: string;
+  isDefault: boolean;
+}
+
+export interface CheckoutShipping {
+  fullName: string;
+  phone: string;
+  province: string;
+  district: string;
+  address: string;
+  note: string;
+}
+
+export type PaymentMethod = 'QR' | 'CARD' | 'CASH' | 'PAYOS';
+
+export interface CheckoutQuote {
+  id: string;
+  hash: string;
+  expiresAt: string;
+  items: Array<{ productId: number; name: string; imageUrl: string | null; price: number; quantity: number; subtotal: number }>;
+  address: { id?: number; fullName: string; phone: string; address: string };
+  email: string;
+  paymentMethod: PaymentMethod;
+  couponCode: string | null;
+  subtotal: number;
+  discountAmount: number;
+  shippingFee: number;
+  total: number;
+}
+
+export interface Order {
+  id: number;
+  fullName: string;
+  email: string;
+  phone: string;
+  address: string;
+  totalAmount: number;
+  subtotalAmount: number;
+  discountAmount: number;
+  couponCode: string | null;
+  status: 'PENDING' | 'CONFIRMED' | 'DELIVERED' | 'CANCELLED';
+  paymentMethod: PaymentMethod;
+  paymentStatus: 'UNPAID' | 'PAID';
+  note: string | null;
+  items: Array<{ id: number; productId: number | null; productName: string; productImage: string | null; price: number; quantity: number; subtotal: number }>;
 }
 
 export interface Product {
@@ -27,6 +91,34 @@ export interface Product {
   promotionId?: number | null;
   promotionTitle?: string | null;
   saleEndsAt?: string | null;
+}
+
+export interface ReviewSummary {
+  averageRating: number;
+  reviewCount: number;
+  ratingCounts: Record<number, number>;
+}
+
+export interface ProductReview {
+  id: number;
+  rating: number;
+  comment: string;
+  author: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ReviewPage {
+  summary: ReviewSummary;
+  reviews: ProductReview[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface OwnReview {
+  canReview: boolean;
+  review: { rating: number; comment: string } | null;
 }
 
 export interface PromotionEvent {
@@ -52,6 +144,8 @@ export interface Favorite {
 export interface Cart {
   itemCount: number;
   total: number;
+  couponEligibleTotal?: number;
+  saleSavings?: number;
   items: Array<{
     productId: number;
     quantity: number;
