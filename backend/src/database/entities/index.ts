@@ -13,3 +13,6 @@ export * from './user-address.entity';
 export * from './favorite.entity';
 export * from './chatbot-knowledge.entity';
 export * from './coupon.entity';
+export * from './checkout-record.entity';
+export * from './promotion.entity';
+export * from './product-review.entity';

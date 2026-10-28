@@ -5,6 +5,7 @@ import { RotateCw } from 'lucide-react';
 import { productApi } from '../api/services';
 import type { Product } from '../api/types';
 import { ProductCard, ProductCardSkeleton } from '../components/ProductCard';
+import { usePriceRevision } from '../hooks/usePriceRevision';
 
 const quickPriceRanges = [
   { label: 'Dưới 5 triệu', min: 0, max: 5_000_000 },
@@ -18,6 +19,7 @@ const quickPriceRanges = [
 ];
 
 export function ProductListPage() {
+  const priceRevision = usePriceRevision();
   const [params] = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -54,7 +56,7 @@ export function ProductListPage() {
       .catch(() => { if (active) { setProducts([]); setFailed(true); } })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [params, category, retry]);
+  }, [params, category, retry, priceRevision]);
 
   return <>
     <section className="page-hero compact">

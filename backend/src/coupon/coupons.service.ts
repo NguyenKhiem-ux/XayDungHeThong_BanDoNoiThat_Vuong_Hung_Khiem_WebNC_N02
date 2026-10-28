@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Repository } from 'typeorm';
+import { CartService } from '../cart/cart.service';
 import {
   Coupon,
   CouponDiscountType,
@@ -15,6 +16,7 @@ export class CouponsService {
   constructor(
     @InjectRepository(Coupon)
     private readonly couponRepository: Repository<Coupon>,
+    private readonly cart: CartService,
   ) {}
 
   async findAll(userId?: number): Promise<Coupon[]> {
@@ -97,78 +99,93 @@ export class CouponsService {
     code: string,
     orderAmount: number,
     userId?: number,
+    productId?: number,
   ): Promise<{
     valid: boolean;
     coupon: Coupon;
     discountAmount: number;
     finalAmount: number;
   }> {
+    if (productId !== undefined && (!Number.isSafeInteger(productId) || productId < 1)) throw new BadRequestException('Sản phẩm không hợp lệ.');
     const coupon = await this.couponRepository.findOne({
       where: {
         code: code.trim().toUpperCase(),
       },
     });
 
-    if (!coupon) {
-      throw new BadRequestException('Mã giảm giá không tồn tại');
-    }
+    const cart = userId === undefined ? null : await this.cart.get(userId);
+    const items = productId === undefined ? cart?.items : cart?.items.filter(item => item.productId === productId);
+    if (productId !== undefined && !items?.length) throw new BadRequestException('Sản phẩm không có trong giỏ hàng.');
+    const total = items?.reduce((sum, item) => sum + item.subtotal, 0) ?? orderAmount;
+    const eligible = items?.reduce((sum, item) => sum + (item.product.discountPercent ? 0 : item.subtotal), 0) ?? orderAmount;
+    if (eligible <= 0) throw new BadRequestException('Mã giảm giá chỉ áp dụng cho sản phẩm không thuộc sự kiện ưu đãi.');
+    const result = evaluateCoupon(coupon, eligible, userId);
+    return { ...result, finalAmount: total - result.discountAmount };
+  }
+}
 
-    if (!coupon.isActive) {
-      throw new BadRequestException('Mã giảm giá đã bị vô hiệu hóa');
-    }
-    if (coupon.userId !== null && coupon.userId !== userId) throw new BadRequestException('Mã giảm giá không thuộc tài khoản của bạn');
 
-    const now = new Date();
+// Shared by previews and the locked order transaction; keep rounding and eligibility in one place.
+export function evaluateCoupon(coupon: Coupon | null, orderAmount: number, userId?: number) {
+  if (!coupon) {
+    throw new BadRequestException('Mã giảm giá không tồn tại');
+  }
 
-    if (now < coupon.startDate) {
-      throw new BadRequestException('Mã giảm giá chưa bắt đầu sử dụng');
-    }
+  if (!coupon.isActive) {
+    throw new BadRequestException('Mã giảm giá đã bị vô hiệu hóa');
+  }
+  if (coupon.userId !== null && coupon.userId !== userId) throw new BadRequestException('Mã giảm giá không thuộc tài khoản của bạn');
 
-    if (now > coupon.endDate) {
-      throw new BadRequestException('Mã giảm giá đã hết hạn');
-    }
+  const now = new Date();
+
+  if (now < coupon.startDate) {
+    throw new BadRequestException('Mã giảm giá chưa bắt đầu sử dụng');
+  }
+
+  if (now > coupon.endDate) {
+    throw new BadRequestException('Mã giảm giá đã hết hạn');
+  }
+
+  if (
+    coupon.usageLimit !== null &&
+    coupon.usedCount >= coupon.usageLimit
+  ) {
+    throw new BadRequestException('Mã giảm giá đã hết lượt sử dụng');
+  }
+
+  if (orderAmount < coupon.minOrderAmount) {
+    throw new BadRequestException(
+      `Đơn hàng tối thiểu ${coupon.minOrderAmount}đ`,
+    );
+  }
+
+  let discountAmount = 0;
+
+  if (coupon.discountType === CouponDiscountType.PERCENTAGE) {
+    discountAmount = (orderAmount * Number(coupon.discountValue)) / 100;
 
     if (
-      coupon.usageLimit !== null &&
-      coupon.usedCount >= coupon.usageLimit
+      coupon.maxDiscountAmount !== null &&
+      discountAmount > Number(coupon.maxDiscountAmount)
     ) {
-      throw new BadRequestException('Mã giảm giá đã hết lượt sử dụng');
+      discountAmount = Number(coupon.maxDiscountAmount);
     }
-
-    if (orderAmount < coupon.minOrderAmount) {
-      throw new BadRequestException(
-        `Đơn hàng tối thiểu ${coupon.minOrderAmount}đ`,
-      );
-    }
-
-    let discountAmount = 0;
-
-    if (coupon.discountType === CouponDiscountType.PERCENTAGE) {
-      discountAmount = (orderAmount * Number(coupon.discountValue)) / 100;
-
-      if (
-        coupon.maxDiscountAmount !== null &&
-        discountAmount > Number(coupon.maxDiscountAmount)
-      ) {
-        discountAmount = Number(coupon.maxDiscountAmount);
-      }
-    } else {
-      discountAmount = Number(coupon.discountValue);
-    }
-
-    if (discountAmount > orderAmount) {
-      discountAmount = orderAmount;
-    }
-
-    discountAmount = Math.round(discountAmount);
-
-    const finalAmount = orderAmount - discountAmount;
-
-    return {
-      valid: true,
-      coupon,
-      discountAmount,
-      finalAmount,
-    };
+  } else {
+    discountAmount = Number(coupon.discountValue);
   }
+
+  if (discountAmount > orderAmount) {
+    discountAmount = orderAmount;
+  }
+
+  discountAmount = Math.round(discountAmount);
+
+  const finalAmount = orderAmount - discountAmount;
+
+  return {
+    valid: true,
+    coupon,
+    discountAmount,
+    finalAmount,
+  };
 }

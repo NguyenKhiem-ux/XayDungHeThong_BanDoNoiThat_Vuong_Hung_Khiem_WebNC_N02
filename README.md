@@ -1,4 +1,14 @@
+
 # Hùng Vương Gia Dụng
+
+# Gia dụng Việt
+
+Sự kiện ưu đãi: xem [hướng dẫn quản trị, nâng cấp database và kiểm thử](PROMOTIONS.md).
+
+Đánh giá sau mua: xem [điều kiện đánh giá, thống kê sao và nâng cấp database](REVIEWS.md).
+
+> Website thương mại điện tử bán đồ gia dụng và thiết bị nhà bếp, xây dựng trong khuôn khổ **Đồ án Liên ngành**. Dự án có giao diện mua sắm cho khách hàng và khu vực quản trị để vận hành cửa hàng.
+
 
 ## Thành viên
 
@@ -7,7 +17,11 @@
 | Nguyễn Quang Hưng | 23010103       |
 | Vi Hùng Vương    | 23016891       |
 
+
 ## Tổng quan hệ thống
+
+Gia dụng Việt mô phỏng quy trình mua sắm trực tuyến từ lúc khách tìm sản phẩm đến khi cửa hàng tiếp nhận và xử lý đơn. Người mua có thể duyệt danh mục, tìm kiếm, xem thông tin sản phẩm, lưu sản phẩm yêu thích, quản lý giỏ hàng, áp mã giảm giá và theo dõi đơn hàng. Quản trị viên có thể cập nhật sản phẩm, xử lý đơn, quản lý người dùng và xem báo cáo doanh thu.
+
 
 Ứng dụng gồm hai thành phần phối hợp với nhau:
 

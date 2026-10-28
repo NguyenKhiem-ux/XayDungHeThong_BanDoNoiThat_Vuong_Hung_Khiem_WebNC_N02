@@ -5,12 +5,14 @@ import { EntityManager, Repository } from 'typeorm';
 import { Cart } from '../database/entities/cart.entity';
 import { CartItem } from '../database/entities/cart-item.entity';
 import { Product } from '../database/entities/product.entity';
+import { PromotionsService } from '../promotions/promotions.service';
 
 @Injectable()
 export class CartService {
   constructor(
     @InjectRepository(Cart) private readonly carts: Repository<Cart>,
     @InjectRepository(CartItem) private readonly items: Repository<CartItem>,
+    private readonly promotions: PromotionsService,
   ) {}
 
   async get(userId: number) {
@@ -20,18 +22,40 @@ export class CartService {
   }
 
   async add(userId: number, productId: number, quantity = 1) {
-    this.validate(productId, quantity);
+    return this.addMany(userId, [{ productId, quantity }]);
+  }
+
+  async addMany(userId: number, lines: Array<{ productId: number; quantity: number }>) {
+    return this.changeMany(userId, lines, false);
+  }
+
+  async setMany(userId: number, lines: Array<{ productId: number; quantity: number }>) {
+    return this.changeMany(userId, lines, true);
+  }
+
+  private async changeMany(userId: number, lines: Array<{ productId: number; quantity: number }>, replace: boolean) {
+    if (!Array.isArray(lines) || !lines.length || lines.length > 20) throw new BadRequestException('Cần từ 1 đến 20 sản phẩm');
+    const quantities = new Map<number, number>();
+    for (const line of lines) {
+      this.validate(line.productId, line.quantity);
+      const quantity = (quantities.get(line.productId) ?? 0) + line.quantity;
+      if (!Number.isSafeInteger(quantity)) throw new BadRequestException('Số lượng quá lớn');
+      quantities.set(line.productId, quantity);
+    }
     await this.change(userId, async (manager, cart) => {
-      const product = await manager.getRepository(Product).findOne({ where: { id: productId }, lock: { mode: 'pessimistic_read' } });
-      if (!product) throw new NotFoundException('Không tìm thấy sản phẩm');
-      if (product.stock <= 0) throw new BadRequestException('Sản phẩm đã hết hàng');
       const items = manager.getRepository(CartItem);
-      let item = await items.findOne({ where: { cartId: cart.id, productId } });
-      const nextQuantity = (item?.quantity ?? 0) + quantity;
-      if (nextQuantity > product.stock) throw new BadRequestException(`Chỉ còn ${product.stock} sản phẩm trong kho`);
-      if (item) item.quantity = nextQuantity;
-      else item = items.create({ cartId: cart.id, productId, quantity });
-      await items.save(item);
+      const pending: CartItem[] = [];
+      // Lock products in a stable order and validate the whole batch before writing any line.
+      for (const [productId, quantity] of [...quantities].sort(([a], [b]) => a - b)) {
+        const product = await manager.getRepository(Product).findOne({ where: { id: productId }, lock: { mode: 'pessimistic_read' } });
+        if (!product) throw new NotFoundException('Không tìm thấy sản phẩm');
+        if (product.stock <= 0) throw new BadRequestException(`${product.name} đã hết hàng`);
+        const item = await items.findOne({ where: { cartId: cart.id, productId } });
+        const nextQuantity = (replace ? 0 : item?.quantity ?? 0) + quantity;
+        if (nextQuantity > product.stock) throw new BadRequestException(`${product.name}: chỉ còn ${product.stock} sản phẩm trong kho`);
+        pending.push(item ? Object.assign(item, { quantity: nextQuantity }) : items.create({ cartId: cart.id, productId, quantity: nextQuantity }));
+      }
+      for (const item of pending) await items.save(item);
     });
     return this.get(userId);
   }
@@ -59,8 +83,13 @@ export class CartService {
     return this.get(userId);
   }
 
-  async clear(userId: number) {
+  async clear(userId: number, expected?: Array<{ productId: number; quantity: number }>) {
     await this.change(userId, async (manager, cart) => {
+      if (expected) {
+        const rows = await manager.getRepository(CartItem).find({ where: { cartId: cart.id } });
+        const signature = (items: Array<{ productId: number; quantity: number }>) => JSON.stringify(items.map(i => [i.productId, i.quantity]).sort(([a], [b]) => a - b));
+        if (signature(rows) !== signature(expected)) throw new BadRequestException('Giỏ hàng đã thay đổi. Hãy xem lại và yêu cầu xóa lần nữa.');
+      }
       await manager.getRepository(CartItem).delete({ cartId: cart.id });
     });
     return this.get(userId);
@@ -91,7 +120,8 @@ export class CartService {
     });
   }
 
-  private serialize(cart: Cart, items: CartItem[]) {
+  private async serialize(cart: Cart, items: CartItem[]) {
+    const prices = await this.promotions.prices(items.map(item => item.product));
     const serializedItems = items.map((item) => ({
       id: item.id,
       productId: item.productId,
@@ -104,14 +134,17 @@ export class CartService {
         imageUrl: item.product.imageUrl,
         category: item.product.category,
         brand: item.product.brand,
+        ...prices.get(Number(item.productId)),
       },
-      subtotal: Number(item.product.price) * item.quantity,
+      subtotal: prices.get(Number(item.productId))!.price * item.quantity,
     }));
     return {
       id: cart.id,
       items: serializedItems,
       itemCount: serializedItems.reduce((sum, item) => sum + item.quantity, 0),
       total: serializedItems.reduce((sum, item) => sum + item.subtotal, 0),
+      couponEligibleTotal: serializedItems.reduce((sum, item) => sum + (item.product.discountPercent ? 0 : item.subtotal), 0),
+      saleSavings: serializedItems.reduce((sum, item) => sum + (item.product.savings ?? 0) * item.quantity, 0),
     };
   }
 }

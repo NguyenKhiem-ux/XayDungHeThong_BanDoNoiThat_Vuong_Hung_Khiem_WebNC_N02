@@ -13,10 +13,17 @@ import { GeminiService } from './gemini.service';
 import { CartModule } from '../cart/cart.module';
 import { AddressesModule } from '../addresses/addresses.module';
 import { ChatShoppingService } from './chat-shopping.service';
+import { ChatUserActionsService } from './chat-user-actions.service';
+import { OrdersModule } from '../orders/orders.module';
+import { FavoritesModule } from '../favorites/favorites.module';
+import { CouponsModule } from '../coupon/coupons.module';
+import { PaymentModule } from '../payment/payment.module';
+import { ChatCheckoutService } from './chat-checkout.service';
+import { PromotionsModule } from '../promotions/promotions.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Product, ChatbotKnowledge]), CartModule, AddressesModule],
+  imports: [TypeOrmModule.forFeature([Product, ChatbotKnowledge]), CartModule, AddressesModule, OrdersModule, FavoritesModule, CouponsModule, PaymentModule, PromotionsModule],
   controllers: [ChatController, KnowledgeController],
-  providers: [ChatService, ChatProductsService, KnowledgeService, IntentService, SmallTalkService, GeminiService, ChatShoppingService],
+  providers: [ChatService, ChatProductsService, KnowledgeService, IntentService, SmallTalkService, GeminiService, ChatShoppingService, ChatUserActionsService, ChatCheckoutService],
 })
 export class ChatModule {}

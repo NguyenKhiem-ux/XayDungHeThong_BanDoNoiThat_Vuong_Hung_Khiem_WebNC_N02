@@ -1,5 +1,5 @@
 // file chứa mã nguồn phục vụ chức năng AuthContext của dự án.
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { authApi, favoriteApi } from '../api/services';
 import type { User } from '../api/types';
 
@@ -9,6 +9,7 @@ interface AuthContextValue {
   favoriteIds: number[];
   favoritesReady: boolean;
   toggleFavorite: (productId: number) => Promise<void>;
+  syncFavorites: (productIds: number[]) => void;
   login: (usernameOrEmail: string, password: string) => Promise<User>;
   register: (data: { fullName: string; username: string; email: string; password: string; phone?: string }) => Promise<User>;
   logout: () => void;
@@ -22,14 +23,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [favoriteIds, setFavoriteIds] = useState<number[]>([]);
   const [favoritesReady, setFavoritesReady] = useState(false);
+  const favoritesVersion = useRef(0);
 
   useEffect(() => {
     let active = true;
+    const version = ++favoritesVersion.current;
     setFavoriteIds([]);
     setFavoritesReady(!user);
     if (user) favoriteApi.list().then(({ data }) => {
-      if (active) setFavoriteIds(data.map(item => item.productId));
-    }).catch(() => {}).finally(() => { if (active) setFavoritesReady(true); });
+      if (active && version === favoritesVersion.current) setFavoriteIds(data.map(item => item.productId));
+    }).catch(() => {}).finally(() => { if (active && version === favoritesVersion.current) setFavoritesReady(true); });
     return () => { active = false; };
   }, [user?.id]);
 
@@ -58,6 +61,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading,
     favoriteIds,
     favoritesReady,
+    syncFavorites(productIds) {
+      favoritesVersion.current++;
+      setFavoriteIds(productIds);
+      setFavoritesReady(true);
+      window.dispatchEvent(new CustomEvent('favorite-changed'));
+    },
     async toggleFavorite(productId) {
       const isSaved = favoriteIds.includes(productId);
       if (isSaved) await favoriteApi.remove(productId);

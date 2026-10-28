@@ -3,6 +3,7 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState, type R
 import { cartApi } from '../api/services';
 import type { Cart } from '../api/types';
 import { useAuth } from './AuthContext';
+import { usePriceRevision } from '../hooks/usePriceRevision';
 
 interface CartContextValue {
   cart: Cart | null;
@@ -18,6 +19,7 @@ interface CartContextValue {
 const CartContext = createContext<CartContextValue | null>(null);
 
 export function CartProvider({ children }: { children: ReactNode }) {
+  const priceRevision = usePriceRevision();
   const { user } = useAuth();
   const [snapshot, setSnapshot] = useState<{ userId: number; cart: Cart } | null>(null);
   const owner = useRef(user?.id);
@@ -31,7 +33,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     try { sync((await cartApi.get()).data); } finally { if (owner.current === user.id) setLoading(false); }
   };
-  useEffect(() => { setLoading(false); void refresh().catch(() => {}); }, [user?.id]);
+  useEffect(() => { setLoading(false); void refresh().catch(() => {}); }, [user?.id, priceRevision]);
 
   const value = useMemo<CartContextValue>(() => ({
     cart, loading, refresh, sync,

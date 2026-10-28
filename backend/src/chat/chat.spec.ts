@@ -1,3 +1,6 @@
+import { Promotion, PromotionItem } from '../database/entities/promotion.entity';
+import { ChatCheckoutService } from './chat-checkout.service';
+import { ChatUserActionsService } from './chat-user-actions.service';
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -100,7 +103,7 @@ test('product budgets parse Vietnamese amounts and do not interpret greetings as
 });
 
 test('product lookup emits bounded parameterized MySQL with current price/stock filters', async () => {
-  const source = new DataSource({ type: 'mysql', database: 'chat_test_metadata_only', entities: [Product, ChatbotKnowledge] });
+  const source = new DataSource({ type: 'mysql', database: 'chat_test_metadata_only', entities: [Product, ChatbotKnowledge, Promotion, PromotionItem] });
   await (source as unknown as { buildMetadatas(): Promise<void> }).buildMetadatas();
   let queries = 0;
   let sql = '';
@@ -109,7 +112,7 @@ test('product lookup emits bounded parameterized MySQL with current price/stock 
     const qb = source.getRepository(Product).createQueryBuilder('p');
     qb.getRawMany = async () => { queries++; [sql, params] = qb.getQueryAndParameters(); return []; };
     return qb;
-  } } as unknown as Repository<Product>);
+  } } as unknown as Repository<Product>, {} as any);
   assert.equal(await products.context('Xin chào'), null);
   assert.equal(await products.context('Sản phẩm này giá bao nhiêu?'), null);
   assert.equal(await products.context('Sản phẩm này còn hàng không?'), null);
@@ -118,8 +121,10 @@ test('product lookup emits bounded parameterized MySQL with current price/stock 
   assert.deepEqual(context?.products, []);
   assert.match(sql, /LIMIT 5/);
   assert.match(sql, /`p`\.`stock` > 0/);
-  assert.match(sql, /`p`\.`price` <= \?/);
-  assert.deepEqual(params, ['%ghe%', 2000000, '%ghe%']);
+  assert.match(sql, /ROUND\(/);
+  assert.match(sql, /END <= \?/);
+  assert.equal(params[0], 'published'); assert.ok(params[1] instanceof Date);
+  assert.deepEqual(params.slice(3), ['%ghe%', 2000000, '%ghe%']);
   assert.ok(!sql.includes('2000000'));
   await products.context('Ghế còn hàng không?');
   assert.ok(!sql.includes('`p`.`stock` > 0')); // Must be able to report an existing out-of-stock product.
@@ -141,7 +146,7 @@ test('HTTP chatbot: required scenarios, moderation, metadata, security and safe 
   const config = new ConfigService({ JWT_SECRET: 'chat-test-only-secret', GEMINI_API_KEY: 'test-only-not-a-real-key' });
   const module = await Test.createTestingModule({
     controllers: [ChatController, KnowledgeController],
-    providers: [ChatService, KnowledgeService, IntentService, SmallTalkService, GeminiService, JwtStrategy, ChatShoppingService,
+    providers: [{ provide: ChatCheckoutService, useValue: { handle: async () => null } }, { provide: ChatUserActionsService, useValue: { handle: async () => null } }, ChatService, KnowledgeService, IntentService, SmallTalkService, GeminiService, JwtStrategy, ChatShoppingService,
       { provide: CartService, useValue: {} }, { provide: AddressesService, useValue: {} },
       { provide: ConfigService, useValue: config },
       { provide: ChatProductsService, useValue: products },
@@ -347,7 +352,7 @@ test('HTTP chatbot: required scenarios, moderation, metadata, security and safe 
     assert.equal(memory.rows.length, size);
   });
   await t.test('missing key, DB read/write errors are safe; small talk works during outages', async () => {
-    const noKey = new ChatService(module.get(KnowledgeService), products as any, module.get(IntentService), module.get(SmallTalkService), new GeminiService(new ConfigService({ GEMINI_API_KEY: '' })), module.get(ChatShoppingService));
+    const noKey = new ChatService(module.get(KnowledgeService), products as any, module.get(IntentService), module.get(SmallTalkService), new GeminiService(new ConfigService({ GEMINI_API_KEY: '' })), module.get(ChatShoppingService), module.get(ChatUserActionsService), module.get(ChatCheckoutService));
     assert.equal((await noKey.send('Xin chào')).source, 'small_talk');
     assert.equal((await noKey.send('Phòng nhỏ nên chọn nội thất màu gì?')).source, 'knowledge');
     await assert.rejects(noKey.send('Bảo hành khác thế nào?'), (error: any) => error.getStatus() === 503);
@@ -432,7 +437,7 @@ test('HTTP SSE forwards Gemini chunks before completion, preserves final metadat
   const memory = memoryKnowledge();
   const module = await Test.createTestingModule({
     controllers: [ChatController],
-    providers: [ChatService, KnowledgeService, IntentService, SmallTalkService, GeminiService, ChatShoppingService, JwtStrategy,
+    providers: [{ provide: ChatCheckoutService, useValue: { handle: async () => null } }, { provide: ChatUserActionsService, useValue: { handle: async () => null } }, ChatService, KnowledgeService, IntentService, SmallTalkService, GeminiService, ChatShoppingService, JwtStrategy,
       { provide: CartService, useValue: {} }, { provide: AddressesService, useValue: {} },
       { provide: ConfigService, useValue: new ConfigService({ JWT_SECRET: 'stream-test-secret', GEMINI_API_KEY: 'test-only' }) },
       { provide: ChatProductsService, useValue: {} },

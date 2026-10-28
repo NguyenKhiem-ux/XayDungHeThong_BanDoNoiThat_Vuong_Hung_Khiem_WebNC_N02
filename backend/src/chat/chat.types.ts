@@ -32,8 +32,14 @@ export interface ChatStream {
   signal: AbortSignal;
 }
 
+export const USER_ACTIONS = ['orders_list', 'order_detail', 'favorites_list', 'favorite_add', 'favorite_remove',
+  'addresses_list', 'address_create', 'address_update', 'address_delete', 'address_default',
+  'coupons_list', 'coupon_detail', 'cart_add_many', 'cart_clear', 'action_confirm', 'action_cancel'] as const;
+export const CHECKOUT_ACTIONS = ['checkout_start', 'checkout_address', 'checkout_voucher', 'checkout_best_voucher', 'checkout_payment',
+  'checkout_preview', 'checkout_place_order', 'checkout_cancel', 'checkout_edit_items', 'checkout_edit_address', 'checkout_edit_voucher',
+  'checkout_edit_payment', 'checkout_item_update', 'checkout_item_remove', 'checkout_payment_link', 'checkout_status'] as const;
 export const CHAT_ACTIONS = ['product_select', 'cart_add', 'cart_remove', 'cart_update_quantity', 'cart_view',
-  'buy_now', 'checkout_review', 'checkout_confirm'] as const;
+  'buy_now', 'checkout_review', 'checkout_confirm', ...USER_ACTIONS, ...CHECKOUT_ACTIONS] as const;
 export type ChatActionType = typeof CHAT_ACTIONS[number];
 export interface ChatAction {
   type: ChatActionType;
@@ -42,6 +48,14 @@ export interface ChatAction {
   quantity?: number;
   reviewId?: string;
   addressId?: number;
+  orderId?: number;
+  code?: string;
+  confirmationId?: string;
+  address?: Partial<import('../addresses/dto/address.dto').CreateAddressDto>;
+  items?: Array<{ productId: number; quantity: number }>;
+  checkoutId?: string;
+  quoteHash?: string;
+  paymentMethod?: import('../database/entities/enums').PaymentMethod;
 }
 export type ChatProduct = Omit<import('./chat-products.service').ProductContext['products'][number], 'price'> & { price: number };
 export type ChatCart = Awaited<ReturnType<import('../cart/cart.service').CartService['get']>>;
@@ -70,4 +84,19 @@ export interface ChatReply {
   checkoutUrl?: '/checkout/info';
   knowledgeId?: number;
   error?: { code: string; retryable: boolean };
+  orders?: Array<Awaited<ReturnType<import('../orders/orders.service').OrdersService['getOneForUser']>>>;
+  addresses?: import('../database/entities/user-address.entity').UserAddress[];
+  favorites?: Awaited<ReturnType<import('../favorites/favorites.service').FavoritesService['list']>>;
+  coupons?: Array<ChatCoupon>;
+  addressForm?: { addressId?: number; values: Partial<import('../addresses/dto/address.dto').CreateAddressDto>; missingFields: string[] };
+  confirmation?: { id: string; summary: string };
+  checkoutFlow?: import('./chat-checkout.service').CheckoutView;
+}
+export interface ChatCoupon {
+  coupon: import('../database/entities/coupon.entity').Coupon;
+  active: boolean;
+  eligible: boolean;
+  reason: string;
+  discountAmount?: number;
+  finalAmount?: number;
 }

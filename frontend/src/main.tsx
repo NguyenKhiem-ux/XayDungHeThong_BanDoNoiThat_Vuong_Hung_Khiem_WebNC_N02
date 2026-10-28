@@ -9,5 +9,8 @@ import './styles/legacy-pages.css';
 import './styles/animations.css';
 import './styles/admin.css';
 import './styles/admin-auth.css';
+import './styles/promotions.css';
+import './styles/flash-sale.css';
+import './styles/product-reviews.css';
 
 createRoot(document.getElementById('root')!).render(<StrictMode><AuthProvider><CartProvider><App /></CartProvider></AuthProvider></StrictMode>);

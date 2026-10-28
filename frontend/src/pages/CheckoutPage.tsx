@@ -1,9 +1,9 @@
 // file là trang checkout của giao diện người dùng.
 import { FormEvent, useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { formatVnd } from '../api/client';
 import { couponApi, orderApi, paymentApi } from '../api/services';
-import type { Cart, Coupon, PaymentMethod } from '../api/types';
+import type { Cart, ChatCheckoutQuote, Coupon, PaymentMethod } from '../api/types';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 
@@ -19,21 +19,44 @@ type CheckoutForm = {
 };
 
 export function CheckoutPage() {
-  const { cart, refresh, loading: cartLoading } = useCart();
+  const { cart: fullCart, refresh, loading: cartLoading } = useCart();
   const { user } = useAuth();
   const loc = useLocation();
   const nav = useNavigate();
-  const [form, setForm] = useState<CheckoutForm>({
-    fullName: user?.fullName || '',
-    email: user?.email || '',
-    phone: user?.phone || '',
-    address: '',
-    district: '',
-    province: '',
-    paymentMethod: 'QR',
-    note: '',
+  const selectedProductId = new URLSearchParams(loc.search).get('productId');
+  const productId = selectedProductId === null ? undefined : Number(selectedProductId);
+  const items = fullCart?.items.filter(item => productId === undefined || item.productId === productId) ?? [];
+  const cart = !fullCart || productId === undefined ? fullCart : {
+    ...fullCart, items,
+    itemCount: items.reduce((sum, item) => sum + item.quantity, 0),
+    total: items.reduce((sum, item) => sum + item.subtotal, 0),
+    couponEligibleTotal: items.reduce((sum, item) => sum + (item.product.discountPercent ? 0 : item.subtotal), 0),
+    saleSavings: items.reduce((sum, item) => sum + (item.product.savings ?? 0) * item.quantity, 0),
+  };
+  const [form, setForm] = useState<CheckoutForm>(() => {
+    const initial: CheckoutForm = {
+      fullName: user?.fullName || '',
+      email: user?.email || '',
+      phone: user?.phone || '',
+      address: '',
+      district: '',
+      province: '',
+      paymentMethod: 'QR',
+      note: '',
+    };
+    try {
+      const saved = JSON.parse(sessionStorage.getItem('giadung_checkout') || 'null');
+      if (saved && typeof saved === 'object') {
+        for (const key of Object.keys(initial) as Array<keyof CheckoutForm>) {
+          if (key !== 'paymentMethod' && typeof saved[key] === 'string') initial[key] = saved[key];
+        }
+        initial.paymentMethod = saved.paymentMethod === 'CASH' || saved.paymentMethod === 'CARD' ? saved.paymentMethod : 'QR';
+      }
+    } catch {}
+    return initial;
   });
   const [step, setStep] = useState(loc.pathname.endsWith('/payment') ? 2 : loc.pathname.endsWith('/invoice') ? 3 : 1);
+  useEffect(() => { setStep(loc.pathname.endsWith('/payment') ? 2 : loc.pathname.endsWith('/invoice') ? 3 : 1); }, [loc.pathname]);
   const [busy, setBusy] = useState(false);
   const [cardPin, setCardPin] = useState('');
   const [pendingOrderId, setPendingOrderId] = useState<number | null>(null);
@@ -45,19 +68,28 @@ export function CheckoutPage() {
   const [voucherOpen, setVoucherOpen] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [orderError, setOrderError] = useState('');
+  const [quote, setQuote] = useState<ChatCheckoutQuote | null>(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
+  const [quoteRetry, setQuoteRetry] = useState(0);
+  const [priceChanged, setPriceChanged] = useState(false);
+  const deliveryAddress = [form.address.trim(), form.district.trim(), form.province.trim()].filter(Boolean).join(', ');
+
+  useEffect(() => { void refresh().catch(() => setOrderError('Chưa thể cập nhật giỏ hàng. Vui lòng tải lại trang.')); }, [user?.id]);
+
+  useEffect(() => {
+    if (step !== 3 || pendingOrderId) return;
+    let active = true;
+    setQuote(null); setQuoteLoading(true); setPriceChanged(false); setOrderError('');
+    orderApi.preview({ fullName: form.fullName, email: form.email, phone: form.phone, address: deliveryAddress,
+      paymentMethod: form.paymentMethod, note: form.note, couponCode: appliedCoupon?.coupon.code, productId })
+      .then(({ data }) => { if (active) setQuote(data); })
+      .catch(error => { if (active) setOrderError((error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Chưa thể kiểm tra giá. Vui lòng thử lại.'); })
+      .finally(() => { if (active) setQuoteLoading(false); });
+    return () => { active = false; };
+  }, [step, form.fullName, form.email, form.phone, deliveryAddress, form.paymentMethod, form.note, appliedCoupon?.coupon.code, productId, quoteRetry, pendingOrderId]);
 
   useEffect(() => { couponApi.list().then((response) => setAvailableCoupons(response.data)).catch(() => setAvailableCoupons([])); }, []);
   useEffect(() => { sessionStorage.removeItem('giadung_checkout_card_demo'); }, []);
-
-  useEffect(() => {
-    try {
-      const raw = sessionStorage.getItem('giadung_checkout');
-      if (raw) {
-        const saved = JSON.parse(raw) as CheckoutForm;
-        setForm({ ...saved, district: saved.district || '', province: saved.province || '', paymentMethod: saved.paymentMethod === 'CASH' || saved.paymentMethod === 'CARD' ? saved.paymentMethod : 'QR' });
-      }
-    } catch {}
-  }, []);
 
   useEffect(() => {
     sessionStorage.setItem('giadung_checkout', JSON.stringify(form));
@@ -73,8 +105,8 @@ export function CheckoutPage() {
   }, [loc.state, user?.id]);
 
   useEffect(() => {
-    if (!cartLoading && cart && !cart.items.length) nav('/cart');
-  }, [cartLoading, cart, nav]);
+    if (!cartLoading && cart && !cart.items.length && !busy && !pendingOrderId) nav('/cart');
+  }, [cartLoading, cart, nav, busy, pendingOrderId]);
 
   const update = (key: keyof CheckoutForm, value: string) => {
     setForm((current) => ({ ...current, [key]: value }));
@@ -82,7 +114,7 @@ export function CheckoutPage() {
 
   const go = (nextStep: number) => {
     setStep(nextStep);
-    nav(nextStep === 1 ? '/checkout/info' : nextStep === 2 ? '/checkout/payment' : '/checkout/invoice');
+    nav({ pathname: nextStep === 1 ? '/checkout/info' : nextStep === 2 ? '/checkout/payment' : '/checkout/invoice', search: loc.search });
   };
 
   const nextInfo = (event: FormEvent) => {
@@ -99,7 +131,7 @@ export function CheckoutPage() {
     setCouponBusy(true);
     setCouponError('');
     try {
-      const { data } = await couponApi.validate(code, cart.total);
+      const { data } = await couponApi.validate(code, cart.total, productId);
       setAppliedCoupon({ coupon: data.coupon, discountAmount: data.discountAmount, finalAmount: data.finalAmount });
       setCouponCode(data.coupon.code);
       sessionStorage.setItem('giadung_checkout_coupon', data.coupon.code);
@@ -140,7 +172,7 @@ export function CheckoutPage() {
     if (!savedCode || !cart) return;
     let active = true;
     setCouponBusy(true);
-    couponApi.validate(savedCode, cart.total).then(({ data }) => {
+    couponApi.validate(savedCode, cart.total, productId).then(({ data }) => {
       if (!active) return;
       setAppliedCoupon({ coupon: data.coupon, discountAmount: data.discountAmount, finalAmount: data.finalAmount });
       setCouponCode(data.coupon.code);
@@ -152,11 +184,9 @@ export function CheckoutPage() {
       if (active) setCouponBusy(false);
     });
     return () => { active = false; };
-  }, [cart?.total]);
+  }, [cart?.total, cart?.couponEligibleTotal, productId]);
 
-  if (!cart?.items?.length) return null;
-
-  const deliveryAddress = [form.address.trim(), form.district.trim(), form.province.trim()].filter(Boolean).join(', ');
+  if (!cart?.items?.length) return pendingOrderId ? <section className="section"><div className="empty-state" role="status"><h1>Đơn #{pendingOrderId} đã được tạo</h1><p>{orderError || 'Đang chuẩn bị bước thanh toán tiếp theo…'}</p><Link className="btn btn-primary" to={`/orders/${pendingOrderId}`}>Xem đơn và tiếp tục thanh toán</Link></div></section> : null;
 
   const nextPay = (event: FormEvent) => {
     event.preventDefault();
@@ -165,6 +195,7 @@ export function CheckoutPage() {
 
   const confirm = async (event: FormEvent) => {
     event.preventDefault();
+    if (!quote || quoteLoading || pendingOrderId) return;
     setBusy(true);
     setOrderError('');
     try {
@@ -176,6 +207,9 @@ export function CheckoutPage() {
         paymentMethod: form.paymentMethod,
         note: form.note,
         couponCode: appliedCoupon?.coupon.code,
+        quoteId: quote.id,
+        quoteHash: quote.hash,
+        productId,
       });
       setPendingOrderId(order.id);
 
@@ -201,7 +235,10 @@ export function CheckoutPage() {
 
       nav(`/checkout/success/${order.id}`, { replace: true });
     } catch (error) {
-      setOrderError((error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Chưa thể tạo đơn hàng. Vui lòng kiểm tra lại thông tin và thử lại.');
+      const detail = (error as { response?: { data?: { message?: string; quote?: ChatCheckoutQuote } } }).response?.data;
+      if (detail?.quote) { setQuote(detail.quote); setPriceChanged(true); void refresh().catch(() => {}); }
+      else if (!pendingOrderId && (error as { response?: { status?: number } }).response?.status === 409) setQuote(null);
+      setOrderError(detail?.message || 'Chưa thể tạo đơn hàng. Vui lòng kiểm tra lại thông tin và thử lại.');
     } finally {
       setBusy(false);
     }
@@ -212,7 +249,7 @@ export function CheckoutPage() {
       <section className="page-hero compact">
         <span className="eyebrow dark">Checkout</span>
         <h1>Thông tin giao hàng</h1>
-        <p>Nhập đầy đủ thông tin. Dấu sao chuyển xanh khi trường hợp lệ.</p>
+        <p>{productId === undefined ? 'Nhập đầy đủ thông tin. Dấu sao chuyển xanh khi trường hợp lệ.' : `Mua riêng ${cart.items[0].product.name} · Số lượng: ${cart.itemCount}. Các sản phẩm khác vẫn giữ trong giỏ hàng.`}</p>
       </section>
       <section className="checkout-wrap">
         <form className="checkout-card" onSubmit={nextInfo}>
@@ -307,12 +344,12 @@ export function CheckoutPage() {
 
     {step === 3 && <div className="invoice-container">
       <div className="invoice-header">
-        <span className="eyebrow dark">HUNG VUONG GIA DỤNG · ĐƠN HÀNG</span>
+        <span className="eyebrow dark">GIA DỤNG VIỆT · ĐƠN HÀNG</span>
         <h1><i className="fa-solid fa-file-invoice" /> Hóa Đơn Xác Nhận</h1>
         <p>Kiểm tra đầy đủ thông tin giao hàng, sản phẩm và thanh toán trước khi đặt hàng.</p>
       </div>
       <form className="invoice-box" onSubmit={confirm}>
-        <div className="invoice-brand-row"><div><strong>HUNG VUONG GIA DỤNG</strong><span>Hóa đơn tạm tính · Mã đơn sẽ được tạo sau khi xác nhận</span></div><span className="invoice-status"><i className="fa-solid fa-circle-check" /> Chờ xác nhận</span></div>
+        <div className="invoice-brand-row"><div><strong>GIA DỤNG VIỆT</strong><span>Hóa đơn tạm tính · Mã đơn sẽ được tạo sau khi xác nhận</span></div><span className="invoice-status"><i className="fa-solid fa-circle-check" /> Chờ xác nhận</span></div>
         <div className="invoice-section">
           <div className="invoice-section-title">Thông tin giao hàng</div>
           <div className="invoice-info">
@@ -321,7 +358,7 @@ export function CheckoutPage() {
             <Info label="Số điện thoại" value={form.phone} />
             <Info label="Địa chỉ giao hàng" value={deliveryAddress} />
             <Info label="Ghi chú giao hàng" value={form.note || 'Không có'} />
-            {appliedCoupon && <Info label="Mã giảm giá" value={`${appliedCoupon.coupon.code} · giảm ${formatVnd(appliedCoupon.discountAmount)}`} />}
+            {quote?.couponCode && <Info label="Mã giảm giá" value={`${quote.couponCode} · giảm ${formatVnd(quote.discountAmount)}`} />}
           </div>
         </div>
         <div className="invoice-section">
@@ -336,10 +373,10 @@ export function CheckoutPage() {
               </tr>
             </thead>
             <tbody>
-              {cart.items.map((item) => (
-                <tr key={item.id}>
-                  <td><strong>{item.product.name}</strong>{item.product.brand && <small className="invoice-product-meta">{item.product.brand}{item.product.category ? ` · ${item.product.category}` : ''}</small>}</td>
-                  <td style={{ textAlign: 'right' }}>{formatVnd(item.product.price)}</td>
+              {(quote?.items ?? cart.items.map(item => ({ productId: item.productId, name: item.product.name, price: item.product.price, quantity: item.quantity, subtotal: item.subtotal }))).map((item) => (
+                <tr key={item.productId}>
+                  <td><strong>{item.name}</strong></td>
+                  <td style={{ textAlign: 'right' }}>{formatVnd(item.price)}</td>
                   <td style={{ textAlign: 'center' }}>{item.quantity}</td>
                   <td style={{ textAlign: 'right', fontWeight: 600 }}>{formatVnd(item.subtotal)}</td>
                 </tr>
@@ -349,11 +386,11 @@ export function CheckoutPage() {
         </div>
         <div className="invoice-total">
           <div className="invoice-total-box">
-            <div className="invoice-total-line"><span>Tạm tính ({cart.itemCount} sản phẩm)</span><strong>{formatVnd(cart.total)}</strong></div>
+            <div className="invoice-total-line"><span>Tạm tính ({quote?.items.reduce((sum, item) => sum + item.quantity, 0) ?? cart.itemCount} sản phẩm)</span><strong>{formatVnd(quote?.subtotal ?? cart.total)}</strong></div>
             <div className="invoice-total-line"><span>Phí giao hàng</span><strong>Miễn phí</strong></div>
-            {appliedCoupon && <div className="invoice-total-line invoice-discount-line"><span>Voucher {appliedCoupon.coupon.code}</span><strong>−{formatVnd(appliedCoupon.discountAmount)}</strong></div>}
+            {!!quote?.discountAmount && <div className="invoice-total-line invoice-discount-line"><span>Voucher {quote.couponCode}</span><strong>−{formatVnd(quote.discountAmount)}</strong></div>}
             <div className="invoice-total-label">Tổng thanh toán</div>
-            <div className="invoice-total-amount">{formatVnd(appliedCoupon?.finalAmount ?? cart.total)}</div>
+            <div className="invoice-total-amount">{quoteLoading ? 'Đang kiểm tra giá…' : formatVnd(quote?.total ?? appliedCoupon?.finalAmount ?? cart.total)}</div>
             <div className="payment-method-box">
               <div style={{ fontSize: '.9rem', color: 'var(--muted)' }}>Phương thức thanh toán</div>
               <div style={{ fontWeight: 600, marginTop: '.5rem' }}>{form.paymentMethod === 'CARD' && user?.savedCard ? `${user.savedCard.type === 'DOMESTIC' ? 'Thẻ nội địa' : 'Thẻ quốc tế'} · ${user.savedCard.provider} · ${user.savedCard.holder} · •••• ${user.savedCard.last4}` : paymentLabel(form.paymentMethod)}</div>
@@ -367,7 +404,8 @@ export function CheckoutPage() {
         {pendingOrderId && orderError && <p className="invoice-demo-note">Đơn #{pendingOrderId} đã được tạo nhưng chưa thanh toán. Bạn có thể nhập lại PIN trong <a href={`/orders/${pendingOrderId}`}>chi tiết đơn hàng</a>.</p>}
         <div className="actions">
           <button type="button" className="btn-back invoice-print-button" onClick={() => window.print()}><i className="fa-solid fa-print" /> In hóa đơn</button>
-          <button className="btn-confirm" disabled={busy}><i className="fa-solid fa-check" /> {busy ? 'Đang xác nhận...' : form.paymentMethod === 'CARD' ? 'Xác minh PIN và thanh toán mô phỏng' : 'Xác nhận đơn hàng'}</button>
+          {!quote && !quoteLoading && <button type="button" className="btn-back" onClick={() => setQuoteRetry(value => value + 1)}>Kiểm tra lại giá</button>}
+          <button className="btn-confirm" disabled={busy || quoteLoading || !quote || !!pendingOrderId}><i className="fa-solid fa-check" /> {busy ? 'Đang xác nhận...' : priceChanged ? 'Xác nhận lại với giá mới' : form.paymentMethod === 'CARD' ? 'Xác minh PIN và thanh toán mô phỏng' : 'Xác nhận đơn hàng'}</button>
           <button type="button" className="btn-back" onClick={() => go(2)}><i className="fa-solid fa-arrow-left" /> Quay lại</button>
         </div>
       </form>
@@ -419,6 +457,7 @@ function Summary({ cart, payment = false, customer, couponCode, setCouponCode, a
   return <aside className="summary-panel">
     <h2 className="summary-title"><i className="fa-solid fa-receipt" /> Tổng tiền đơn hàng</h2>
     <div className="voucher-panel">
+      {!!cart.saleSavings && <p className="voucher-sale-policy">Bạn đã tiết kiệm {formatVnd(cart.saleSavings)} từ sự kiện. Voucher chỉ áp dụng cho phần hàng thường: {formatVnd(cart.couponEligibleTotal ?? 0)}.</p>}
       <div className="voucher-entry">
         <input aria-label="Mã voucher" placeholder="Nhập mã voucher" value={couponCode} onChange={(event) => setCouponCode(event.target.value.toUpperCase())} />
         <button type="button" className="voucher-choose" onClick={() => setVoucherOpen(!voucherOpen)}><i className="fa-solid fa-ticket" /> Chọn mã</button>
@@ -429,8 +468,8 @@ function Summary({ cart, payment = false, customer, couponCode, setCouponCode, a
       {voucherOpen && <div className="voucher-picker" role="dialog" aria-label="Chọn mã giảm giá">
         <div className="voucher-picker-head"><strong>Mã giảm giá khả dụng</strong><button type="button" aria-label="Đóng danh sách mã" onClick={() => setVoucherOpen(false)}>×</button></div>
         {eligibleCoupons.length ? eligibleCoupons.map((coupon) => {
-          const meetsMinimum = cart.total >= Number(coupon.minOrderAmount);
-          return <button type="button" className="voucher-option" key={coupon.id} disabled={!meetsMinimum} onClick={() => onChooseCoupon(coupon.code)}><span><strong>{coupon.code}</strong><small>{couponDescription(coupon)}</small>{!meetsMinimum && <small className="voucher-option-hint">Cần thêm {formatVnd(Number(coupon.minOrderAmount) - cart.total)} để sử dụng</small>}</span><i className="fa-solid fa-chevron-right" /></button>;
+          const meetsMinimum = (cart.couponEligibleTotal ?? cart.total) > 0 && (cart.couponEligibleTotal ?? cart.total) >= Number(coupon.minOrderAmount);
+          return <button type="button" className="voucher-option" key={coupon.id} disabled={!meetsMinimum} onClick={() => onChooseCoupon(coupon.code)}><span><strong>{coupon.code}</strong><small>{couponDescription(coupon)}</small>{!meetsMinimum && <small className="voucher-option-hint">{cart.couponEligibleTotal === 0 ? 'Mã chỉ áp dụng cho hàng không sale.' : `Cần thêm ${formatVnd(Number(coupon.minOrderAmount) - (cart.couponEligibleTotal ?? cart.total))} hàng không sale để sử dụng`}</small>}</span><i className="fa-solid fa-chevron-right" /></button>;
         }) : <p className="voucher-empty">Hiện chưa có mã giảm giá khả dụng.</p>}
       </div>}
     </div>

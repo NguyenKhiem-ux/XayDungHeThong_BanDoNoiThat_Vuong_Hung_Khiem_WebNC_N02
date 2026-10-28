@@ -18,6 +18,10 @@ CREATE TABLE IF NOT EXISTS users (
     email       VARCHAR(100) NOT NULL UNIQUE,
     password    VARCHAR(255) NOT NULL,
     phone       VARCHAR(15),
+    birth_date  DATE,
+    address     TEXT,
+    avatar_url  VARCHAR(500),
+    gender      VARCHAR(10) NOT NULL DEFAULT 'male',
     role        ENUM('USER', 'ADMIN') NOT NULL DEFAULT 'USER',
     card_holder VARCHAR(100),
     card_type VARCHAR(20),
@@ -207,3 +211,48 @@ INSERT INTO products (name, description, specifications, origin, price, stock, c
 ('Robot hút bụi Xiaomi S20', 'Robot hút bụi thông minh hỗ trợ hút và lau nhà, điều khiển tiện lợi qua ứng dụng.', 'Lực hút: 5000Pa\nThời gian hoạt động: 130 phút\nĐiều khiển: App\nChức năng: Hút + lau\nĐiều hướng: LDS', 'Trung Quốc', 6490000, 18, 'Thiết bị gia dụng thông minh', 'Xiaomi', 'https://caothienphat.com/wp-content/uploads/2025/04/Dreame-1-768x768.jpg', TRUE),
 ('Quạt đứng Panasonic 5 cánh', 'Quạt đứng Panasonic vận hành êm, tạo luồng gió dễ chịu cho phòng ngủ và phòng khách.', 'Số cánh: 5\nCông suất: 48W\nTốc độ: 3 mức\nChiều cao: Điều chỉnh\nHẹn giờ: Có', 'Nhật Bản', 1790000, 40, 'Quạt điện', 'Panasonic', 'https://images.unsplash.com/photo-1565031491910-e57fac031c41?auto=format&fit=crop&w=900&q=85', TRUE),
 ('Máy lọc không khí Sharp FP-J40E', 'Máy lọc không khí Sharp phù hợp phòng gia đình, hỗ trợ lọc bụi và khử mùi.', 'Diện tích: 30m²\nCông nghệ: Plasmacluster\nBộ lọc: HEPA\nCông suất: 23W\nĐộ ồn: Thấp', 'Nhật Bản', 3690000, 22, 'Thiết bị gia dụng thông minh', 'Sharp', 'https://images.unsplash.com/photo-1585776245991-cf89dd7fc73a?auto=format&fit=crop&w=900&q=85', TRUE);
+
+
+CREATE TABLE IF NOT EXISTS promotions (
+  id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  title VARCHAR(120) NOT NULL,
+  description VARCHAR(300) NOT NULL DEFAULT '',
+  banner_discount_percent TINYINT UNSIGNED NULL,
+  status VARCHAR(12) NOT NULL DEFAULT 'draft',
+  starts_at DATETIME NOT NULL,
+  ends_at DATETIME NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX IX_promotion_schedule (status, starts_at, ends_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS promotion_items (
+  id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  promotion_id INT NOT NULL,
+  product_id BIGINT NOT NULL,
+  discount_percent INT NOT NULL,
+  CONSTRAINT UQ_promotion_product UNIQUE (promotion_id, product_id),
+  CONSTRAINT FK_promotion_item_event FOREIGN KEY (promotion_id) REFERENCES promotions(id) ON DELETE CASCADE,
+  CONSTRAINT FK_promotion_item_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+  CONSTRAINT CK_promotion_percent CHECK (discount_percent BETWEEN 1 AND 99)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS promotion_lock (id INT NOT NULL PRIMARY KEY) ENGINE=InnoDB;
+INSERT IGNORE INTO promotion_lock (id) VALUES (1);
+
+CREATE TABLE IF NOT EXISTS product_reviews (
+  id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  product_id BIGINT NOT NULL,
+  user_id BIGINT NOT NULL,
+  order_id BIGINT NOT NULL,
+  rating TINYINT UNSIGNED NOT NULL,
+  comment VARCHAR(2000) NOT NULL DEFAULT '',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT UQ_review_buyer_product UNIQUE (user_id, product_id),
+  INDEX IX_review_product_rating (product_id, rating),
+  CONSTRAINT CK_review_rating CHECK (rating BETWEEN 1 AND 5),
+  CONSTRAINT FK_review_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+  CONSTRAINT FK_review_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT FK_review_order FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

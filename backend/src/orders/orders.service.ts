@@ -1,7 +1,8 @@
 // file chứa logic xử lý nghiệp vụ của chức năng orders và làm việc với database khi cần.
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Not, Repository } from 'typeorm';
+import { DataSource, EntityManager, Not, Repository } from 'typeorm';
+import { createHash, randomUUID } from 'node:crypto';
 import { Cart } from '../database/entities/cart.entity';
 import { CartItem } from '../database/entities/cart-item.entity';
 import { OrderStatus, PaymentMethod, PaymentRecordStatus, PaymentStatus } from '../database/entities/enums';
@@ -13,6 +14,11 @@ import { User } from '../database/entities/user.entity';
 import { Coupon, CouponDiscountType } from '../database/entities/coupon.entity';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
+import { CheckoutRecord } from '../database/entities/checkout-record.entity';
+import { UserAddress } from '../database/entities/user-address.entity';
+import { CheckoutQuote, CheckoutSelection, CheckoutSnapshot } from './checkout.types';
+import { evaluateCoupon } from '../coupon/coupons.service';
+import { PromotionsService } from '../promotions/promotions.service';
  
 @Injectable()
 export class OrdersService {
@@ -25,104 +31,136 @@ export class OrdersService {
     @InjectRepository(OrderItem) private readonly orderItems: Repository<OrderItem>,
     @InjectRepository(Payment) private readonly payments: Repository<Payment>,
     @InjectRepository(User) private readonly users: Repository<User>,
+    private readonly promotions: PromotionsService,
   ) {}
  
   async create(userId: number, dto: CreateOrderDto) {
-    return this.dataSource.transaction(async (manager) => {
-      const cart = await manager.getRepository(Cart).findOne({ where: { userId } });
-      if (!cart) throw new BadRequestException('Giỏ hàng đang trống');
-      const cartItems = await manager.getRepository(CartItem).find({ where: { cartId: cart.id }, relations: ['product'] });
-      if (!cartItems.length) throw new BadRequestException('Giỏ hàng đang trống');
- 
-      let subtotal = 0;
-      for (const item of cartItems) {
-        if (item.product.stock < item.quantity) {
-          throw new BadRequestException(`Sản phẩm ${item.product.name} không đủ tồn kho`);
-        }
-        subtotal += Number(item.product.price) * item.quantity;
-      }
+    if (!dto.quoteId || !dto.quoteHash) throw new ConflictException('Hãy xem báo giá và xác nhận trước khi tạo đơn.');
+    const result = await this.confirmCheckout(userId, dto.quoteId, dto.quoteHash);
+    if (result.changed) throw new ConflictException({ message: 'Giá hoặc thông tin mua hàng đã thay đổi. Hãy xem và xác nhận lại báo giá mới.', quote: result.quote });
+    return result.order!;
+  }
 
-      let discount = 0;
-      let appliedCoupon: Coupon | null = null;
-      if (dto.couponCode?.trim()) {
-        const couponRepo = manager.getRepository(Coupon);
-        appliedCoupon = await couponRepo.findOne({
-          where: { code: dto.couponCode.trim().toUpperCase() },
-          lock: { mode: 'pessimistic_write' },
-        });
-        if (!appliedCoupon) throw new BadRequestException('Mã giảm giá không tồn tại');
-        if (appliedCoupon.userId !== null && appliedCoupon.userId !== userId) throw new BadRequestException('Mã giảm giá không thuộc tài khoản của bạn');
-        const now = new Date();
-        if (!appliedCoupon.isActive) throw new BadRequestException('Mã giảm giá đã bị vô hiệu hóa');
-        if (now < appliedCoupon.startDate) throw new BadRequestException('Mã giảm giá chưa bắt đầu sử dụng');
-        if (now > appliedCoupon.endDate) throw new BadRequestException('Mã giảm giá đã hết hạn');
-        if (appliedCoupon.usageLimit !== null && appliedCoupon.usedCount >= appliedCoupon.usageLimit) {
-          throw new BadRequestException('Mã giảm giá đã hết lượt sử dụng');
-        }
-        if (subtotal < Number(appliedCoupon.minOrderAmount)) {
-          throw new BadRequestException(`Đơn hàng tối thiểu ${appliedCoupon.minOrderAmount}đ`);
-        }
-        discount = appliedCoupon.discountType === CouponDiscountType.PERCENTAGE
-          ? subtotal * Number(appliedCoupon.discountValue) / 100
-          : Number(appliedCoupon.discountValue);
-        if (appliedCoupon.discountType === CouponDiscountType.PERCENTAGE && appliedCoupon.maxDiscountAmount !== null) {
-          discount = Math.min(discount, Number(appliedCoupon.maxDiscountAmount));
-        }
-        discount = Math.round(Math.min(discount, subtotal));
-      }
-      const total = subtotal - discount;
- 
-      const productRepo = manager.getRepository(Product);
-      for (const item of cartItems) {
-        item.product.stock -= item.quantity;
-        await productRepo.save(item.product);
-      }
-
-      const order = manager.create(Order, {
-        userId,
-        fullName: dto.fullName,
-        email: dto.email,
-        phone: dto.phone,
-        address: dto.address,
-        totalAmount: String(total),
-        subtotalAmount: String(subtotal),
-        discountAmount: String(discount),
-        couponCode: appliedCoupon?.code ?? null,
-        status: OrderStatus.PENDING,
-        paymentMethod: dto.paymentMethod,
-        paymentStatus: PaymentStatus.UNPAID,
-        note: dto.note ?? null,
-      });
-      const savedOrder = await manager.save(Order, order);
- 
-      const orderRows = cartItems.map((item) => manager.create(OrderItem, {
-        orderId: savedOrder.id,
-        productId: item.product.id,
-        productName: item.product.name,
-        productImage: item.product.imageUrl,
-        price: item.product.price,
-        quantity: item.quantity,
-        subtotal: String(Number(item.product.price) * item.quantity),
-      }));
-      await manager.save(OrderItem, orderRows);
- 
-      const payment = manager.create(Payment, {
-        orderId: savedOrder.id,
-        method: dto.paymentMethod,
-        amount: String(total),
-        status: PaymentRecordStatus.PENDING,
-        transactionId: null,
-        paidAt: null,
-      });
-      await manager.save(Payment, payment);
-      if (appliedCoupon) {
-        appliedCoupon.usedCount += 1;
-        await manager.save(Coupon, appliedCoupon);
-      }
-      await manager.getRepository(CartItem).delete({ cartId: cart.id });
- 
-      return this.getOneForUser(userId, savedOrder.id, manager.getRepository(Order));
+  async previewCheckout(userId: number, selection: CheckoutSelection | CreateOrderDto, id?: string): Promise<CheckoutQuote> {
+    return this.dataSource.transaction(async manager => {
+      const records = manager.getRepository(CheckoutRecord);
+      let record = id ? await records.findOne({ where: { id, userId }, lock: { mode: 'pessimistic_write' } }) : null;
+      if (id && !record) throw new NotFoundException('Không tìm thấy checkout của bạn.');
+      if (record && (record.orderId || record.state !== 'ready' || record.expiresAt.getTime() < Date.now())) throw new ConflictException('Checkout đã hoàn tất, bị hủy hoặc hết hạn. Hãy bắt đầu checkout mới.');
+      const { snapshot } = await this.calculate(manager, userId, selection);
+      record = records.create({ ...record, id: record?.id ?? randomUUID(), userId, snapshot,
+        hash: this.snapshotHash(snapshot), state: 'ready', orderId: null, expiresAt: new Date(Date.now() + 15 * 60_000) });
+      await records.save(record);
+      return this.quote(record);
     });
+  }
+
+  async confirmCheckout(userId: number, id: string, hash: string) {
+    return this.dataSource.transaction(async manager => {
+      // The persisted UUID is the idempotency key. Lock it before reading or consuming the cart.
+      const records = manager.getRepository(CheckoutRecord);
+      const record = await records.findOne({ where: { id, userId }, lock: { mode: 'pessimistic_write' } });
+      if (!record) throw new NotFoundException('Không tìm thấy checkout của bạn.');
+      if (hash !== record.hash) throw new ConflictException({ message: 'Nội dung checkout đã thay đổi. Hãy xem và xác nhận bản mới nhất.', quote: this.quote(record) });
+      if (record.orderId) return { order: await this.getOneForUser(userId, record.orderId, manager.getRepository(Order)), changed: false };
+      if (record.state !== 'ready' || record.expiresAt.getTime() < Date.now()) throw new ConflictException('Checkout đã bị hủy hoặc hết hạn. Hãy bắt đầu lại.');
+      const selection: CheckoutSelection | CreateOrderDto = record.snapshot.address.id
+        ? { addressId: record.snapshot.address.id, paymentMethod: record.snapshot.paymentMethod, couponCode: record.snapshot.couponCode ?? undefined }
+        : { ...record.snapshot.address, email: record.snapshot.email, paymentMethod: record.snapshot.paymentMethod, couponCode: record.snapshot.couponCode ?? undefined, note: record.snapshot.note ?? undefined };
+      const calculated = await this.calculate(manager, userId, { ...selection, productId: record.snapshot.productId });
+      const currentHash = this.snapshotHash(calculated.snapshot);
+      if (currentHash !== record.hash) {
+        record.snapshot = calculated.snapshot; record.hash = currentHash;
+        await records.save(record);
+        return { quote: this.quote(record), changed: true };
+      }
+      const order = await this.writeOrder(manager, userId, calculated);
+      record.orderId = order.id; record.state = 'created';
+      await records.save(record);
+      return { order, changed: false };
+    });
+  }
+
+  async cancelCheckout(userId: number, id: string) {
+    return this.dataSource.transaction(async manager => {
+      const repo = manager.getRepository(CheckoutRecord);
+      const record = await repo.findOne({ where: { id, userId }, lock: { mode: 'pessimistic_write' } });
+      if (!record) throw new NotFoundException('Không tìm thấy checkout của bạn.');
+      if (record.orderId) throw new ConflictException(`Đơn #${record.orderId} đã được tạo. Hủy checkout không hủy đơn hàng này.`);
+      record.state = 'cancelled'; await repo.save(record);
+    });
+  }
+
+  private snapshotHash(snapshot: CheckoutSnapshot) { return createHash('sha256').update(JSON.stringify(snapshot)).digest('hex'); }
+  private quote(record: CheckoutRecord): CheckoutQuote { return { ...record.snapshot, id: record.id, hash: record.hash, expiresAt: record.expiresAt.toISOString() }; }
+
+  private async calculate(manager: EntityManager, userId: number, selection: CheckoutSelection | CreateOrderDto) {
+    if (selection.productId !== undefined && (!Number.isSafeInteger(selection.productId) || selection.productId < 1)) throw new BadRequestException('Sản phẩm không hợp lệ.');
+    await this.promotions.lock(manager);
+    if (!Object.values(PaymentMethod).includes(selection.paymentMethod)) throw new BadRequestException('Phương thức thanh toán không hợp lệ.');
+    const cart = await manager.getRepository(Cart).findOne({ where: { userId }, lock: { mode: 'pessimistic_write' } });
+    if (!cart) throw new BadRequestException('Giỏ hàng đang trống');
+    const selectedProduct = selection.productId === undefined ? {} : { productId: selection.productId };
+    const rows = await manager.getRepository(CartItem).find({ where: { cartId: cart.id, ...selectedProduct }, order: { productId: 'ASC' } });
+    if (!rows.length) throw new BadRequestException(selection.productId === undefined ? 'Giỏ hàng đang trống' : 'Sản phẩm không có trong giỏ hàng.');
+    const products: Product[] = [];
+    const items: CheckoutSnapshot['items'] = [];
+    for (const row of rows) {
+      if (!Number.isSafeInteger(row.quantity) || row.quantity < 1) throw new BadRequestException('Số lượng sản phẩm không hợp lệ.');
+      const product = await manager.getRepository(Product).findOne({ where: { id: row.productId }, lock: { mode: 'pessimistic_write' } });
+      if (!product) throw new NotFoundException('Sản phẩm không còn tồn tại.');
+      if (product.stock < row.quantity) throw new BadRequestException(`${product.name}: không đủ tồn kho (còn ${product.stock}).`);
+      products.push(product);
+    }
+    const prices = await this.promotions.prices(products, manager);
+    for (const row of rows) {
+      const product = products.find(product => Number(product.id) === Number(row.productId))!;
+      const pricing = prices.get(Number(product.id))!;
+      items.push({ productId: product.id, name: product.name, imageUrl: product.imageUrl, price: pricing.price, quantity: row.quantity,
+        subtotal: pricing.price * row.quantity, originalPrice: pricing.originalPrice, promotionId: pricing.promotionId });
+    }
+    let address: CheckoutSnapshot['address'];
+    let email: string;
+    if ('addressId' in selection) {
+      const owned = await manager.getRepository(UserAddress).findOne({ where: { id: selection.addressId, userId }, lock: { mode: 'pessimistic_read' } });
+      if (!owned) throw new NotFoundException('Không tìm thấy địa chỉ thuộc tài khoản của bạn.');
+      const user = await manager.getRepository(User).findOne({ where: { id: userId } });
+      if (!user) throw new NotFoundException('Không tìm thấy tài khoản.');
+      if (selection.paymentMethod === PaymentMethod.CARD && (!user.transactionPinHash || !user.cardHolder || !user.cardType || !user.cardProvider || !user.cardLast4 || !user.cardExpMonth || !user.cardExpYear)) throw new BadRequestException('Hãy lưu thẻ mô phỏng và tạo PIN trong hồ sơ trước, hoặc chọn phương thức khác. Không gửi PIN vào hội thoại.');
+      address = { id: owned.id, fullName: owned.fullName, phone: owned.phone, address: owned.address }; email = user.email;
+    } else { address = { fullName: selection.fullName, phone: selection.phone, address: selection.address }; email = selection.email; }
+    if (!address.fullName?.trim() || address.fullName.length > 100 || !address.phone?.trim() || address.phone.length > 15 || !address.address?.trim() || !email?.trim() || email.length > 100) throw new BadRequestException('Thông tin người nhận chưa hợp lệ.');
+    const subtotal = items.reduce((sum, item) => sum + item.subtotal, 0);
+    if (!Number.isSafeInteger(subtotal) || subtotal < 0 || subtotal > 999_999_999_999_999 || items.some(i => !Number.isSafeInteger(i.price) || i.price < 0)) throw new BadRequestException('Giá trị đơn hàng không hợp lệ.');
+    let coupon: Coupon | null = null;
+    let discountAmount = 0;
+    if (selection.couponCode?.trim()) {
+      const eligibleSubtotal = items.reduce((sum, item) => sum + (item.promotionId ? 0 : item.subtotal), 0);
+      if (eligibleSubtotal <= 0) throw new BadRequestException('Mã giảm giá chỉ áp dụng cho sản phẩm không thuộc sự kiện ưu đãi. Hãy bỏ mã để tiếp tục.');
+      coupon = await manager.getRepository(Coupon).findOne({ where: { code: selection.couponCode.trim().toUpperCase() }, lock: { mode: 'pessimistic_write' } });
+      discountAmount = evaluateCoupon(coupon, eligibleSubtotal, userId).discountAmount;
+    }
+    const snapshot: CheckoutSnapshot = { ...selectedProduct, items, address, email, paymentMethod: selection.paymentMethod, couponCode: coupon?.code ?? null,
+      subtotal, discountAmount, shippingFee: 0, total: subtotal - discountAmount, note: 'note' in selection ? selection.note ?? null : null };
+    if ([PaymentMethod.QR, PaymentMethod.PAYOS].includes(selection.paymentMethod) && snapshot.total <= 0) throw new BadRequestException('Tổng tiền bằng 0 không dùng PayOS. Hãy chọn tiền mặt.');
+    return { snapshot, cart, products, coupon };
+  }
+
+  private async writeOrder(manager: EntityManager, userId: number, { snapshot, cart, products, coupon }: Awaited<ReturnType<OrdersService['calculate']>>) {
+    for (const product of products) {
+      product.stock -= snapshot.items.find(i => i.productId === product.id)!.quantity;
+      await manager.save(Product, product);
+    }
+    const order = await manager.save(Order, manager.create(Order, { userId, fullName: snapshot.address.fullName, email: snapshot.email,
+      phone: snapshot.address.phone, address: snapshot.address.address, totalAmount: String(snapshot.total), subtotalAmount: String(snapshot.subtotal), discountAmount: String(snapshot.discountAmount),
+      couponCode: snapshot.couponCode, status: OrderStatus.PENDING, paymentMethod: snapshot.paymentMethod, paymentStatus: PaymentStatus.UNPAID, note: snapshot.note }));
+    await manager.save(OrderItem, snapshot.items.map(item => manager.create(OrderItem, { orderId: order.id, productId: item.productId,
+      productName: item.name, productImage: item.imageUrl, price: String(item.price), quantity: item.quantity, subtotal: String(item.subtotal) })));
+    await manager.save(Payment, manager.create(Payment, { orderId: order.id, method: snapshot.paymentMethod, amount: String(snapshot.total), status: PaymentRecordStatus.PENDING,
+      transactionId: null, paidAt: null, payosLinkId: null, payosCheckoutUrl: null, payosLeaseUntil: null }));
+    if (coupon) { coupon.usedCount++; await manager.save(Coupon, coupon); }
+    await manager.getRepository(CartItem).delete({ cartId: cart.id, ...(snapshot.productId === undefined ? {} : { productId: snapshot.productId }) });
+    return this.getOneForUser(userId, order.id, manager.getRepository(Order));
   }
  
   async listForUser(userId: number) {

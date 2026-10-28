@@ -76,6 +76,7 @@ export class CouponsController {
     body: {
       code: string;
       orderAmount: number;
+      productId?: number;
     },
     @CurrentUser() user: AuthUser,
   ) {
@@ -83,6 +84,7 @@ export class CouponsController {
       body.code,
       Number(body.orderAmount),
       user.id,
+      body.productId,
     );
   }
 }

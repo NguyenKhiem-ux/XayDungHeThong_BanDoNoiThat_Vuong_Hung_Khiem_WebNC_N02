@@ -81,7 +81,8 @@
   background: linear-gradient(135deg, #2563eb, #14b8a6);
   font-size: 16px;
 }
-.admin-nav-menu { display:flex; align-items:center; gap:.15rem; flex:1; }
+.admin-nav-menu { display:flex; align-items:center; gap:.15rem; flex:1; min-width:0; overflow-x:auto; scrollbar-width:thin; }
+.admin-logo, .admin-nav-right { flex-shrink:0; }
 .admin-nav-link {
   display:flex;
   align-items:center;
@@ -230,6 +231,7 @@
 @media(max-width:560px){ .chart-header{grid-template-columns:1fr; min-height:0;} .chart-header > :first-child{min-height:0;} .chart-type-btns{justify-self:start;} }
 @media(max-width:768px){ .admin-nav-menu{overflow:auto;} .admin-nav-link{padding:.42rem .55rem;} .admin-form-grid{grid-template-columns:1fr;} }
 @media(max-width:700px){ .admin-grid{grid-template-columns:1fr;} .admin-user{display:none;} .admin-page{padding:1rem;} .admin-navbar-inner{padding:0 1rem;} }
+@media(max-width:700px){ .admin-navbar-inner{display:grid;grid-template-columns:1fr auto;height:auto;gap:10px;padding:12px 1rem;} .admin-nav-menu{grid-column:1/-1;grid-row:2;padding-bottom:5px;} }
 .chart-values{display:none}
 .doughnut-wrap{height:260px;display:flex;align-items:center;justify-content:center}
 .doughnut-svg{width:220px;height:220px}

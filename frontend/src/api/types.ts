@@ -37,18 +37,31 @@ export interface User {
 }
 
 export interface Product {
+  averageRating?: number;
+  reviewCount?: number;
   id: number;
   name: string;
   description: string | null;
   specifications: string | null;
   origin: string | null;
   price: number;
+  originalPrice?: number;
+  discountPercent?: number;
+  savings?: number;
+  promotionId?: number | null;
+  promotionTitle?: string | null;
+  saleEndsAt?: string | null;
   stock: number;
   category: string | null;
   brand: string | null;
   imageUrl: string | null;
   isFeatured: boolean;
 }
+
+export interface ReviewSummary { averageRating: number; reviewCount: number; ratingCounts: Record<number, number> }
+export interface ProductReview { id: number; rating: number; comment: string; author: string; createdAt: string; updatedAt: string }
+export interface ReviewPage { summary: ReviewSummary; reviews: ProductReview[]; total: number; page: number; pageSize: number }
+export interface OwnReview { canReview: boolean; review: { rating: number; comment: string } | null }
 
 export interface Favorite {
   id: number;
@@ -94,7 +107,7 @@ export interface CartItem {
   productId: number;
   quantity: number;
   subtotal: number;
-  product: Pick<Product, 'id' | 'name' | 'price' | 'stock' | 'imageUrl' | 'category' | 'brand'>;
+  product: Pick<Product, 'id' | 'name' | 'price' | 'stock' | 'imageUrl' | 'category' | 'brand' | 'originalPrice' | 'discountPercent' | 'savings' | 'promotionId' | 'saleEndsAt'>;
 }
 
 export interface Cart {
@@ -102,6 +115,38 @@ export interface Cart {
   items: CartItem[];
   itemCount: number;
   total: number;
+  couponEligibleTotal?: number;
+  saleSavings?: number;
+}
+
+export interface PromotionEvent {
+  bannerDiscountPercent?: number | null;
+  displayDiscountPercent?: number;
+  id: number;
+  title: string;
+  description: string;
+  status: 'draft' | 'published' | 'paused';
+  phase: 'draft' | 'paused' | 'scheduled' | 'active' | 'ended';
+  startsAt: string;
+  endsAt: string;
+  maxDiscountPercent: number;
+  products: Product[];
+}
+
+export interface PromotionInput {
+  bannerDiscountPercent?: number | null;
+  title: string;
+  description: string;
+  status: PromotionEvent['status'];
+  startsAt: string;
+  endsAt: string;
+  items: Array<{ productId: number; discountPercent: number }>;
+}
+
+export interface OrderInput {
+  productId?: number;
+  fullName: string; email: string; phone: string; address: string; paymentMethod: string;
+  note?: string; couponCode?: string; quoteId?: string; quoteHash?: string;
 }
 
 export type OrderStatus = 'PENDING' | 'CONFIRMED' | 'DELIVERED' | 'CANCELLED';
@@ -158,11 +203,25 @@ export interface ChatResponse {
   cart?: Cart;
   actions?: ChatAction[];
   checkout?: CheckoutReview;
+  checkoutFlow?: ChatCheckoutView;
   checkoutUrl?: '/checkout/info';
   error?: { code: string; retryable: boolean };
+  orders?: Order[];
+  addresses?: UserAddress[];
+  favorites?: Favorite[];
+  coupons?: Array<{ coupon: Coupon; active: boolean; eligible: boolean; reason: string; discountAmount?: number; finalAmount?: number }>;
+  addressForm?: { addressId?: number; values: ChatAddressInput; missingFields: string[] };
+  confirmation?: { id: string; summary: string };
 }
 
-export type ChatActionType = 'product_select' | 'cart_add' | 'cart_remove' | 'cart_update_quantity' | 'cart_view' | 'buy_now' | 'checkout_review' | 'checkout_confirm';
+export type ChatActionType = 'product_select' | 'cart_add' | 'cart_remove' | 'cart_update_quantity' | 'cart_view' | 'buy_now' | 'checkout_review' | 'checkout_confirm' |
+  'orders_list' | 'order_detail' | 'favorites_list' | 'favorite_add' | 'favorite_remove' | 'addresses_list' |
+  'address_create' | 'address_update' | 'address_delete' | 'address_default' | 'coupons_list' | 'coupon_detail' |
+  'cart_add_many' | 'cart_clear' | 'action_confirm' | 'action_cancel' |
+  'checkout_start' | 'checkout_address' | 'checkout_voucher' | 'checkout_best_voucher' | 'checkout_payment' |
+  'checkout_preview' | 'checkout_place_order' | 'checkout_cancel' | 'checkout_edit_items' | 'checkout_edit_address' |
+  'checkout_edit_voucher' | 'checkout_edit_payment' | 'checkout_item_update' | 'checkout_item_remove' | 'checkout_payment_link' | 'checkout_status';
+export type ChatAddressInput = Partial<Pick<UserAddress, 'fullName' | 'phone' | 'address' | 'isDefault'>>;
 export interface ChatAction {
   type: ChatActionType;
   label: string;
@@ -170,8 +229,47 @@ export interface ChatAction {
   quantity?: number;
   reviewId?: string;
   addressId?: number;
+  orderId?: number;
+  code?: string;
+  confirmationId?: string;
+  checkoutId?: string;
+  quoteHash?: string;
+  paymentMethod?: PaymentMethod;
+  address?: ChatAddressInput;
+  items?: Array<{ productId: number; quantity: number }>;
 }
 export type ChatRequestOptions = Partial<Omit<ChatAction, 'type' | 'label'>> & { action?: ChatActionType; requestId: string };
+export interface ChatCheckoutQuote {
+  productId?: number;
+  id: string;
+  hash: string;
+  expiresAt: string;
+  items: Array<{ productId: number; name: string; imageUrl: string | null; price: number; quantity: number; subtotal: number }>;
+  address: { id?: number; fullName: string; phone: string; address: string };
+  email: string;
+  paymentMethod: PaymentMethod;
+  couponCode: string | null;
+  subtotal: number;
+  discountAmount: number;
+  shippingFee: number;
+  total: number;
+}
+export interface ChatCheckoutView {
+  appliedVoucher?: { code: string; discountAmount: number; finalAmount: number };
+  stage: 'collecting_items' | 'collecting_address' | 'selecting_voucher' | 'selecting_payment' | 'awaiting_confirmation' | 'creating_order' | 'awaiting_payment' | 'completed' | 'cancelled';
+  addressId?: number;
+  couponCode?: string;
+  paymentMethod?: PaymentMethod;
+  quote?: ChatCheckoutQuote;
+  order?: Order;
+  paymentUrl?: string;
+  paymentError?: string;
+  cart: Cart;
+  addresses: UserAddress[];
+  coupons: NonNullable<ChatResponse['coupons']>;
+  paymentMethods: Array<{ value: PaymentMethod; label: string; description: string }>;
+  actions: ChatAction[];
+}
 export interface CheckoutReview {
   id: string;
   product: Product;

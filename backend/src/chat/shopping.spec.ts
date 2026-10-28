@@ -1,3 +1,6 @@
+import { PromotionsService } from '../promotions/promotions.service';
+import { ChatCheckoutService } from './chat-checkout.service';
+import { ChatUserActionsService } from './chat-user-actions.service';
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -56,7 +59,8 @@ function cartFixture() {
   const productRepo = { findOne: async ({ where, lock }: any) => { locks.push(lock); return products.find(row => match(row, where)) ?? null; } };
   const manager = { getRepository: (entity: unknown) => entity === Cart ? cartRepo : entity === CartItem ? itemRepo : productRepo };
   cartRepo.manager = { transaction: async (work: any) => work(manager) };
-  return { products, rows, locks, cart: new CartService(cartRepo, itemRepo), saves: () => saves, fail: (value: boolean) => { failSave = value; } };
+  const promotions = new PromotionsService({ manager: {} } as any); promotions.active = async () => null;
+  return { products, rows, locks, cart: new CartService(cartRepo, itemRepo, promotions), saves: () => saves, fail: (value: boolean) => { failSave = value; } };
 }
 
 test('shopping intent and Vietnamese references/quantities', () => {
@@ -115,7 +119,7 @@ test('shopping HTTP integrates authenticated chat with the regular cart API', as
   const addresses = { list: async (userId: number) => [{ id: userId * 100, userId, fullName: `Người dùng ${userId}`, phone: '0900000000', address: 'Địa chỉ đã lưu', isDefault: true }] };
   const module = await Test.createTestingModule({
     controllers: [ChatController, CartController],
-    providers: [ChatService, ChatShoppingService, IntentService, SmallTalkService, JwtStrategy,
+    providers: [{ provide: ChatCheckoutService, useValue: { handle: async () => null } }, { provide: ChatUserActionsService, useValue: { handle: async () => null } }, ChatService, ChatShoppingService, IntentService, SmallTalkService, JwtStrategy,
       { provide: CartService, useValue: cart }, { provide: ChatProductsService, useValue: productService },
       { provide: AddressesService, useValue: addresses },
       { provide: KnowledgeService, useValue: { candidates: async () => [], reviewedOrPending: async () => null } },
