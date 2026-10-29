@@ -63,29 +63,68 @@ export class ChatProductsService {
     const browsing = /\b(danh muc|cac loai san pham|san pham nao|nhung san pham|tat ca san pham)\b/.test(normalizeText(message));
     if (!query.related || (!query.terms.length && query.maxPrice === undefined && query.minPrice === undefined && !browsing)) return null;
 
-    const effectivePrice = 'CASE WHEN deal.id IS NOT NULL THEN ROUND(p.price * (100 - deal.discountPercent) / 100) ELSE p.price END';
-    const qb = this.products.createQueryBuilder('p')
-      .leftJoin(Promotion, 'sale', 'sale.status = :saleStatus AND sale.startsAt <= :saleNow AND sale.endsAt > :saleNow', { saleStatus: 'published', saleNow: new Date() })
-      .leftJoin(PromotionItem, 'deal', 'deal.promotionId = sale.id AND deal.productId = p.id').select([
-      'p.id AS id', 'p.name AS name', `${effectivePrice} AS price`, 'p.price AS originalPrice',
-      'COALESCE(deal.discountPercent, 0) AS discountPercent', 'p.stock AS stock',
-      'p.category AS category', 'p.brand AS brand', 'p.origin AS origin',
-      'p.imageUrl AS imageUrl', 'p.isFeatured AS isFeatured',
-      'LEFT(p.description, 350) AS description', 'LEFT(p.specifications, 500) AS specifications',
-    ]);
+    const qb = this.productRows();
     query.terms.forEach((term, index) => {
       // Parameters + normalized alphanumeric terms; user text never becomes SQL.
       qb.andWhere(`REPLACE(LOWER(CONCAT_WS(' ', p.name, p.category, p.brand, p.description)), 'đ', 'd') COLLATE utf8mb4_unicode_ci LIKE :term${index}`, { [`term${index}`]: `%${term}%` });
     });
     if (!query.includeOutOfStock) qb.andWhere('p.stock > 0');
-    if (query.minPrice !== undefined) qb.andWhere(`${effectivePrice} ${query.minExclusive ? '>' : '>='} :minPrice`, { minPrice: query.minPrice });
-    if (query.maxPrice !== undefined) qb.andWhere(`${effectivePrice} ${query.maxExclusive ? '<' : '<='} :maxPrice`, { maxPrice: query.maxPrice });
+    if (query.minPrice !== undefined) qb.andWhere(`${EFFECTIVE_PRICE} ${query.minExclusive ? '>' : '>='} :minPrice`, { minPrice: query.minPrice });
+    if (query.maxPrice !== undefined) qb.andWhere(`${EFFECTIVE_PRICE} ${query.maxExclusive ? '<' : '<='} :maxPrice`, { maxPrice: query.maxPrice });
     if (query.terms.length) qb.orderBy(`CASE WHEN REPLACE(LOWER(p.name), 'đ', 'd') COLLATE utf8mb4_unicode_ci LIKE :term0 THEN 0 ELSE 1 END`, 'ASC');
-    qb.addOrderBy(effectivePrice, 'ASC').addOrderBy('p.id', 'ASC');
+    qb.addOrderBy(EFFECTIVE_PRICE, 'ASC').addOrderBy('p.id', 'ASC');
     const products = await qb.limit(5).getRawMany<ProductContext['products'][number]>();
     if (!query.related && !products.length) return null;
     return { products, hash: hashText(JSON.stringify(products)), keyword: query.keyword };
   }
+
+  // Giá, tồn kho mới nhất cho các id Gemini chọn; giữ đúng thứ tự Gemini đưa ra.
+  async byIds(ids: number[]): Promise<ProductContext | null> {
+    if (!ids.length) return null;
+    const rows = await this.productRows().where('p.id IN (:...ids)', { ids }).getRawMany<ProductContext['products'][number]>();
+    const products = ids.map(id => rows.find(row => Number(row.id) === id)).filter((row): row is ProductContext['products'][number] => !!row);
+    return products.length ? { products, hash: hashText(JSON.stringify(products)) } : null;
+  }
+
+  private catalogCache?: { at: number; value: Promise<Catalog> };
+
+  // Bảng tóm tắt sản phẩm còn hàng gửi cho Gemini chọn; catalog nhỏ (vài trăm dòng) nên gửi cả bảng, cache ngắn để giá khuyến mãi không cũ.
+  catalog(): Promise<Catalog> {
+    if (!this.catalogCache || Date.now() - this.catalogCache.at > CATALOG_TTL) {
+      const value = this.productRows().andWhere('p.stock > 0').orderBy('p.category', 'ASC').addOrderBy(EFFECTIVE_PRICE, 'ASC')
+        .getRawMany<ProductContext['products'][number]>().then(rows => ({
+          ids: new Set(rows.map(row => Number(row.id))),
+          text: rows.map(catalogLine).join('\n'),
+        }));
+      // Lỗi DB không được cache lại.
+      value.catch(() => { if (this.catalogCache?.value === value) this.catalogCache = undefined; });
+      this.catalogCache = { at: Date.now(), value };
+    }
+    return this.catalogCache.value;
+  }
+
+  private productRows() {
+    return this.products.createQueryBuilder('p')
+      .leftJoin(Promotion, 'sale', 'sale.status = :saleStatus AND sale.startsAt <= :saleNow AND sale.endsAt > :saleNow', { saleStatus: 'published', saleNow: new Date() })
+      .leftJoin(PromotionItem, 'deal', 'deal.promotionId = sale.id AND deal.productId = p.id').select([
+      'p.id AS id', 'p.name AS name', `${EFFECTIVE_PRICE} AS price`, 'p.price AS originalPrice',
+      'COALESCE(deal.discountPercent, 0) AS discountPercent', 'p.stock AS stock',
+      'p.category AS category', 'p.brand AS brand', 'p.origin AS origin',
+      'p.imageUrl AS imageUrl', 'p.isFeatured AS isFeatured',
+      'LEFT(p.description, 350) AS description', 'LEFT(p.specifications, 500) AS specifications',
+    ]);
+  }
+}
+
+export interface Catalog { ids: Set<number>; text: string }
+const CATALOG_TTL = 2 * 60 * 1000;
+const EFFECTIVE_PRICE = 'CASE WHEN deal.id IS NOT NULL THEN ROUND(p.price * (100 - deal.discountPercent) / 100) ELSE p.price END';
+
+// Một dòng/sản phẩm: id | tên | danh mục | thương hiệu | giá đang bán | 2 thông số đầu (khoảng 120–200 ký tự).
+export function catalogLine(product: ProductContext['products'][number]) {
+  const specs = (product.specifications ?? '').split(/\r?\n/).map(line => line.trim()).filter(Boolean).slice(0, 2).join('; ');
+  return [product.id, product.name, product.category ?? '', product.brand ?? '', `${Number(product.price).toLocaleString('vi-VN')}đ`, specs.slice(0, 120)]
+    .map(value => String(value).replace(/[|\s]+/g, ' ').trim()).join(' | ');
 }
 
 export function productAnswer(context: ProductContext, details = false, intent = 'product_search') {
@@ -95,7 +134,8 @@ export function productAnswer(context: ProductContext, details = false, intent =
       : 'Bạn đang tìm loại sản phẩm nào nhỉ? Ví dụ: nồi cơm điện, máy hút bụi hoặc máy xay sinh tố.';
   }
   const lines = context.products.map(product => {
-    const sale = product.discountPercent ? ` (giảm ${product.discountPercent}%, giá gốc ${Number(product.originalPrice).toLocaleString('vi-VN')}đ)` : '';
+    // getRawMany trả "0" dạng chuỗi (truthy), nên phải ép kiểu số trước khi kiểm tra.
+    const sale = Number(product.discountPercent) ? ` (giảm ${product.discountPercent}%, giá gốc ${Number(product.originalPrice).toLocaleString('vi-VN')}đ)` : '';
     const facts = `${product.name} — ${Number(product.price).toLocaleString('vi-VN')}đ${sale}; ${product.stock > 0 ? `còn ${product.stock} chiếc` : 'hiện hết hàng'}.`;
     if (intent === 'product_price') return `Giá ${product.name} hiện là ${Number(product.price).toLocaleString('vi-VN')}đ${sale}.`;
     if (intent === 'product_stock') return `${product.name} hiện ${product.stock > 0 ? `còn ${product.stock} chiếc` : 'đã hết hàng'}.`;

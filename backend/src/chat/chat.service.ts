@@ -1,5 +1,6 @@
 import { BadRequestException, HttpException, Injectable, InternalServerErrorException, Logger, ServiceUnavailableException } from '@nestjs/common';
-import { ChatProductsService, ProductContext, productResponse, productQuery } from './chat-products.service';
+import { Catalog, ChatProductsService, ProductContext, productResponse, productQuery } from './chat-products.service';
+import { recommendationMessage, sanitizeRecommendation, shoppingNeed } from './chat-recommend';
 import { KnowledgeService } from './knowledge.service';
 import { IntentService } from './intent.service';
 import { SmallTalkService } from './small-talk.service';
@@ -12,7 +13,11 @@ import { ChatShoppingService, ShoppingSession } from './chat-shopping.service';
 import { ChatUserActionsService, UserActionSession, hasChatSecret } from './chat-user-actions.service';
 import { ChatCheckoutService, CheckoutSession } from './chat-checkout.service';
 
-type ChatSession = ShoppingSession & UserActionSession & CheckoutSession & { expiresAt: number; requests: Map<string, { fingerprint: string; result: Promise<ChatReply> }> };
+type ChatSession = ShoppingSession & UserActionSession & CheckoutSession & { expiresAt: number; requests: Map<string, { fingerprint: string; result: Promise<ChatReply> }>;
+  // Id sản phẩm Gemini vừa gợi ý, để câu hỏi tiếp nối ("giá bao nhiêu?") làm mới đúng các món đó.
+  contextIds?: number[] };
+const RECOMMEND_INTENTS: ChatIntent[] = ['product_search', 'product_recommendation', 'product_category'];
+export const RECOMMEND_PROGRESS = 'Mình đang chọn sản phẩm phù hợp trong cửa hàng…';
 const SESSION_TTL = 30 * 60 * 1000;
 const MAX_SESSIONS = 1000;
 
@@ -79,6 +84,11 @@ export class ChatService {
         this.counters.smallTalkHandled++;
         return { ...small, source: 'small_talk' as const, cached: false };
       }
+      // Câu hỏi theo nhu cầu: Gemini chọn sản phẩm từ catalog; lỗi/không có key thì đi tiếp luồng từ khóa bên dưới.
+      if (RECOMMEND_INTENTS.includes(intent) || (intent === 'unknown' && classification.riskLevel === RiskLevel.LOW && shoppingNeed(message))) {
+        const recommended = await this.recommend(message, intent, session, stream);
+        if (recommended) return recommended;
+      }
       if (!classification.shouldStore) {
         return { message: classification.riskLevel === RiskLevel.HIGH ?
           'Mình không thể tra cứu thông tin riêng qua chatbot. Bạn vui lòng dùng mục tài khoản/đơn hàng hoặc liên hệ cửa hàng; đừng gửi mật khẩu hay mã OTP nhé.' :
@@ -92,12 +102,14 @@ export class ChatService {
       if (intent.startsWith('product_')) {
         if (!followUp) {
           session.context = undefined;
+          session.contextIds = undefined;
           session.selectedId = undefined;
           session.review = undefined;
           session.pendingQuantity = undefined;
           session.quantity = 1;
         }
-        try { context = followUp ? await this.products.context(`${session.query} ton kho`) : await this.products.context(message); } catch {
+        // Gợi ý từ Gemini không tìm lại được bằng từ khóa của câu hỏi gốc, nên làm mới theo đúng các id đã gợi ý.
+        try { context = !followUp ? await this.products.context(message) : session.contextIds ? await this.products.byIds(session.contextIds) : await this.products.context(`${session.query} ton kho`); } catch {
           throw new ServiceUnavailableException('Chưa thể kiểm tra sản phẩm lúc này. Vui lòng thử lại sau.');
         }
         if (context) this.counters.productQueries++;
@@ -141,6 +153,28 @@ export class ChatService {
       this.logger.warn('CHAT request_failed');
       throw new InternalServerErrorException('Không thể xử lý câu hỏi lúc này. Vui lòng thử lại sau.');
     }
+  }
+
+  private async recommend(message: string, intent: ChatIntent, session: ChatSession, stream?: ChatStream): Promise<ChatReply | null> {
+    let catalog: Catalog;
+    try { catalog = await this.products.catalog(); } catch { return null; }
+    if (!catalog.ids.size) return null;
+    // Gemini mất 5–20 giây; dòng tạm này hiện ngay trong khung chat và bị thay bằng câu trả lời cuối.
+    stream?.onDelta(RECOMMEND_PROGRESS);
+    const draft = sanitizeRecommendation(await this.gemini.recommend(message, catalog.text, stream?.signal), catalog.ids);
+    if (!draft) return null;
+    let context: ProductContext | null;
+    try { context = await this.products.byIds(draft.picks.map(pick => pick.productId)); } catch { return null; }
+    // Catalog được cache ngắn; bỏ món vừa hết hàng.
+    const products = context?.products.filter(product => Number(product.stock) > 0) ?? [];
+    if (!products.length) return null;
+    const fresh: ProductContext = { products, hash: context!.hash };
+    this.counters.productQueries++;
+    Object.assign(session, { context: fresh, contextIds: products.map(product => Number(product.id)), query: message,
+      selectedId: undefined, review: undefined, pendingQuantity: undefined, quantity: 1 });
+    const replyIntent: ChatIntent = intent === 'unknown' ? 'product_recommendation' : intent;
+    return { ...productResponse(fresh, replyIntent), source: 'gemini', intent: replyIntent,
+      message: recommendationMessage(draft, new Map(products.map(product => [Number(product.id), product.name]))) };
   }
 
   private reviewAnswer(intent: ChatIntent, recorded: boolean) {
