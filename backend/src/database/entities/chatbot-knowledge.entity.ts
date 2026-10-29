@@ -6,6 +6,7 @@ export enum KnowledgeStatus {
   APPROVED = 'approved',
   REJECTED = 'rejected',
   // Retain older rows during TypeORM schema sync; the API presents this as pending.
+  // eslint-disable-next-line @typescript-eslint/no-duplicate-enum-values -- alias có chủ đích, cùng giá trị với PENDING.
   LEGACY_PENDING_REVIEW = 'pending_review',
 }
 
