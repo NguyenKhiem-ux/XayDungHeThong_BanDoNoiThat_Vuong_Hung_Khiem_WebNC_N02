@@ -203,6 +203,7 @@ export interface ChatResponse {
   intent: ChatIntent;
   cached: boolean;
   products?: Product[];
+  chips?: string[];
   knowledgeId?: number;
   type?: 'text' | 'product_result' | 'cart' | 'checkout_review' | 'error';
   cart?: Cart;

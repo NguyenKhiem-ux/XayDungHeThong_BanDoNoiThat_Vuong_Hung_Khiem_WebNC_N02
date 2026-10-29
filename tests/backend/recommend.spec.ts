@@ -42,7 +42,7 @@ test('QA-REC03 shopping-need detection catches needs the keyword classifier miss
 });
 
 function harness(geminiResult: unknown, options: { catalogFails?: boolean } = {}) {
-  const calls = { recommend: 0, byIds: [] as number[][], context: 0 };
+  const calls = { recommend: 0, byIds: [] as number[][], context: 0, messages: [] as string[] };
   const rows = new Map([[7, { id: 7, name: 'Nồi chiên A', price: '990000', stock: 4, category: 'Đồ dùng nhà bếp', brand: 'A' }],
     [8, { id: 8, name: 'Nồi cơm B', price: '1590000', stock: 0, category: 'Nồi cơm điện', brand: 'B' }],
     [9, { id: 9, name: 'Máy xay C', price: '700000', stock: 2, category: 'Máy xay sinh tố', brand: 'C' }]]);
@@ -51,7 +51,12 @@ function harness(geminiResult: unknown, options: { catalogFails?: boolean } = {}
     byIds: async (ids: number[]) => { calls.byIds.push(ids); const found = ids.map(id => rows.get(id)).filter(Boolean); return found.length ? { products: found, hash: 'h' } : null; },
     context: async () => { calls.context++; return { hash: 'kw', products: [rows.get(9)] }; },
   };
-  const gemini = { actionCalls: 0, recommend: async (message: string, catalog: string) => { calls.recommend++; assert.equal(catalog, 'catalog'); return geminiResult; } };
+  const messages: string[] = [];
+  const gemini = { actionCalls: 0, recommend: async (message: string, catalog: string) => {
+    calls.recommend++; messages.push(message); assert.equal(catalog, 'catalog');
+    return typeof geminiResult === 'function' ? geminiResult(calls.recommend) : geminiResult;
+  } };
+  Object.assign(calls, { messages });
   const knowledge = { candidates: async () => [], reviewedOrPending: async () => null };
   const none = { handle: async () => null };
   const chat = new ChatService(knowledge as never, products as never, new IntentService(new SmallTalkService()), new SmallTalkService(), gemini as never, none as never, none as never, none as never);
@@ -85,4 +90,40 @@ test('QA-REC05 Gemini failure, empty picks or catalog errors fall back to the ke
   const { chat, calls } = harness({ intro: '', picks: [{ productId: 7, reason: 'x' }] });
   await chat.send('nồi chiên giá bao nhiêu', 's');
   assert.equal(calls.recommend, 0);
+});
+
+test('QA-REC06 quick-reply chips are short, deduplicated, policy-free and capped; clarification needs permission', () => {
+  const draft = sanitizeRecommendation({ intro: '', picks: [{ productId: 7, reason: 'Hợp' }], chips: ['Dưới 2 triệu', 'Nhà 4 người', 'Nhà 4 người', 'Có bảo hành không?',
+    'Một câu trả lời nhanh nhưng dài quá bốn mươi ký tự cho phép', 'xem https://evil.test', 'Xem loại rẻ hơn', 'So sánh 2 món đầu', 'Thừa'] }, ALLOWED)!;
+  assert.deepEqual(draft.chips, ['Dưới 2 triệu', 'Nhà 4 người', 'Xem loại rẻ hơn', 'So sánh 2 món đầu']);
+  const ask = { intro: 'Nồi cơm có nhiều dung tích.', picks: [], followUp: 'Nhà bạn mấy người?', chips: ['Nhà 2–3 người'] };
+  assert.equal(sanitizeRecommendation(ask, ALLOWED), null);
+  assert.deepEqual(sanitizeRecommendation(ask, ALLOWED, true), { intro: 'Nồi cơm có nhiều dung tích.', picks: [], followUp: 'Nhà bạn mấy người?', chips: ['Nhà 2–3 người'] });
+  assert.equal(sanitizeRecommendation({ intro: 'x', picks: [], chips: ['a'] }, ALLOWED, true), null, 'no question → nothing to show');
+  assert.equal(recommendationMessage(sanitizeRecommendation(ask, ALLOWED, true)!, new Map()), 'Nồi cơm có nhiều dung tích.\nNhà bạn mấy người?');
+});
+
+test('QA-REC07 bot asks once, then the tapped answer is combined with the original need and must yield products', async () => {
+  const { chat, calls } = harness((call: number) => call === 1
+    ? { intro: 'Nồi cơm có nhiều dung tích.', picks: [], followUp: 'Nhà bạn mấy người?', chips: ['Nhà 2–3 người', 'Nhà 4–5 người'] }
+    : { intro: 'Nhà 4–5 người hợp nồi lớn.', picks: [{ productId: 7, reason: 'Dung tích lớn' }], chips: ['Xem loại rẻ hơn'] });
+  const ask = await chat.send('tư vấn nồi cơm điện', 's');
+  assert.equal(ask.type, 'text'); assert.equal(ask.products, undefined); assert.equal(ask.message, 'Nồi cơm có nhiều dung tích.\nNhà bạn mấy người?');
+  assert.deepEqual(ask.chips, ['Nhà 2–3 người', 'Nhà 4–5 người']); assert.equal(calls.byIds.length, 0);
+  // "Nhà 4–5 người" tự nó là intent unknown; vẫn vào luồng tư vấn vì bot đang chờ câu trả lời.
+  const answer = await chat.send('Nhà 4–5 người', 's');
+  assert.equal(calls.messages[1], 'tư vấn nồi cơm điện\nNhà 4–5 người');
+  assert.equal(answer.source, 'gemini'); assert.deepEqual(answer.products?.map(p => p.id), [7]); assert.deepEqual(answer.chips, ['Xem loại rẻ hơn']);
+
+  // Gemini hỏi lại lần hai thì không được: quay về tìm từ khóa thay vì hỏi mãi.
+  const loop = harness({ intro: 'x', picks: [], followUp: 'Ngân sách bao nhiêu?', chips: [] });
+  await loop.chat.send('tư vấn nồi cơm điện', 'l');
+  const second = await loop.chat.send('nồi cơm điện loại nào tốt', 'l');
+  assert.equal(loop.calls.recommend, 2); assert.equal(second.source, 'product'); assert.equal(loop.calls.context, 1);
+  // Khách chuyển sang việc khác thì câu hỏi lại đang chờ bị bỏ.
+  const away = harness({ intro: 'x', picks: [], followUp: 'Nhà bạn mấy người?', chips: [] });
+  await away.chat.send('tư vấn nồi cơm điện', 'a');
+  await away.chat.send('xem giỏ hàng', 'a');
+  await away.chat.send('hôm nay trời đẹp quá', 'a');
+  assert.equal(away.calls.recommend, 1);
 });

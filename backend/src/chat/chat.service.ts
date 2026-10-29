@@ -15,7 +15,9 @@ import { ChatCheckoutService, CheckoutSession } from './chat-checkout.service';
 
 type ChatSession = ShoppingSession & UserActionSession & CheckoutSession & { expiresAt: number; requests: Map<string, { fingerprint: string; result: Promise<ChatReply> }>;
   // Id sản phẩm Gemini vừa gợi ý, để câu hỏi tiếp nối ("giá bao nhiêu?") làm mới đúng các món đó.
-  contextIds?: number[] };
+  contextIds?: number[];
+  // Nhu cầu gốc khi bot đang chờ khách trả lời câu hỏi lại.
+  pendingNeed?: string };
 const RECOMMEND_INTENTS: ChatIntent[] = ['product_search', 'product_recommendation', 'product_category'];
 export const RECOMMEND_PROGRESS = 'Mình đang chọn sản phẩm phù hợp trong cửa hàng…';
 const SESSION_TTL = 30 * 60 * 1000;
@@ -85,10 +87,11 @@ export class ChatService {
         return { ...small, source: 'small_talk' as const, cached: false };
       }
       // Câu hỏi theo nhu cầu: Gemini chọn sản phẩm từ catalog; lỗi/không có key thì đi tiếp luồng từ khóa bên dưới.
-      if (RECOMMEND_INTENTS.includes(intent) || (intent === 'unknown' && classification.riskLevel === RiskLevel.LOW && shoppingNeed(message))) {
+      // Khi bot vừa hỏi lại, câu trả lời ngắn của khách ("Nhà 4 người") cũng thuộc luồng tư vấn.
+      if (RECOMMEND_INTENTS.includes(intent) || (intent === 'unknown' && classification.riskLevel === RiskLevel.LOW && (shoppingNeed(message) || !!session.pendingNeed))) {
         const recommended = await this.recommend(message, intent, session, stream);
         if (recommended) return recommended;
-      }
+      } else session.pendingNeed = undefined; // Khách chuyển sang hỏi việc khác thì bỏ câu hỏi lại đang chờ.
       if (!classification.shouldStore) {
         return { message: classification.riskLevel === RiskLevel.HIGH ?
           'Mình không thể tra cứu thông tin riêng qua chatbot. Bạn vui lòng dùng mục tài khoản/đơn hàng hoặc liên hệ cửa hàng; đừng gửi mật khẩu hay mã OTP nhé.' :
@@ -161,8 +164,18 @@ export class ChatService {
     if (!catalog.ids.size) return null;
     // Gemini mất 5–20 giây; dòng tạm này hiện ngay trong khung chat và bị thay bằng câu trả lời cuối.
     stream?.onDelta(RECOMMEND_PROGRESS);
-    const draft = sanitizeRecommendation(await this.gemini.recommend(message, catalog.text, stream?.signal), catalog.ids);
+    // Câu trả lời cho câu hỏi lại ("Nhà 4 người") chỉ có nghĩa khi ghép với nhu cầu gốc ("tư vấn nồi cơm").
+    const pending = session.pendingNeed;
+    session.pendingNeed = undefined;
+    const need = pending ? `${pending}\n${message}` : message;
+    // Đã hỏi lại một lần thì lượt này phải chọn sản phẩm, không hỏi tiếp.
+    const draft = sanitizeRecommendation(await this.gemini.recommend(need, catalog.text, stream?.signal), catalog.ids, !pending);
     if (!draft) return null;
+    const replyIntent: ChatIntent = intent === 'unknown' ? 'product_recommendation' : intent;
+    if (!draft.picks.length) {
+      session.pendingNeed = need;
+      return { message: recommendationMessage(draft, new Map()), chips: draft.chips, type: 'text', source: 'gemini', intent: replyIntent, cached: false };
+    }
     let context: ProductContext | null;
     try { context = await this.products.byIds(draft.picks.map(pick => pick.productId)); } catch { return null; }
     // Catalog được cache ngắn; bỏ món vừa hết hàng.
@@ -170,10 +183,9 @@ export class ChatService {
     if (!products.length) return null;
     const fresh: ProductContext = { products, hash: context!.hash };
     this.counters.productQueries++;
-    Object.assign(session, { context: fresh, contextIds: products.map(product => Number(product.id)), query: message,
+    Object.assign(session, { context: fresh, contextIds: products.map(product => Number(product.id)), query: need,
       selectedId: undefined, review: undefined, pendingQuantity: undefined, quantity: 1 });
-    const replyIntent: ChatIntent = intent === 'unknown' ? 'product_recommendation' : intent;
-    return { ...productResponse(fresh, replyIntent), source: 'gemini', intent: replyIntent,
+    return { ...productResponse(fresh, replyIntent), source: 'gemini', intent: replyIntent, chips: draft.chips,
       message: recommendationMessage(draft, new Map(products.map(product => [Number(product.id), product.name]))) };
   }
 

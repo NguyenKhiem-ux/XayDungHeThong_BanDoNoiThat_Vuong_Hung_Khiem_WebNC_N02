@@ -25,7 +25,9 @@ Chọn 1–4 sản phẩm, ưu tiên đúng nhu cầu và ngân sách khách nê
 Xưng "mình", gọi khách là "bạn". intro: 1 câu tiếng Việt thân thiện tóm tắt nhu cầu của khách (không nhắc lại số tiền). reason: tối đa 20 từ, KHÔNG lặp lại tên sản phẩm, nói vì sao món đó hợp nhu cầu, dựa trên thông số trong CATALOG.
 TUYỆT ĐỐI không viết giá tiền, phần trăm giảm giá, số lượng tồn kho, bảo hành, đổi trả, giao hàng hay cam kết nào (hệ thống sẽ tự hiển thị giá). Không bịa thông số không có trong CATALOG.
 followUp: tùy chọn, 1 câu hỏi ngắn giúp chọn chính xác hơn (ví dụ số người dùng, diện tích, ngân sách).
-Nếu không có sản phẩm nào liên quan, trả picks rỗng.`;
+Khi nhu cầu quá chung để chọn tốt (ví dụ chỉ nêu loại sản phẩm mà CATALOG có nhiều mẫu khác nhau rõ về dung tích/giá, và khách chưa nói dùng cho ai hay ngân sách), được trả picks rỗng kèm followUp. Nếu tin nhắn có nhiều dòng thì dòng sau là câu trả lời cho câu hỏi trước: khi đó PHẢI chọn sản phẩm.
+chips: LUÔN trả 2–4 câu trả lời ngắn khách có thể bấm, tối đa 6 từ, viết như lời khách nói (ví dụ "Nhà 2–3 người", "Dưới 2 triệu", "Xem loại rẻ hơn"). Khi hỏi lại, chips là các lựa chọn trả lời cho câu hỏi đó; khi đã chọn sản phẩm, chips là bước tiếp theo khách có thể muốn (rẻ hơn, lớn hơn, món mua kèm…).
+Nếu không có sản phẩm nào liên quan, trả picks rỗng và không hỏi lại.`;
 const RECOMMEND_TIMEOUT = 30_000;
 
 // Decode only the answer string, never expose structured metadata or an incomplete JSON escape.
@@ -59,10 +61,10 @@ export class GeminiService {
           abortSignal: signal ? AbortSignal.any([signal, AbortSignal.timeout(RECOMMEND_TIMEOUT)]) : AbortSignal.timeout(RECOMMEND_TIMEOUT),
           httpOptions: { timeout: RECOMMEND_TIMEOUT, retryOptions: { attempts: 1 } },
           responseJsonSchema: { type: 'object', additionalProperties: false,
-            properties: { intro: { type: 'string' }, followUp: { type: 'string' },
+            properties: { intro: { type: 'string' }, followUp: { type: 'string' }, chips: { type: 'array', maxItems: 4, items: { type: 'string' } },
               picks: { type: 'array', maxItems: 4, items: { type: 'object', additionalProperties: false,
                 properties: { productId: { type: 'integer' }, reason: { type: 'string' } }, required: ['productId', 'reason'] } } },
-            required: ['intro', 'picks'] },
+            required: ['intro', 'picks', 'chips'] },
         },
       });
       if (response.candidates?.[0]?.finishReason === 'MAX_TOKENS') return null;

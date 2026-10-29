@@ -16,6 +16,7 @@ after(() => rmSync(directory, { recursive: true, force: true }));
 await build({ stdin: { contents: `
 export { ProductPrice } from './src/components/ProductPrice';
 export { ProductRating } from './src/components/ProductRating';
+export { ChatChips } from './src/components/ChatChips';
 export { AdminGuard } from './src/components/AdminGuard';
 export { LoginPage } from './src/pages/LoginPage';
 export { RegisterPage } from './src/pages/RegisterPage';
@@ -106,4 +107,13 @@ test('QA-F06 real API adapters retain payload, query filters, current JWT and pr
   const error = new Error('simulated API failure');
   ui.api.defaults.adapter = async () => { throw error; };
   await assert.rejects(ui.authApi.login({ usernameOrEmail: 'qa', password: 'qa-only' }), failure => failure === error);
+});
+
+test('QA-F08 chat quick-reply chips render as labelled buttons and disappear when empty', () => {
+  assert.equal(render(h(ui.ChatChips, { chips: [], onPick: () => {} })), '');
+  assert.equal(render(h(ui.ChatChips, { onPick: () => {} })), '');
+  const html = render(h(ui.ChatChips, { chips: ['Nhà 2–3 người', 'Dưới 2 triệu'], disabled: true, onPick: () => {} }));
+  assert.match(html, /role="group" aria-label="Gợi ý trả lời nhanh"/);
+  assert.equal(html.match(/<button type="button" disabled="">/g)?.length, 2);
+  assert.match(html, />Nhà 2–3 người<\/button><button[^>]*>Dưới 2 triệu</);
 });

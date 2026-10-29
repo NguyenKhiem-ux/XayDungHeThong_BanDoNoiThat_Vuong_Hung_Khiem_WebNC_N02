@@ -78,6 +78,8 @@ export interface ChatReply {
   cached: boolean;
   type?: 'text' | 'product_result' | 'cart' | 'checkout_review' | 'error';
   products?: ChatProduct[];
+  // Câu trả lời nhanh khách bấm để gửi như tin nhắn (tối đa 4).
+  chips?: string[];
   cart?: ChatCart;
   actions?: ChatAction[];
   checkout?: CheckoutReview;

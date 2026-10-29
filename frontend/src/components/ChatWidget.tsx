@@ -6,6 +6,7 @@ import { chatApi } from '../api/services';
 import { createTextQueue } from '../api/chat-stream';
 import { formatVnd } from '../api/client';
 import { ProductCard } from './ProductCard';
+import { ChatChips } from './ChatChips';
 import { ChatAccountCards } from './ChatAccountCards';
 import { ChatCheckoutCards } from './ChatCheckoutCards';
 import { useAuth } from '../context/AuthContext';
@@ -229,6 +230,7 @@ function ShoppingChat() {
                       <button key={action.type} type="button" className={action.type === 'cart_add' ? 'is-primary' : undefined} disabled={loading || message.id !== latestAssistant} onClick={() => act(action)}>{action.label}</button>)}</div>
                   </div>)}
                 </div> : null}
+                {message.id === latestAssistant && <ChatChips chips={message.response?.chips} disabled={loading} onPick={chip => request(chip)} />}
                 {visibleCart && <div className="chat-shopping-summary">
                   <strong>Giỏ hàng · {visibleCart.itemCount} sản phẩm</strong>
                   {!visibleCart.items.length && <p>Giỏ hàng đang trống.</p>}
