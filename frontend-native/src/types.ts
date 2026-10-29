@@ -187,9 +187,60 @@ export interface ChatAction {
 export interface ChatResponse {
   message: string;
   products?: Product[];
+  chips?: string[];
   cart?: Cart;
   favorites?: Favorite[];
   actions?: ChatAction[];
+  checkout?: ChatCheckoutReview;
+  checkoutFlow?: ChatCheckoutView;
   checkoutUrl?: string;
   error?: { code: string; retryable: boolean };
+  orders?: Order[];
+  addresses?: UserAddress[];
+  coupons?: ChatCouponView[];
+  addressForm?: { addressId?: number; values: ChatAddressInput; missingFields: string[] };
+  confirmation?: { id: string; summary: string };
+}
+
+export interface ChatAddressInput {
+  fullName?: string;
+  phone?: string;
+  address?: string;
+  isDefault?: boolean;
+}
+
+export interface ChatCouponView {
+  coupon: Coupon;
+  active: boolean;
+  eligible: boolean;
+  reason: string;
+  discountAmount?: number;
+  finalAmount?: number;
+}
+
+export interface ChatCheckoutReview {
+  id: string;
+  total: number;
+  items: Array<{ product: Pick<Product, 'id' | 'name' | 'price' | 'stock'>; quantity: number; subtotal: number }>;
+  addresses: UserAddress[];
+  addressId?: number;
+  missingFields: string[];
+  confirmed: boolean;
+}
+
+export interface ChatCheckoutView {
+  stage: 'collecting_items' | 'collecting_address' | 'selecting_voucher' | 'selecting_payment' | 'awaiting_confirmation' | 'creating_order' | 'awaiting_payment' | 'completed' | 'cancelled';
+  appliedVoucher?: { code: string; discountAmount: number; finalAmount: number };
+  addressId?: number;
+  couponCode?: string;
+  paymentMethod?: PaymentMethod;
+  quote?: Pick<CheckoutQuote, 'id' | 'hash' | 'items' | 'address' | 'email' | 'paymentMethod' | 'couponCode' | 'subtotal' | 'discountAmount' | 'shippingFee' | 'total'>;
+  order?: Order;
+  paymentUrl?: string;
+  paymentError?: string;
+  cart: Cart;
+  addresses: UserAddress[];
+  coupons: ChatCouponView[];
+  paymentMethods: Array<{ value: PaymentMethod; label: string; description: string }>;
+  actions: ChatAction[];
 }

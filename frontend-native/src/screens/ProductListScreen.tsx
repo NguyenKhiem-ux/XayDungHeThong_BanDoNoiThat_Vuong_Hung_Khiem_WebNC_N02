@@ -6,19 +6,21 @@ import { ChatWidget } from '../components/ChatWidget';
 import { Header } from '../components/Header';
 import { ProductCard, ProductSkeleton } from '../components/ProductCard';
 import { ProductFooter } from '../components/ProductFooter';
-import { useProductList, type ProductSort } from '../hooks/useProductList';
+import { PRICE_RANGES, useProductList, type ProductSort } from '../hooks/useProductList';
 import { useStore } from '../store';
 import { withTypography } from '../typography';
+import { ScrollTopButton, useScrollTop } from '../components/ScrollTopButton';
 
 const sortOptions: Array<[ProductSort, string]> = [['', 'Mặc định'], ['price-asc', 'Giá tăng'], ['price-desc', 'Giá giảm'], ['name', 'Tên A–Z']];
 
 export default function ProductListScreen() {
+  const top = useScrollTop();
   const router = useRouter();
   const { width } = useWindowDimensions();
   const compact = width < 900;
   const twoColumns = width >= 400;
   const cardWidth = twoColumns ? '48.5%' : '100%';
-  const { category, categories, clearFilters, error, keyword, loading, products, retry, setCategory, setKeyword, setSort, sort } = useProductList();
+  const { category, categories, clearFilters, error, keyword, loading, priceRange, products, retry, setCategory, setKeyword, setPriceRange, setSort, sort } = useProductList();
   const { notice } = useStore();
   const [search, setSearch] = useState(keyword);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -27,7 +29,7 @@ export default function ProductListScreen() {
   const title = keyword ? `Kết quả cho “${keyword}”` : category || 'Tất cả sản phẩm';
 
   return <View style={styles.page}>
-    <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+    <ScrollView ref={top.ref} onScroll={top.onScroll} scrollEventThrottle={100} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
       <Header compact={compact} categories={categories} />
       <View style={styles.hero}>
         <Pressable accessibilityRole="link" onPress={() => router.replace('/')} style={styles.breadcrumb}><Ionicons name="home-outline" size={14} color="#755036" /><Text style={styles.breadcrumbText}>Trang chủ  ›  Sản phẩm</Text></Pressable>
@@ -43,6 +45,7 @@ export default function ProductListScreen() {
         {filtersOpen && <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}><Chip active={!category} label="Tất cả" onPress={() => setCategory('')} />{categories.map(item => <Chip key={item} active={category === item} label={item} onPress={() => setCategory(item)} />)}</ScrollView>}
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sorts}>{sortOptions.map(([value, label]) => <Chip key={label} active={sort === value} label={label} onPress={() => setSort(value)} />)}</ScrollView>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}><Chip active={!priceRange} label="Mọi mức giá" onPress={() => setPriceRange('')} />{PRICE_RANGES.map((range, index) => <Chip key={range.label} active={priceRange === String(index)} label={range.label} onPress={() => setPriceRange(String(index))} />)}</ScrollView>
         <Text accessibilityRole="summary" style={styles.count}>{loading ? 'Đang tải sản phẩm…' : error ? 'Chưa thể tải sản phẩm' : `Tìm thấy ${products.length} sản phẩm`}</Text>
 
         {error ? <View style={styles.state}><Ionicons name="alert-circle-outline" size={34} color="#9B382F" /><Text style={styles.stateTitle}>Chưa thể tải sản phẩm</Text><Text style={styles.stateText}>{error}</Text><Pressable onPress={retry} style={styles.retry}><Text style={styles.retryText}>Thử lại</Text></Pressable></View>
@@ -53,6 +56,7 @@ export default function ProductListScreen() {
         <ProductFooter />
       </View>
     </ScrollView>
+    <ScrollTopButton visible={top.visible} onPress={top.toTop} />
     <ChatWidget compact={compact} />
     {!!notice && <View style={styles.toast}><Text style={styles.toastText}>✓ {notice}</Text></View>}
   </View>;

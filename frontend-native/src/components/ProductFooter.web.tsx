@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, type Href } from 'expo-router';
 import { Col, Container, Row } from 'react-bootstrap';
 import { openLegacy } from '../api';
+import './product-footer.web.css';
 
 const footerLinks = [
   ['Danh mục', [['Nồi cơm điện', '/products?category=Nồi cơm điện'], ['Máy hút bụi', '/products?category=Máy hút bụi'], ['Đồ dùng nhà bếp', '/products?category=Đồ dùng nhà bếp'], ['Quạt điện', '/products?category=Quạt điện']]],

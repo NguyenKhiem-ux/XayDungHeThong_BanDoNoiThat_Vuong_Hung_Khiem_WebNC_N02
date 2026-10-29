@@ -1,0 +1,11 @@
+/* file định dạng footer bản web; tự nạp cùng ProductFooter nên trang nào có footer cũng đúng kiểu, không phụ thuộc đã mở trang sản phẩm hay chưa. */
+.gdv-footer { padding: 36px 0 20px; color: #f8ede2; background: #4c3020; font-family: "BeVietnamPro_400Regular", Arial, sans-serif; }
+.gdv-footer-brand { display: flex; gap: 12px; }
+.gdv-footer-brand > span { display: grid; place-items: center; flex: 0 0 48px; height: 48px; border-radius: 10px; color: #755036; background: #E8D5BA; }
+.gdv-footer strong { font-family: "BeVietnamPro_700Bold", Arial, sans-serif; font-size: 20px; }
+.gdv-footer h3 { margin-bottom: 10px; font-family: "BeVietnamPro_700Bold", Arial, sans-serif; font-size: 15px; font-weight: 900; }
+.gdv-footer p, .gdv-footer button { display: block; margin: 6px 0; border: 0; padding: 0; color: #e8d8ca; background: transparent; font-size: 14px; line-height: 1.6; text-align: left; }
+.gdv-footer button:hover { color: #fff; text-decoration: underline; }
+.gdv-footer-brand p { max-width: 430px; line-height: 1.7; }
+.gdv-footer-copy { margin-top: 22px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.15); font-size: 13px; }
+@media (max-width: 767.98px) { .gdv-footer { padding-inline: 8px; } }

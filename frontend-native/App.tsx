@@ -11,10 +11,12 @@ import { ProductCard, ProductSkeleton } from './src/components/ProductCard';
 import { useStore } from './src/store';
 import { withTypography } from './src/typography';
 import type { Product, PromotionEvent } from './src/types';
+import { ScrollTopButton, useScrollTop } from './src/components/ScrollTopButton';
 
 const openHomeLink = (path: string) => path.startsWith('/products') || ['/about', '/contact', '/policies'].includes(path) ? router.push(path as Href) : void openLegacy(path);
 
 export default function HomeScreen() {
+  const top = useScrollTop();
   const { width } = useWindowDimensions();
   const compact = width < 720;
   const desktop = width >= 1020;
@@ -55,7 +57,7 @@ export default function HomeScreen() {
   return (
     <View style={styles.app}>
       <StatusBar style="dark" />
-      <ScrollView stickyHeaderIndices={[0]} style={styles.scroll} contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
+      <ScrollView ref={top.ref} onScroll={top.onScroll} scrollEventThrottle={100} stickyHeaderIndices={[0]} style={styles.scroll} contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
         <Header compact={compact} categories={apiCategories.length ? apiCategories : categories.map(item => item[0])} />
         <View>
           <Hero compact={compact} desktop={desktop} />
@@ -82,6 +84,7 @@ export default function HomeScreen() {
       </ScrollView>
 
       {!!notice && <View accessibilityLiveRegion="polite" style={styles.toast}><Ionicons name="checkmark-circle" size={18} color="#fff" /><Text style={styles.toastText}>{notice}</Text></View>}
+      <ScrollTopButton visible={top.visible} onPress={top.toTop} />
       <ChatWidget compact={compact} />
     </View>
   );

@@ -6,9 +6,11 @@ import { ApiError, couponApi, formatVnd, imageUrl, orderApi, type OrderInput } f
 import { ChatWidget } from '../components/ChatWidget';
 import { PageHeader } from '../components/PageHeader';
 import { ProductFooter } from '../components/ProductFooter';
+import { checkoutCart, useCheckoutProductId } from '../hooks/useCheckoutProduct';
 import { useStore } from '../store';
 import { withTypography } from '../typography';
 import type { CheckoutQuote, Coupon, PaymentMethod } from '../types';
+import { ScrollTopButton, useScrollTop } from '../components/ScrollTopButton';
 
 const methods: Array<{ value: PaymentMethod; title: string; description: string; icon: 'cash-outline' | 'qr-code-outline' | 'card-outline' }> = [
   { value: 'CASH', title: 'Tiền mặt khi nhận hàng', description: 'Kiểm tra sản phẩm và thanh toán cho nhân viên giao hàng.', icon: 'cash-outline' },
@@ -17,9 +19,13 @@ const methods: Array<{ value: PaymentMethod; title: string; description: string;
 ];
 
 export default function CheckoutPaymentPlaceholderScreen() {
+  const top = useScrollTop();
   const router = useRouter();
   const compact = useWindowDimensions().width < 860;
-  const { authReady, cart, cartError, cartLoading, checkoutCouponCode, checkoutShipping, refreshCart, setCheckoutCouponCode, setCheckoutPaymentPin, user } = useStore();
+  const { authReady, cart: fullCart, cartError, cartLoading, checkoutCouponCode, checkoutShipping, refreshCart, setCheckoutCouponCode, setCheckoutPaymentPin, user } = useStore();
+  const productId = useCheckoutProductId();
+  const cart = useMemo(() => checkoutCart(fullCart, productId), [fullCart, productId]);
+  const infoRoute = { pathname: '/checkout/info' as const, params: productId ? { productId: String(productId) } : {} };
   const [method, setMethod] = useState<PaymentMethod>('CASH');
   const [pin, setPin] = useState('');
   const [quote, setQuote] = useState<CheckoutQuote | null>(null);
@@ -36,7 +42,7 @@ export default function CheckoutPaymentPlaceholderScreen() {
 
   const cardAvailable = !!user?.savedCard && !!user.hasTransactionPin;
   const address = checkoutShipping ? [checkoutShipping.address, checkoutShipping.district, checkoutShipping.province].filter(Boolean).join(', ') : '';
-  const payload = useMemo<OrderInput | null>(() => checkoutShipping && user ? ({ fullName: checkoutShipping.fullName, email: user.email, phone: checkoutShipping.phone, address, paymentMethod: method, note: checkoutShipping.note || undefined, couponCode: appliedCouponCode || undefined }) : null, [address, appliedCouponCode, checkoutShipping, method, user]);
+  const payload = useMemo<OrderInput | null>(() => checkoutShipping && user ? ({ fullName: checkoutShipping.fullName, email: user.email, phone: checkoutShipping.phone, address, paymentMethod: method, note: checkoutShipping.note || undefined, couponCode: appliedCouponCode || undefined, productId }) : null, [address, appliedCouponCode, checkoutShipping, method, productId, user]);
 
   useEffect(() => {
     if (method === 'CARD' && !cardAvailable) setMethod('CASH');
@@ -52,7 +58,7 @@ export default function CheckoutPaymentPlaceholderScreen() {
   useEffect(() => {
     if (!authReady) return;
     if (!user) { router.replace({ pathname: '/login', params: { redirect: '/checkout/payment' } }); return; }
-    if (!checkoutShipping) { router.replace('/checkout/info'); return; }
+    if (!checkoutShipping) { router.replace(infoRoute); return; }
     if (!cart) void refreshCart().catch(() => {});
   }, [authReady, cart, checkoutShipping, refreshCart, router, user]);
 
@@ -113,7 +119,7 @@ export default function CheckoutPaymentPlaceholderScreen() {
     setCouponBusy(true);
     setCouponError('');
     try {
-      const result = await couponApi.validate(code, cart.total);
+      const result = await couponApi.validate(code, cart.total, productId);
       if (!result.valid || !result.coupon.code) throw new Error('Mã giảm giá không hợp lệ.');
       const confirmedCode = result.coupon.code.trim().toUpperCase();
       setCouponInput(confirmedCode);
@@ -175,7 +181,7 @@ export default function CheckoutPaymentPlaceholderScreen() {
   return (
     <View style={styles.page}>
       <PageHeader back />
-      <ScrollView contentContainerStyle={[styles.scroll, compact && styles.scrollCompact]} keyboardShouldPersistTaps="handled">
+      <ScrollView ref={top.ref} onScroll={top.onScroll} scrollEventThrottle={100} contentContainerStyle={[styles.scroll, compact && styles.scrollCompact]} keyboardShouldPersistTaps="handled">
         <View style={styles.content}>
           <Breadcrumb router={router} />
           <View style={styles.hero}>
@@ -189,24 +195,27 @@ export default function CheckoutPaymentPlaceholderScreen() {
           <Progress />
           <View style={[styles.layout, compact && styles.layoutCompact]}>
             <View style={styles.main}>
-              <ShippingCard shipping={checkoutShipping} email={user.email} onEdit={() => router.replace('/checkout/info')} />
+              <ShippingCard shipping={checkoutShipping} email={user.email} onEdit={() => router.replace(infoRoute)} />
               <OrderProducts quote={quote} cart={cart} />
-              <CouponCard value={couponInput} availableCoupons={availableCoupons} appliedCode={quote?.couponCode === appliedCouponCode ? appliedCouponCode : ''} discountAmount={quote?.discountAmount ?? 0} total={quote?.total} busy={couponBusy || (quoteLoading && !!appliedCouponCode)} disabled={busy || !!pendingOrderId} error={couponError} onChange={updateCouponInput} onApply={() => void applyCoupon()} onChoose={code => { setCouponInput(code); void applyCoupon(code); }} onRemove={removeCoupon} />
               <PaymentCard method={method} cardAvailable={cardAvailable} pendingOrderId={pendingOrderId} busy={busy || couponBusy} pin={pin} quoteLoading={quoteLoading} quoteError={quoteError} orderError={orderError} onMethodChange={next => { setMethod(next); setQuote(null); }} onPinChange={setPin} />
-              <View style={styles.actions}>
-                <Pressable style={styles.secondaryButton} disabled={busy} onPress={() => router.replace('/checkout/info')}>
-                  <Ionicons name="arrow-back" size={17} color="#755036" /><Text style={styles.secondaryText}>Sửa thông tin giao hàng</Text>
-                </Pressable>
+            </View>
+            <View style={[styles.side, compact && styles.sideCompact]}>
+              <CouponCard value={couponInput} availableCoupons={availableCoupons} appliedCode={quote?.couponCode === appliedCouponCode ? appliedCouponCode : ''} discountAmount={quote?.discountAmount ?? 0} total={quote?.total} busy={couponBusy || (quoteLoading && !!appliedCouponCode)} disabled={busy || !!pendingOrderId} error={couponError} onChange={updateCouponInput} onApply={() => void applyCoupon()} onChoose={code => { setCouponInput(code); void applyCoupon(code); }} onRemove={removeCoupon} />
+              <OrderSummary quote={quote} cart={cart} compact={compact} />
+              <View style={styles.sideActions}>
                 <Pressable style={[styles.primaryButton, (busy || couponBusy || quoteLoading || (!quote && !pendingOrderId)) && styles.disabled]} disabled={busy || couponBusy || quoteLoading || (!quote && !pendingOrderId)} onPress={() => void placeOrder()}>
                   {busy ? <ActivityIndicator color="#fff" /> : <><Ionicons name={method === 'CASH' ? 'checkmark-circle-outline' : method === 'CARD' ? 'card-outline' : 'qr-code-outline'} size={18} color="#fff" /><Text style={styles.primaryText}>{pendingOrderId && method === 'QR' ? 'Mở lại link PayOS' : pendingOrderId && method === 'CARD' ? 'Xác nhận PIN' : method === 'CASH' ? 'Xác nhận đơn hàng' : method === 'CARD' ? 'Thanh toán mô phỏng' : 'Thanh toán PayOS / QR'}</Text></>}
                 </Pressable>
+                <Pressable style={styles.secondaryButton} disabled={busy} onPress={() => router.replace(infoRoute)}>
+                  <Ionicons name="arrow-back" size={17} color="#755036" /><Text style={styles.secondaryText}>Sửa thông tin giao hàng</Text>
+                </Pressable>
               </View>
             </View>
-            <OrderSummary quote={quote} cart={cart} compact={compact} />
           </View>
         </View>
         <ProductFooter />
       </ScrollView>
+      <ScrollTopButton visible={top.visible} onPress={top.toTop} />
       <ChatWidget compact={compact} />
     </View>
   );
@@ -268,7 +277,7 @@ const styles = {
     page: { flex: 1, backgroundColor: '#F6EFE6' },
     scroll: { flexGrow: 1, paddingHorizontal: 24, paddingTop: 18, paddingBottom: 28 },
     scrollCompact: { paddingHorizontal: 12, paddingTop: 12, paddingBottom: 20 },
-    content: { width: '100%', maxWidth: 1240, alignSelf: 'center' },
+    content: { width: '100%', maxWidth: 1240, alignSelf: 'center', paddingBottom: 40 },
     hero: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 18, padding: 18, borderRadius: 18, backgroundColor: '#E8D5BA', borderWidth: 1, borderColor: '#CBA779' },
     heroIcon: { width: 46, height: 46, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: '#755036' },
     heroCopy: { flex: 1, minWidth: 0 },
@@ -356,7 +365,10 @@ const styles = {
     secondaryButton: { minHeight: 48, paddingHorizontal: 14, borderRadius: 10, borderWidth: 1, borderColor: '#D6BFA5', backgroundColor: '#FFFCF7', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
     secondaryText: { color: '#755036', fontSize: 12, fontWeight: '800' },
     disabled: { opacity: 0.5 },
-    summary: { width: 360, padding: 20, borderRadius: 16, backgroundColor: '#FFFCF7', borderWidth: 1, borderColor: '#CBA779', shadowColor: '#755036', shadowOpacity: 0.08, shadowRadius: 15, shadowOffset: { width: 0, height: 5 }, elevation: 2 },
+    side: { width: 360, gap: 16 },
+    sideCompact: { width: '100%' },
+    sideActions: { gap: 10 },
+    summary: { width: '100%', padding: 20, borderRadius: 16, backgroundColor: '#FFFCF7', borderWidth: 1, borderColor: '#CBA779', shadowColor: '#755036', shadowOpacity: 0.08, shadowRadius: 15, shadowOffset: { width: 0, height: 5 }, elevation: 2 },
     summaryCompact: { width: '100%' },
     summaryHeading: { flexDirection: 'row', alignItems: 'center', gap: 9, paddingBottom: 14, marginBottom: 3, borderBottomWidth: 1, borderBottomColor: '#E6D8C7' },
     summaryTotals: { marginTop: 5 },

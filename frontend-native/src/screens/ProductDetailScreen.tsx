@@ -8,8 +8,10 @@ import { ProductFooter } from '../components/ProductFooter';
 import { ProductReviews } from '../components/ProductReviews';
 import { useProductDetail } from '../hooks/useProductDetail';
 import { withTypography } from '../typography';
+import { ScrollTopButton, useScrollTop } from '../components/ScrollTopButton';
 
 export default function ProductDetailScreen() {
+  const top = useScrollTop();
   const { width } = useWindowDimensions();
   const compact = width < 820;
   const mobileWidth = Math.max(280, width - 40);
@@ -24,7 +26,7 @@ export default function ProductDetailScreen() {
   return (
     <View style={styles.page}>
       <PageHeader back />
-      <ScrollView contentContainerStyle={[styles.scroll, compact && styles.scrollCompact]}>
+      <ScrollView ref={top.ref} onScroll={top.onScroll} scrollEventThrottle={100} contentContainerStyle={[styles.scroll, compact && styles.scrollCompact]}>
         {loading ? <View style={styles.state}><ActivityIndicator size="large" color="#755036" /><Text style={styles.stateText}>Đang tải sản phẩm...</Text></View> : error || !product ? <View accessibilityRole="alert" style={styles.state}><Ionicons name="alert-circle-outline" size={38} color="#9B382F" /><Text style={styles.errorTitle}>Chưa thể mở sản phẩm</Text><Text style={styles.stateText}>{error || 'Không tìm thấy sản phẩm.'}</Text><View style={styles.stateActions}><SecondaryButton label="Về trang chủ" onPress={() => router.replace('/')} /><PrimaryButton label="Thử lại" onPress={() => void load()} /></View></View> : <View style={[styles.content, compact && { width: mobileWidth, alignSelf: 'center' }]}>
           <View style={styles.breadcrumb}><Pressable onPress={() => router.replace('/')}><Text style={styles.breadcrumbLink}>Trang chủ</Text></Pressable><Ionicons name="chevron-forward" size={14} color="#A08E80" /><Text numberOfLines={1} style={styles.breadcrumbCurrent}>{product.name}</Text></View>
 
@@ -65,6 +67,7 @@ export default function ProductDetailScreen() {
         {!loading && !error && !!product && <ProductFooter />}
       </ScrollView>
       {!!notice && <View accessibilityLiveRegion="polite" style={styles.toast}><Ionicons name="checkmark-circle" size={18} color="#fff" /><Text style={styles.toastText}>{notice}</Text></View>}
+      <ScrollTopButton visible={top.visible} onPress={top.toTop} />
       <ChatWidget compact={compact} />
     </View>
   );

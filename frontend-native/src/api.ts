@@ -184,9 +184,9 @@ export const orderApi = {
 
 export const couponApi = {
   list: () => request<Coupon[]>('/coupons'),
-  validate: (code: string, orderAmount: number) => request<{ valid: boolean; coupon: Coupon; discountAmount: number; finalAmount: number }>('/coupons/validate', {
+  validate: (code: string, orderAmount: number, productId?: number) => request<{ valid: boolean; coupon: Coupon; discountAmount: number; finalAmount: number }>('/coupons/validate', {
     method: 'POST',
-    body: JSON.stringify({ code, orderAmount }),
+    body: JSON.stringify({ code, orderAmount, productId }),
   }),
 };
 

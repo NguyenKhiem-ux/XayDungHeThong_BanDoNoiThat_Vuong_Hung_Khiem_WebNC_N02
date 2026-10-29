@@ -11,6 +11,7 @@ import { PageHeader } from '../components/PageHeader';
 import { ProductFooter } from '../components/ProductFooter';
 import { ProductReviews } from '../components/ProductReviews';
 import { useProductDetail } from '../hooks/useProductDetail';
+import { ScrollTopButton, useWebScrollTop } from '../components/ScrollTopButton';
 
 const policies = [
   ['shield-checkmark-outline', 'Bảo hành 12-24 tháng', 'Bảo hành chính hãng theo chính sách nhà sản xuất'],
@@ -20,6 +21,7 @@ const policies = [
 ] as const;
 
 export default function ProductDetailScreen() {
+  const top = useWebScrollTop();
   const detail = useProductDetail();
   const compact = useWindowDimensions().width < 720;
   const { add, cartBusy, changeQuantity, error, favoriteIds, load, loading, notice, product, quantity, router, toggleSaved, updateSummary } = detail;
@@ -32,7 +34,7 @@ export default function ProductDetailScreen() {
   const saved = favoriteIds.includes(product.id);
   const onSale = !!product.discountPercent && (product.originalPrice ?? 0) > product.price;
 
-  return <div className="gdv-detail-page gdv-typography">
+  return <div ref={top.ref} onScroll={top.onScroll} className="gdv-detail-page gdv-typography">
     <PageHeader back />
     <main className="gdv-detail-main">
       <Container fluid="xl">
@@ -72,7 +74,7 @@ export default function ProductDetailScreen() {
       </Container>
     </main>
     <ProductFooter />
-    <div className="gdv-chat-layer"><ChatWidget compact={compact} /></div>
+    <div className="gdv-chat-layer"><ScrollTopButton visible={top.visible} onPress={top.toTop} /><ChatWidget compact={compact} /></div>
     {!!notice && <div className="gdv-toast" role="status">✓ {notice}</div>}
   </div>;
 }

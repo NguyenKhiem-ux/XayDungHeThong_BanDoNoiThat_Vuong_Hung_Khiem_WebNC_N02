@@ -5,6 +5,7 @@ import { ActivityIndicator, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StoreProvider } from '../src/store';
 import { fontAssets } from '../src/typography';
+import '../src/web-styles';
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts(fontAssets);

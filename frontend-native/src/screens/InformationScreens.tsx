@@ -7,6 +7,7 @@ import { contactValidationError } from '../contact.mjs';
 import { Header } from '../components/Header';
 import { ProductFooter } from '../components/ProductFooter';
 import { withTypography } from '../typography';
+import { ScrollTopButton, useScrollTop } from '../components/ScrollTopButton';
 
 const aboutImage = 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=85';
 const policies = [
@@ -66,7 +67,8 @@ export function PoliciesScreen() {
 }
 
 function InformationPage({ compact, children }: { compact: boolean; children: ReactNode }) {
-  return <View style={styles.page}><ScrollView stickyHeaderIndices={[0]} keyboardShouldPersistTaps="handled" style={styles.scroll} contentContainerStyle={styles.content}><Header compact={compact} categories={[]} /><View style={[styles.shell, compact && styles.shellCompact]}>{children}</View><ProductFooter /></ScrollView></View>;
+  const top = useScrollTop();
+  return <View style={styles.page}><ScrollView ref={top.ref} onScroll={top.onScroll} scrollEventThrottle={100} stickyHeaderIndices={[0]} keyboardShouldPersistTaps="handled" style={styles.scroll} contentContainerStyle={styles.content}><Header compact={compact} categories={[]} /><View style={[styles.shell, compact && styles.shellCompact]}>{children}</View><ProductFooter /></ScrollView><ScrollTopButton visible={top.visible} onPress={top.toTop} /></View>;
 }
 
 function Hero({ eyebrow, title, text }: { eyebrow: string; title: string; text: string }) {

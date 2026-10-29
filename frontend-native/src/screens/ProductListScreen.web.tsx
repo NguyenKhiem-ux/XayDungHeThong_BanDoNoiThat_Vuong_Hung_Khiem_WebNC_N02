@@ -10,13 +10,15 @@ import { ChatWidget } from '../components/ChatWidget';
 import { Header } from '../components/Header';
 import { ProductCard, ProductSkeleton } from '../components/ProductCard';
 import { ProductFooter } from '../components/ProductFooter';
-import { useProductList, type ProductSort } from '../hooks/useProductList';
+import { PRICE_RANGES, useProductList, type ProductSort } from '../hooks/useProductList';
 import { useStore } from '../store';
+import { ScrollTopButton, useWebScrollTop } from '../components/ScrollTopButton';
 
 export default function ProductListScreen() {
+  const top = useWebScrollTop();
   const router = useRouter();
   const compact = useWindowDimensions().width < 768;
-  const { category, categories, clearFilters, error, keyword, loading, products, retry, setCategory, setKeyword, setSort, sort } = useProductList();
+  const { category, categories, clearFilters, error, keyword, loading, priceRange, products, retry, setCategory, setKeyword, setPriceRange, setSort, sort } = useProductList();
   const { notice } = useStore();
   const [search, setSearch] = useState(keyword);
 
@@ -27,7 +29,7 @@ export default function ProductListScreen() {
   };
   const title = keyword ? `Kết quả cho “${keyword}”` : category || 'Tất cả sản phẩm';
 
-  return <div className="gdv-list-page gdv-typography">
+  return <div ref={top.ref} onScroll={top.onScroll} className="gdv-list-page gdv-typography">
     <Header compact={compact} categories={categories} />
     <section className="gdv-list-hero">
       <Container fluid="xl">
@@ -62,6 +64,12 @@ export default function ProductListScreen() {
                 </Form>
                 <span role="status">{loading ? 'Đang tải sản phẩm…' : error ? 'Chưa thể tải sản phẩm' : <>Tìm thấy <strong>{products.length}</strong> sản phẩm</>}</span>
                 <Form.Group className="gdv-list-sort">
+                  <Form.Label htmlFor="product-price">Khoảng giá</Form.Label>
+                  <Form.Select id="product-price" aria-label="Lọc theo khoảng giá" value={priceRange} disabled={loading || !!error} onChange={event => setPriceRange(event.target.value)}>
+                    <option value="">Mọi mức giá</option>{PRICE_RANGES.map((range, index) => <option key={range.label} value={index}>{range.label}</option>)}
+                  </Form.Select>
+                </Form.Group>
+                <Form.Group className="gdv-list-sort">
                   <Form.Label htmlFor="product-sort">Sắp xếp</Form.Label>
                   <Form.Select id="product-sort" aria-label="Sắp xếp sản phẩm" value={sort} disabled={loading || !!error} onChange={event => setSort(event.target.value as ProductSort)}>
                     <option value="">Mặc định</option><option value="price-asc">Giá tăng dần</option><option value="price-desc">Giá giảm dần</option><option value="name">Tên A–Z</option>
@@ -79,7 +87,7 @@ export default function ProductListScreen() {
       </Container>
     </main>
     <ProductFooter />
-    <div className="gdv-list-chat"><ChatWidget compact={compact} /></div>
+    <div className="gdv-list-chat"><ScrollTopButton visible={top.visible} onPress={top.toTop} /><ChatWidget compact={compact} /></div>
     {!!notice && <div className="gdv-list-toast" role="status">✓ {notice}</div>}
   </div>;
 }

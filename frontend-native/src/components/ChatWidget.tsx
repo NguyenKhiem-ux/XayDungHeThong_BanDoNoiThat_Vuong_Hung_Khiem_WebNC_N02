@@ -5,6 +5,7 @@ import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollVie
 import { chatApi, formatVnd, openLegacy } from '../api';
 import { useStore } from '../store';
 import { withTypography } from '../typography';
+import { Buttons, ChatAccountCards, ChatCartCard, ChatCheckoutCards, ChatCheckoutReview, ChatChips } from './ChatCards';
 import type { ChatAction, ChatResponse } from '../types';
 
 interface Message {
@@ -26,6 +27,7 @@ export function ChatWidget({ compact }: { compact: boolean }) {
   const router = useRouter();
   const { cart, syncChat } = useStore();
   const [open, setOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -58,6 +60,7 @@ export function ChatWidget({ compact }: { compact: boolean }) {
   };
 
   const act = (action: ChatAction) => void request(action.label, action);
+  const latestAssistant = messages.filter(message => message.role === 'assistant').at(-1)?.id;
   const reset = () => {
     sessionId.current = makeId();
     setMessages([initial]);
@@ -67,28 +70,45 @@ export function ChatWidget({ compact }: { compact: boolean }) {
 
   return (
     <View pointerEvents="box-none" style={styles.layer}>
-      {open && <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={[styles.panel, compact && styles.panelCompact]}>
+      {open && <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={[styles.panel, compact && styles.panelCompact, expanded && styles.panelExpanded]}>
         <View style={styles.header}>
           <View style={styles.avatar}><Ionicons name="sparkles" size={18} color="#fff" /></View>
           <View style={styles.heading}><Text style={styles.title}>Trợ lý gia dụng</Text><Text style={styles.subtitle}>Mua sắm và quản lý đơn hàng</Text></View>
           <Pressable accessibilityRole="button" accessibilityLabel="Cuộc trò chuyện mới" disabled={loading} onPress={reset} style={styles.headerButton}><Ionicons name="refresh" size={18} color="#FFFCF7" /></Pressable>
-          <Pressable accessibilityRole="button" accessibilityLabel="Đóng chatbot" onPress={() => setOpen(false)} style={styles.headerButton}><Ionicons name="close" size={21} color="#FFFCF7" /></Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel={expanded ? 'Thu nhỏ khung chat' : 'Mở toàn màn hình'} onPress={() => setExpanded(value => !value)} style={styles.headerButton}><Ionicons name={expanded ? 'contract-outline' : 'expand-outline'} size={18} color="#FFFCF7" /></Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel="Đóng chatbot" onPress={() => { setOpen(false); setExpanded(false); }} style={styles.headerButton}><Ionicons name="close" size={21} color="#FFFCF7" /></Pressable>
         </View>
 
-        <ScrollView contentContainerStyle={styles.messages} keyboardShouldPersistTaps="handled">
-          {messages.map(message => <View key={message.id} style={[styles.message, message.role === 'user' ? styles.userMessage : styles.assistantMessage]}>
-            <Text style={[styles.messageText, message.role === 'user' && styles.userMessageText]}>{message.text}</Text>
-            {!!message.response?.products?.length && <View style={styles.results}>{message.response.products.slice(0, 3).map(product => <Pressable key={product.id} accessibilityRole="link" onPress={() => router.push({ pathname: '/products/[id]', params: { id: String(product.id) } })} style={styles.result}><Text numberOfLines={2} style={styles.resultName}>{product.name}</Text><Text style={styles.resultPrice}>{formatVnd(product.price)}</Text></Pressable>)}</View>}
-            {!!message.response?.actions?.length && <View style={styles.responseActions}>{message.response.actions.slice(0, 6).map((action, index) => <Pressable key={`${action.type}-${action.productId ?? index}`} disabled={loading} onPress={() => act(action)} style={styles.responseButton}><Text style={styles.responseButtonText}>{action.label}</Text></Pressable>)}</View>}
-            {message.response?.error?.code === 'LOGIN_REQUIRED' && <Pressable onPress={() => router.push('/login')}><Text style={styles.inlineLink}>Đăng nhập →</Text></Pressable>}
-            {message.response?.checkoutUrl && <Pressable onPress={() => message.response!.checkoutUrl === '/checkout/info' ? router.push('/checkout/info') : void openLegacy(message.response!.checkoutUrl!)}><Text style={styles.inlineLink}>Tiếp tục đến checkout →</Text></Pressable>}
-          </View>)}
+        <ScrollView style={styles.flex} contentContainerStyle={styles.messages} keyboardShouldPersistTaps="handled">
+          {messages.map(message => {
+            const response = message.response;
+            const latest = message.id === latestAssistant;
+            const disabled = loading || !latest;
+            const actions = response?.actions ?? [];
+            const continueCheckout = () => response?.checkoutUrl === '/checkout/info' ? router.push('/checkout/info') : void openLegacy(response!.checkoutUrl!);
+            // Giỏ của tin nhắn mới nhất lấy theo store để luôn khớp số lượng hiện tại.
+            const visibleCart = !response?.checkoutFlow && response?.cart && (latest ? cart ?? response.cart : response.cart);
+            return <View key={message.id} style={[styles.message, message.role === 'user' ? styles.userMessage : styles.assistantMessage, !!response && styles.wideMessage]}>
+              <Text style={[styles.messageText, message.role === 'user' && styles.userMessageText]}>{message.text}</Text>
+              {!!response?.products?.length && <View style={styles.results}>{response.products.map(product => <View key={product.id} style={styles.result}>
+                <Pressable accessibilityRole="link" onPress={() => router.push({ pathname: '/products/[id]', params: { id: String(product.id) } })}><Text numberOfLines={2} style={styles.resultName}>{product.name}</Text><Text style={styles.resultPrice}>{formatVnd(product.price)}</Text></Pressable>
+                <Buttons actions={actions.filter(action => action.productId === product.id)} disabled={disabled} onAction={act} />
+              </View>)}</View>}
+              {latest && <ChatChips chips={response?.chips} disabled={loading} onPick={chip => void request(chip)} />}
+              {visibleCart && <ChatCartCard cart={visibleCart} actions={actions} disabled={disabled} onAction={act} onOpenCart={() => router.push('/cart')} />}
+              {response?.checkout && <ChatCheckoutReview response={response} disabled={disabled} onAction={act} onContinue={continueCheckout} />}
+              {response?.error?.code === 'LOGIN_REQUIRED' && <Pressable onPress={() => router.push('/login')}><Text style={styles.inlineLink}>Đăng nhập →</Text></Pressable>}
+              {response?.checkoutUrl && !response.checkout && <Pressable onPress={continueCheckout}><Text style={styles.inlineLink}>Tiếp tục đến checkout →</Text></Pressable>}
+              {response?.checkoutFlow && <ChatCheckoutCards flow={response.checkoutFlow} disabled={disabled} onAction={act} />}
+              {response && !response.checkoutFlow && <ChatAccountCards response={response} disabled={disabled} onAction={act} />}
+            </View>;
+          })}
           {loading && <View style={[styles.message, styles.assistantMessage, styles.loading]}><ActivityIndicator size="small" color="#755036" /><Text style={styles.messageText}>Đang xử lý yêu cầu...</Text></View>}
         </ScrollView>
 
         {!!error && <View style={styles.error}><Text style={styles.errorText}>{error}</Text></View>}
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.shortcuts}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.shortcutBar} contentContainerStyle={styles.shortcuts}>
           {([['cart_view', 'Giỏ hàng', 'cart-outline'], ['orders_list', 'Đơn hàng', 'receipt-outline'], ['favorites_list', 'Yêu thích', 'heart-outline'], ['addresses_list', 'Địa chỉ', 'location-outline'], ['coupons_list', 'Voucher', 'ticket-outline']] as const).map(([type, label, icon]) => <Pressable key={type} disabled={loading} onPress={() => act({ type, label })} style={styles.shortcut}><Ionicons name={icon} size={14} color="#755036" /><Text style={styles.shortcutText}>{label}{type === 'cart_view' && cart?.itemCount ? ` (${cart.itemCount})` : ''}</Text></Pressable>)}
         </ScrollView>
 
@@ -98,9 +118,9 @@ export function ChatWidget({ compact }: { compact: boolean }) {
         </View>
       </KeyboardAvoidingView>}
 
-      <Pressable accessibilityRole="button" accessibilityLabel={open ? 'Đóng chatbot' : 'Mở chatbot'} accessibilityState={{ expanded: open }} onPress={() => setOpen(value => !value)} style={({ pressed }) => [styles.toggle, pressed && styles.pressed]}>
+      {!expanded && <Pressable accessibilityRole="button" accessibilityLabel={open ? 'Đóng chatbot' : 'Mở chatbot'} accessibilityState={{ expanded: open }} onPress={() => setOpen(value => !value)} style={({ pressed }) => [styles.toggle, pressed && styles.pressed]}>
         <Ionicons name={open ? 'close' : 'chatbubble-ellipses'} size={24} color="#fff" />
-      </Pressable>
+      </Pressable>}
     </View>
   );
 }
@@ -109,6 +129,9 @@ const styles = StyleSheet.create(withTypography({
   layer: { position: 'absolute', inset: 0, zIndex: 100 },
   panel: { position: 'absolute', right: 24, bottom: 86, width: 390, maxHeight: 590, minHeight: 480, borderRadius: 18, overflow: 'hidden', backgroundColor: '#FFFCF7', borderWidth: 1, borderColor: '#DCC9B4', boxShadow: '0 20px 60px rgba(48, 37, 29, .24)' },
   panelCompact: { left: 10, right: 10, bottom: 76, width: 'auto', maxHeight: '75%' },
+  panelExpanded: { top: 0, left: 0, right: 0, bottom: 0, width: 'auto', maxHeight: '100%', minHeight: 0, borderRadius: 0, borderWidth: 0 },
+  flex: { flex: 1 },
+  shortcutBar: { flexGrow: 0, flexShrink: 0 },
   header: { minHeight: 62, backgroundColor: '#755036', paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 9 },
   avatar: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#A56E2D', alignItems: 'center', justifyContent: 'center' },
   heading: { flex: 1 },
@@ -126,14 +149,12 @@ const styles = StyleSheet.create(withTypography({
   result: { padding: 8, borderRadius: 9, backgroundColor: '#fff', borderWidth: 1, borderColor: '#E6D8C7' },
   resultName: { color: '#30251D', fontSize: 12, fontWeight: '700' },
   resultPrice: { color: '#755036', fontSize: 12, fontWeight: '900', marginTop: 3 },
-  responseActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 5 },
-  responseButton: { paddingHorizontal: 9, paddingVertical: 7, borderRadius: 8, backgroundColor: '#755036' },
-  responseButtonText: { color: '#fff', fontSize: 10, fontWeight: '800' },
+  wideMessage: { maxWidth: '96%' },
   inlineLink: { color: '#755036', fontSize: 12, fontWeight: '900' },
   error: { marginHorizontal: 12, padding: 8, borderRadius: 8, backgroundColor: '#FBE8E5' },
   errorText: { color: '#9B382F', fontSize: 11 },
   shortcuts: { paddingHorizontal: 10, paddingVertical: 8, gap: 6 },
-  shortcut: { paddingHorizontal: 9, paddingVertical: 7, borderRadius: 999, borderWidth: 1, borderColor: '#DCC9B4', flexDirection: 'row', alignItems: 'center', gap: 4 },
+  shortcut: { alignSelf: 'center', paddingHorizontal: 9, paddingVertical: 7, borderRadius: 999, borderWidth: 1, borderColor: '#DCC9B4', flexDirection: 'row', alignItems: 'center', gap: 4 },
   shortcutText: { color: '#755036', fontSize: 10, fontWeight: '700' },
   form: { minHeight: 62, padding: 10, borderTopWidth: 1, borderTopColor: '#E6D8C7', flexDirection: 'row', alignItems: 'center', gap: 8 },
   input: { flex: 1, minHeight: 42, borderRadius: 12, borderWidth: 1, borderColor: '#DCC9B4', backgroundColor: '#fff', color: '#30251D', paddingHorizontal: 12, fontSize: 13 },
