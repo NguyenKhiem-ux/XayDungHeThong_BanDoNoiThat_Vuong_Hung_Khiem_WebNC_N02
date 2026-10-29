@@ -7,6 +7,7 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { PromotionsService } from '../promotions/promotions.service';
 import { reviewSummaries } from '../reviews/reviews.service';
+import { retryTransientRead } from '../database/retry-transient-read';
 
 @Injectable()
 export class ProductsService {
@@ -41,14 +42,16 @@ export class ProductsService {
   }
 
   async categories() {
-    const rows = await this.products
-      .createQueryBuilder('p')
-      .select('p.category', 'category')
-      .where('p.category IS NOT NULL')
-      .andWhere("TRIM(p.category) <> ''")
-      .groupBy('p.category')
-      .orderBy('p.category', 'ASC')
-      .getRawMany<{ category: string }>();
+    const rows = await retryTransientRead(() =>
+      this.products
+        .createQueryBuilder('p')
+        .select('p.category', 'category')
+        .where('p.category IS NOT NULL')
+        .andWhere("TRIM(p.category) <> ''")
+        .groupBy('p.category')
+        .orderBy('p.category', 'ASC')
+        .getRawMany<{ category: string }>(),
+    );
     return rows.map((row) => row.category);
   }
 

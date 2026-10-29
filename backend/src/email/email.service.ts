@@ -1,23 +1,32 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { Resend } from 'resend';
 
 @Injectable()
 export class EmailService {
-  private readonly resend: Resend;
+  private resend: Resend | null = null;
 
-  constructor() {
+  private getResend() {
+    if (this.resend) return this.resend;
     const apiKey = process.env.RESEND_API_KEY;
 
     if (!apiKey) {
-      throw new Error('RESEND_API_KEY chưa được cấu hình trong .env');
+      throw new ServiceUnavailableException(
+        'Chức năng email chưa được cấu hình trên máy chủ.',
+      );
     }
 
     this.resend = new Resend(apiKey);
+    return this.resend;
   }
 
   async sendTestEmail(to: string) {
+    const resend = this.getResend();
     try {
-      const { data, error } = await this.resend.emails.send({
+      const { data, error } = await resend.emails.send({
         from: process.env.MAIL_FROM || 'onboarding@resend.dev',
         to,
         subject: 'Test email - Gia Dụng Shop',
@@ -50,7 +59,8 @@ export class EmailService {
   }
 
   async sendPasswordResetOtp(to: string, otp: string) {
-    const { data, error } = await this.resend.emails.send({
+    const resend = this.getResend();
+    const { data, error } = await resend.emails.send({
       from: process.env.MAIL_FROM || 'onboarding@resend.dev',
       to,
       subject: 'Mã OTP đặt lại mật khẩu - Gia Dụng Shop',

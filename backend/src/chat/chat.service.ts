@@ -63,7 +63,7 @@ export class ChatService {
     const message = dto.message;
     try {
       const classification = this.intents.classify(message);
-      let { intent } = classification;
+      const { intent } = classification;
       const checkoutReply = await this.checkout.handle(dto, session, user, stream?.signal);
       if (checkoutReply) return checkoutReply;
       const accountReply = await this.userActions.handle(dto, session, user, stream?.signal);

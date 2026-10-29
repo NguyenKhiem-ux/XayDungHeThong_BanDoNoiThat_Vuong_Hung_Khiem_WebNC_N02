@@ -8,3 +8,5 @@ coverage/
 *.log
 .vscode/
 .idea/
+# Temporary Chrome profile
+.tmp-chrome-checkout/
