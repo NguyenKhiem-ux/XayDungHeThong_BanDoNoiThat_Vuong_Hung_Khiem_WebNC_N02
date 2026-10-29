@@ -2,13 +2,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
-import { ApiError, formatVnd, imageUrl, orderApi, type OrderInput } from '../api';
+import { ApiError, couponApi, formatVnd, imageUrl, orderApi, type OrderInput } from '../api';
 import { ChatWidget } from '../components/ChatWidget';
 import { PageHeader } from '../components/PageHeader';
 import { ProductFooter } from '../components/ProductFooter';
 import { useStore } from '../store';
 import { withTypography } from '../typography';
-import type { CheckoutQuote, PaymentMethod } from '../types';
+import type { CheckoutQuote, Coupon, PaymentMethod } from '../types';
 
 const methods: Array<{ value: PaymentMethod; title: string; description: string; icon: 'cash-outline' | 'qr-code-outline' | 'card-outline' }> = [
   { value: 'CASH', title: 'Tiền mặt khi nhận hàng', description: 'Kiểm tra sản phẩm và thanh toán cho nhân viên giao hàng.', icon: 'cash-outline' },
@@ -19,7 +19,7 @@ const methods: Array<{ value: PaymentMethod; title: string; description: string;
 export default function CheckoutPaymentPlaceholderScreen() {
   const router = useRouter();
   const compact = useWindowDimensions().width < 860;
-  const { authReady, cart, cartError, cartLoading, checkoutShipping, refreshCart, setCheckoutPaymentPin, user } = useStore();
+  const { authReady, cart, cartError, cartLoading, checkoutCouponCode, checkoutShipping, refreshCart, setCheckoutCouponCode, setCheckoutPaymentPin, user } = useStore();
   const [method, setMethod] = useState<PaymentMethod>('CASH');
   const [pin, setPin] = useState('');
   const [quote, setQuote] = useState<CheckoutQuote | null>(null);
@@ -28,14 +28,26 @@ export default function CheckoutPaymentPlaceholderScreen() {
   const [orderError, setOrderError] = useState('');
   const [busy, setBusy] = useState(false);
   const [pendingOrderId, setPendingOrderId] = useState<number | null>(null);
+  const [couponInput, setCouponInput] = useState(checkoutCouponCode);
+  const [appliedCouponCode, setAppliedCouponCode] = useState(checkoutCouponCode);
+  const [availableCoupons, setAvailableCoupons] = useState<Coupon[]>([]);
+  const [couponBusy, setCouponBusy] = useState(false);
+  const [couponError, setCouponError] = useState('');
 
   const cardAvailable = !!user?.savedCard && !!user.hasTransactionPin;
   const address = checkoutShipping ? [checkoutShipping.address, checkoutShipping.district, checkoutShipping.province].filter(Boolean).join(', ') : '';
-  const payload = useMemo<OrderInput | null>(() => checkoutShipping && user ? ({ fullName: checkoutShipping.fullName, email: user.email, phone: checkoutShipping.phone, address, paymentMethod: method, note: checkoutShipping.note || undefined }) : null, [address, checkoutShipping, method, user]);
+  const payload = useMemo<OrderInput | null>(() => checkoutShipping && user ? ({ fullName: checkoutShipping.fullName, email: user.email, phone: checkoutShipping.phone, address, paymentMethod: method, note: checkoutShipping.note || undefined, couponCode: appliedCouponCode || undefined }) : null, [address, appliedCouponCode, checkoutShipping, method, user]);
 
   useEffect(() => {
     if (method === 'CARD' && !cardAvailable) setMethod('CASH');
   }, [cardAvailable, method]);
+
+  useEffect(() => {
+    if (!user) return;
+    let active = true;
+    void couponApi.list().then(coupons => { if (active) setAvailableCoupons(coupons); }).catch(() => { if (active) setAvailableCoupons([]); });
+    return () => { active = false; };
+  }, [user]);
 
   useEffect(() => {
     if (!authReady) return;
@@ -50,14 +62,79 @@ export default function CheckoutPaymentPlaceholderScreen() {
     setQuoteLoading(true);
     setQuoteError('');
     setOrderError('');
-    void orderApi.preview(payload).then(next => { if (active) setQuote(next); }).catch(error => { if (active) { setQuote(null); setQuoteError(error instanceof Error ? error.message : 'Không thể kiểm tra báo giá.'); } }).finally(() => { if (active) setQuoteLoading(false); });
+    void orderApi.preview(payload).then(next => {
+      if (!active) return;
+      if (payload.couponCode && next.couponCode !== payload.couponCode) {
+        setQuote(null);
+        setAppliedCouponCode('');
+        setCheckoutCouponCode('');
+        setCouponError('Báo giá không xác nhận mã giảm giá đã chọn. Vui lòng áp dụng lại.');
+        return;
+      }
+      setQuote(next);
+    }).catch(error => {
+      if (!active) return;
+      const message = error instanceof Error ? error.message : 'Không thể kiểm tra báo giá.';
+      setQuote(null);
+      if (payload.couponCode) {
+        setAppliedCouponCode('');
+        setCheckoutCouponCode('');
+        setCouponError(message);
+      } else {
+        setQuoteError(message);
+      }
+    }).finally(() => { if (active) setQuoteLoading(false); });
     return () => { active = false; };
-  }, [cart, payload, pendingOrderId]);
+  }, [cart, payload, pendingOrderId, setCheckoutCouponCode]);
+
+  const updateCouponInput = (value: string) => {
+    const next = value.toUpperCase();
+    setCouponInput(next);
+    setCouponError('');
+    if (appliedCouponCode && next.trim() !== appliedCouponCode) {
+      setAppliedCouponCode('');
+      setCheckoutCouponCode('');
+      setQuote(null);
+    }
+  };
+
+  const removeCoupon = () => {
+    setCouponInput('');
+    setAppliedCouponCode('');
+    setCheckoutCouponCode('');
+    setCouponError('');
+    setQuote(null);
+  };
+
+  const applyCoupon = async (requestedCode = couponInput) => {
+    const code = requestedCode.trim().toUpperCase();
+    if (!code || !cart) { setCouponError('Vui lòng nhập hoặc chọn mã giảm giá.'); return; }
+    if (couponBusy || busy || pendingOrderId) return;
+    setCouponBusy(true);
+    setCouponError('');
+    try {
+      const result = await couponApi.validate(code, cart.total);
+      if (!result.valid || !result.coupon.code) throw new Error('Mã giảm giá không hợp lệ.');
+      const confirmedCode = result.coupon.code.trim().toUpperCase();
+      setCouponInput(confirmedCode);
+      setAppliedCouponCode(confirmedCode);
+      setCheckoutCouponCode(confirmedCode);
+      setQuote(null);
+    } catch (error) {
+      setAppliedCouponCode('');
+      setCheckoutCouponCode('');
+      setQuote(null);
+      setCouponError(error instanceof Error ? error.message : 'Không thể áp dụng mã giảm giá.');
+    } finally {
+      setCouponBusy(false);
+    }
+  };
 
   const placeOrder = async () => {
-    if (busy || !payload || (!cart?.items.length && !pendingOrderId)) return;
+    if (busy || couponBusy || quoteLoading || !payload || (!cart?.items.length && !pendingOrderId)) return;
     if (method === 'CARD' && !/^\d{6}$/.test(pin)) { setOrderError('Vui lòng nhập PIN mô phỏng gồm 6 chữ số.'); return; }
     if (!quote && !pendingOrderId) { setOrderError('Báo giá chưa sẵn sàng. Vui lòng thử lại.'); return; }
+    if (!pendingOrderId && quote!.couponCode !== (payload.couponCode ?? null)) { setOrderError('Mã giảm giá và báo giá chưa đồng bộ. Vui lòng áp dụng lại mã.'); return; }
     setBusy(true);
     setOrderError('');
     let orderCreated = !!pendingOrderId;
@@ -68,6 +145,7 @@ export default function CheckoutPaymentPlaceholderScreen() {
         orderId = order.id;
         orderCreated = true;
         setPendingOrderId(order.id);
+        setCheckoutCouponCode('');
         setCheckoutPaymentPin(method === 'CARD' ? pin : '');
         await refreshCart().catch(() => {});
       }
@@ -113,12 +191,13 @@ export default function CheckoutPaymentPlaceholderScreen() {
             <View style={styles.main}>
               <ShippingCard shipping={checkoutShipping} email={user.email} onEdit={() => router.replace('/checkout/info')} />
               <OrderProducts quote={quote} cart={cart} />
-              <PaymentCard method={method} cardAvailable={cardAvailable} pendingOrderId={pendingOrderId} busy={busy} pin={pin} quoteLoading={quoteLoading} quoteError={quoteError} orderError={orderError} onMethodChange={next => { setMethod(next); setQuote(null); }} onPinChange={setPin} />
+              <CouponCard value={couponInput} availableCoupons={availableCoupons} appliedCode={quote?.couponCode === appliedCouponCode ? appliedCouponCode : ''} discountAmount={quote?.discountAmount ?? 0} total={quote?.total} busy={couponBusy || (quoteLoading && !!appliedCouponCode)} disabled={busy || !!pendingOrderId} error={couponError} onChange={updateCouponInput} onApply={() => void applyCoupon()} onChoose={code => { setCouponInput(code); void applyCoupon(code); }} onRemove={removeCoupon} />
+              <PaymentCard method={method} cardAvailable={cardAvailable} pendingOrderId={pendingOrderId} busy={busy || couponBusy} pin={pin} quoteLoading={quoteLoading} quoteError={quoteError} orderError={orderError} onMethodChange={next => { setMethod(next); setQuote(null); }} onPinChange={setPin} />
               <View style={styles.actions}>
                 <Pressable style={styles.secondaryButton} disabled={busy} onPress={() => router.replace('/checkout/info')}>
                   <Ionicons name="arrow-back" size={17} color="#755036" /><Text style={styles.secondaryText}>Sửa thông tin giao hàng</Text>
                 </Pressable>
-                <Pressable style={[styles.primaryButton, (busy || quoteLoading || (!quote && !pendingOrderId)) && styles.disabled]} disabled={busy || quoteLoading || (!quote && !pendingOrderId)} onPress={() => void placeOrder()}>
+                <Pressable style={[styles.primaryButton, (busy || couponBusy || quoteLoading || (!quote && !pendingOrderId)) && styles.disabled]} disabled={busy || couponBusy || quoteLoading || (!quote && !pendingOrderId)} onPress={() => void placeOrder()}>
                   {busy ? <ActivityIndicator color="#fff" /> : <><Ionicons name={method === 'CASH' ? 'checkmark-circle-outline' : method === 'CARD' ? 'card-outline' : 'qr-code-outline'} size={18} color="#fff" /><Text style={styles.primaryText}>{pendingOrderId && method === 'QR' ? 'Mở lại link PayOS' : pendingOrderId && method === 'CARD' ? 'Xác nhận PIN' : method === 'CASH' ? 'Xác nhận đơn hàng' : method === 'CARD' ? 'Thanh toán mô phỏng' : 'Thanh toán PayOS / QR'}</Text></>}
                 </Pressable>
               </View>
@@ -145,6 +224,11 @@ function ShippingCard({ shipping, email, onEdit }: { shipping: NonNullable<Retur
   return <View style={styles.card}><View style={styles.cardHeading}><View style={styles.headingIcon}><Ionicons name="location-outline" size={19} color="#755036" /></View><View style={styles.headingCopy}><Text style={styles.sectionTitle}>Thông tin giao hàng</Text><Text style={styles.sectionHint}>Thông tin đã xác nhận ở bước 1</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Sửa thông tin giao hàng" onPress={onEdit} style={styles.edit}><Ionicons name="create-outline" size={15} color="#755036" /><Text style={styles.editText}>Sửa</Text></Pressable></View><View style={styles.shippingGrid}><View style={styles.shippingField}><Text style={styles.fieldLabel}>Người nhận</Text><Text style={styles.recipientName}>{shipping.fullName}</Text></View><View style={styles.shippingField}><Text style={styles.fieldLabel}>Điện thoại</Text><Text style={styles.recipientText}>{shipping.phone}</Text></View><View style={styles.shippingField}><Text style={styles.fieldLabel}>Email</Text><Text style={styles.recipientText}>{email}</Text></View><View style={styles.shippingField}><Text style={styles.fieldLabel}>Địa chỉ giao hàng</Text><Text style={styles.recipientText}>{[shipping.address, shipping.district, shipping.province].filter(Boolean).join(', ')}</Text></View></View>{shipping.note ? <View style={styles.noteBox}><Ionicons name="chatbubble-ellipses-outline" size={15} color="#A56E2D" /><Text style={styles.note}>Ghi chú: {shipping.note}</Text></View> : null}</View>;
 }
 
+function CouponCard({ value, availableCoupons, appliedCode, discountAmount, total, busy, disabled, error, onChange, onApply, onChoose, onRemove }: { value: string; availableCoupons: Coupon[]; appliedCode: string; discountAmount: number; total?: number; busy: boolean; disabled: boolean; error: string; onChange: (value: string) => void; onApply: () => void; onChoose: (code: string) => void; onRemove: () => void }) {
+  const choices = availableCoupons.filter(coupon => coupon.isActive).slice(0, 4);
+  return <View style={styles.card}><View style={styles.cardHeading}><View style={styles.headingIcon}><Ionicons name="ticket-outline" size={19} color="#755036" /></View><View style={styles.headingCopy}><Text style={styles.sectionTitle}>Mã giảm giá</Text><Text style={styles.sectionHint}>Giảm giá và tổng tiền được xác nhận trực tiếp từ Backend</Text></View></View><View style={styles.couponRow}><TextInput accessibilityLabel="Mã giảm giá" value={value} editable={!disabled && !busy} autoCapitalize="characters" autoCorrect={false} maxLength={80} returnKeyType="done" onSubmitEditing={onApply} onChangeText={onChange} placeholder="Nhập mã giảm giá" placeholderTextColor="#A08E80" style={styles.couponInput} /><Pressable accessibilityRole="button" disabled={disabled || busy || !value.trim()} onPress={onApply} style={[styles.couponApply, (disabled || busy || !value.trim()) && styles.disabled]}>{busy ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.couponApplyText}>Áp dụng</Text>}</Pressable></View>{choices.length ? <View style={styles.couponChoices}><Text style={styles.couponChoiceLabel}>Mã có thể chọn</Text><View style={styles.couponChoiceRow}>{choices.map(coupon => <Pressable key={coupon.id} disabled={disabled || busy} onPress={() => onChoose(coupon.code)} style={styles.couponChoice}><Text style={styles.couponChoiceCode}>{coupon.code}</Text><Text numberOfLines={1} style={styles.couponChoiceDescription}>{coupon.description || 'Kiểm tra điều kiện áp dụng'}</Text></Pressable>)}</View></View> : null}{error ? <View style={styles.alert}><Ionicons name="alert-circle-outline" size={17} color="#9B382F" /><Text accessibilityRole="alert" style={styles.error}>{error}</Text></View> : null}{appliedCode ? <View style={styles.couponSuccess}><Ionicons name="checkmark-circle" size={19} color="#47724A" /><View style={styles.flex}><Text style={styles.couponSuccessTitle}>Đã áp dụng {appliedCode}</Text><Text style={styles.couponSuccessText}>Giảm {formatVnd(discountAmount)}{total === undefined ? '' : ` · Tổng còn ${formatVnd(total)}`}</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Gỡ mã giảm giá" disabled={disabled || busy} onPress={onRemove} style={styles.couponRemove}><Text style={styles.couponRemoveText}>Gỡ</Text></Pressable></View> : null}</View>;
+}
+
 type CheckoutItem = CheckoutQuote['items'][number];
 
 function getCheckoutItems(quote: CheckoutQuote | null, cart: NonNullable<ReturnType<typeof useStore>['cart']>): CheckoutItem[] {
@@ -167,7 +251,7 @@ function OrderSummary({ quote, cart, compact }: { quote: CheckoutQuote | null; c
   const discount = quote?.discountAmount ?? 0;
   const shipping = quote?.shippingFee;
   const total = quote?.total ?? cart.total;
-  return <View style={[styles.summary, compact && styles.summaryCompact]}><View style={styles.summaryHeading}><View style={styles.headingIcon}><Ionicons name="receipt-outline" size={19} color="#755036" /></View><View style={styles.headingCopy}><Text style={styles.sectionTitle}>Tóm tắt đơn hàng</Text><Text style={styles.sectionHint}>Chi phí dự kiến theo báo giá hiện tại</Text></View></View><View style={styles.summaryTotals}><Line label="Tạm tính" value={formatVnd(subtotal)} /><Line label="Giảm giá" value={discount ? `-${formatVnd(discount)}` : 'Không áp dụng'} positive={!!discount} /><Line label="Phí vận chuyển" value={shipping === undefined ? 'Đang xác nhận' : shipping === 0 ? 'Miễn phí' : formatVnd(shipping)} /></View><View style={[styles.totalLine, styles.summaryLine]}><Text style={styles.totalLabel}>Tổng thanh toán</Text><Text style={styles.totalValue}>{formatVnd(total)}</Text></View><View style={styles.summaryTrust}><Ionicons name="lock-closed-outline" size={15} color="#47724A" /><Text style={styles.trustText}>Thanh toán an toàn, thông tin được bảo mật.</Text></View></View>;
+  return <View style={[styles.summary, compact && styles.summaryCompact]}><View style={styles.summaryHeading}><View style={styles.headingIcon}><Ionicons name="receipt-outline" size={19} color="#755036" /></View><View style={styles.headingCopy}><Text style={styles.sectionTitle}>Tóm tắt đơn hàng</Text><Text style={styles.sectionHint}>Chi phí dự kiến theo báo giá hiện tại</Text></View></View><View style={styles.summaryTotals}><Line label="Tạm tính" value={formatVnd(subtotal)} /><Line label={quote?.couponCode ? `Mã ${quote.couponCode}` : 'Giảm giá'} value={discount ? `-${formatVnd(discount)}` : 'Không áp dụng'} positive={!!discount} /><Line label="Phí vận chuyển" value={shipping === undefined ? 'Đang xác nhận' : shipping === 0 ? 'Miễn phí' : formatVnd(shipping)} /></View><View style={[styles.totalLine, styles.summaryLine]}><Text style={styles.totalLabel}>Tổng thanh toán</Text><Text style={styles.totalValue}>{formatVnd(total)}</Text></View><View style={styles.summaryTrust}><Ionicons name="lock-closed-outline" size={15} color="#47724A" /><Text style={styles.trustText}>Thanh toán an toàn, thông tin được bảo mật.</Text></View></View>;
 }
 
 function Line({ label, value, positive = false }: { label: string; value: string; positive?: boolean }) {
@@ -220,6 +304,21 @@ const styles = {
     recipientText: { color: '#625247', fontSize: 12, lineHeight: 19 },
     noteBox: { marginTop: 14, padding: 10, borderRadius: 10, flexDirection: 'row', alignItems: 'center', gap: 7, backgroundColor: '#FBF3E8' },
     note: { flex: 1, color: '#7D6B5D', fontSize: 11, lineHeight: 17, fontStyle: 'italic' },
+    couponRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+    couponInput: { flex: 1, minHeight: 44, paddingHorizontal: 12, borderRadius: 9, borderWidth: 1, borderColor: '#D6BFA5', backgroundColor: '#fff', color: '#30251D', fontSize: 13, fontWeight: '800' },
+    couponApply: { minWidth: 92, minHeight: 44, paddingHorizontal: 14, borderRadius: 9, backgroundColor: '#755036', alignItems: 'center', justifyContent: 'center' },
+    couponApplyText: { color: '#fff', fontSize: 11, fontWeight: '900' },
+    couponChoices: { marginTop: 13, gap: 7 },
+    couponChoiceLabel: { color: '#8B7A6C', fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.4 },
+    couponChoiceRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    couponChoice: { minWidth: 130, flexGrow: 1, padding: 9, borderRadius: 9, borderWidth: 1, borderColor: '#E6D8C7', backgroundColor: '#FBF3E8' },
+    couponChoiceCode: { color: '#755036', fontSize: 11, fontWeight: '900' },
+    couponChoiceDescription: { color: '#8B7A6C', fontSize: 9, marginTop: 2 },
+    couponSuccess: { marginTop: 13, padding: 11, borderRadius: 10, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#EAF3E8', borderWidth: 1, borderColor: '#C6DCC2' },
+    couponSuccessTitle: { color: '#47724A', fontSize: 12, fontWeight: '900' },
+    couponSuccessText: { color: '#5C765E', fontSize: 10, marginTop: 2 },
+    couponRemove: { paddingHorizontal: 8, paddingVertical: 6 },
+    couponRemoveText: { color: '#9B382F', fontSize: 11, fontWeight: '900' },
     productRow: { minHeight: 76, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 12, borderBottomWidth: 1, borderBottomColor: '#F0E7DD' },
     productThumb: { width: 64, height: 64, borderRadius: 10, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', backgroundColor: '#F8F3EC', borderWidth: 1, borderColor: '#F0E7DD' },
     productCopy: { flex: 1, minWidth: 0 },

@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { router, type Href } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Image, Keyboard, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View, type ViewStyle } from 'react-native';
@@ -10,6 +11,8 @@ import { ProductCard, ProductSkeleton } from './src/components/ProductCard';
 import { useStore } from './src/store';
 import { withTypography } from './src/typography';
 import type { Product, PromotionEvent } from './src/types';
+
+const openHomeLink = (path: string) => path.startsWith('/products') || ['/about', '/contact', '/policies'].includes(path) ? router.push(path as Href) : void openLegacy(path);
 
 export default function HomeScreen() {
   const { width } = useWindowDimensions();
@@ -59,14 +62,14 @@ export default function HomeScreen() {
           <TrustBar compact={compact} />
 
           <Section>
-            <SectionTitle title="Mua theo danh mục" action="Xem tất cả" onPress={() => void openLegacy('/products')} />
+            <SectionTitle title="Mua theo danh mục" action="Xem tất cả" onPress={() => openHomeLink('/products')} />
             <View style={styles.grid}>{categories.map(([name, sub, image]) => <CategoryCard key={name} name={name} sub={sub} image={image} style={categoryWidth} />)}</View>
           </Section>
 
           {(loading || promotionError || promotion?.event) && <Section><FlashSale compact={compact} promotion={promotion} loading={loading} error={promotionError} onRetry={load} /></Section>}
 
           <Section>
-            <SectionTitle title="Sản phẩm nổi bật" action="Xem thêm" onPress={() => void openLegacy('/products')} />
+            <SectionTitle title="Sản phẩm nổi bật" action="Xem thêm" onPress={() => openHomeLink('/products')} />
             {loading ? <View style={styles.grid}>{Array.from({ length: compact ? 4 : 8 }, (_, index) => <ProductSkeleton key={index} style={productWidth} />)}</View> : featured.length ? <View style={styles.grid}>{featured.map(product => <ProductCard key={product.id} product={product} style={productWidth} />)}</View> : <ErrorState title={featuredError ? 'Chưa thể tải sản phẩm' : 'Chưa có sản phẩm nổi bật'} message={featuredError ? 'Vui lòng kiểm tra kết nối Backend và thử lại.' : 'Khám phá thêm các sản phẩm trong cửa hàng.'} onRetry={load} />}
           </Section>
 
@@ -104,8 +107,8 @@ function Hero({ compact, desktop }: { compact: boolean; desktop: boolean }) {
           <Text style={styles.heroSubtitle}>Chăm chút từng góc nhà.</Text>
           <Text style={styles.heroDescription}>Nồi cơm điện, máy xay, nồi chiên và thiết bị chăm sóc nhà cửa chính hãng cho cuộc sống mỗi ngày.</Text>
           <View style={styles.heroActions}>
-            <PrimaryButton label="Mua ngay" onPress={() => void openLegacy('/products')} />
-            <SecondaryButton label="Xem nồi cơm điện" onPress={() => void openLegacy('/products?category=Nồi cơm điện')} />
+            <PrimaryButton label="Mua ngay" onPress={() => openHomeLink('/products')} />
+            <SecondaryButton label="Xem nồi cơm điện" onPress={() => openHomeLink('/products?category=Nồi cơm điện')} />
           </View>
         </View>
         <View style={styles.heroControls}>
@@ -114,7 +117,7 @@ function Hero({ compact, desktop }: { compact: boolean; desktop: boolean }) {
         </View>
       </View>
 
-      <View style={[styles.miniGrid, !desktop && styles.miniGridRow]}>{miniCategories.map(([name, image]) => <Pressable key={name} accessibilityRole="link" onPress={() => void openLegacy(`/products?category=${encodeURIComponent(name)}`)} style={[styles.miniCard, !desktop && styles.miniCardRow]}><Image source={{ uri: image }} resizeMode="cover" style={styles.miniImage} /><View style={styles.miniOverlay} /><Text style={styles.miniText}>{name}</Text><Ionicons name="arrow-forward" size={17} color="#fff" style={styles.miniArrow} /></Pressable>)}</View>
+      <View style={[styles.miniGrid, !desktop && styles.miniGridRow]}>{miniCategories.map(([name, image]) => <Pressable key={name} accessibilityRole="link" onPress={() => openHomeLink(`/products?category=${encodeURIComponent(name)}`)} style={[styles.miniCard, !desktop && styles.miniCardRow]}><Image source={{ uri: image }} resizeMode="cover" style={styles.miniImage} /><View style={styles.miniOverlay} /><Text style={styles.miniText}>{name}</Text><Ionicons name="arrow-forward" size={17} color="#fff" style={styles.miniArrow} /></Pressable>)}</View>
     </View>
   );
 }
@@ -132,7 +135,7 @@ function TrustBar({ compact }: { compact: boolean }) {
 
 function CategoryCard({ name, sub, image, style }: { name: string; sub: string; image: string; style: ViewStyle }) {
   const category = name === 'Robot hút bụi' ? 'Thiết bị gia dụng thông minh' : name;
-  return <Pressable accessibilityRole="link" accessibilityLabel={`Xem ${name}`} onPress={() => void openLegacy(`/products?category=${encodeURIComponent(category)}`)} style={[styles.categoryCard, style]}><Image source={{ uri: image }} resizeMode="cover" style={styles.categoryImage} /><View style={styles.categoryCopy}><Text style={styles.categoryName}>{name}</Text><Text numberOfLines={1} style={styles.categorySub}>{sub}</Text></View></Pressable>;
+  return <Pressable accessibilityRole="link" accessibilityLabel={`Xem ${name}`} onPress={() => openHomeLink(`/products?category=${encodeURIComponent(category)}`)} style={[styles.categoryCard, style]}><Image source={{ uri: image }} resizeMode="cover" style={styles.categoryImage} /><View style={styles.categoryCopy}><Text style={styles.categoryName}>{name}</Text><Text numberOfLines={1} style={styles.categorySub}>{sub}</Text></View></Pressable>;
 }
 
 function FlashSale({ compact, promotion, loading, error, onRetry }: { compact: boolean; promotion: { event: PromotionEvent | null; serverTime: string; receivedAt: number } | null; loading: boolean; error: boolean; onRetry: () => void }) {
@@ -154,7 +157,7 @@ function Countdown({ endsAt, serverTime, receivedAt }: { endsAt: string; serverT
 }
 
 function Lifestyle({ compact }: { compact: boolean }) {
-  return <View style={[styles.lifestyle, compact && styles.lifestyleCompact]}><Image source={{ uri: lifestyleImage }} accessibilityLabel="Không gian gia đình hiện đại" resizeMode="cover" style={styles.lifestyleImage} /><View style={styles.lifestyleOverlay} /><View style={styles.lifestyleCopy}><Text style={[styles.lifestyleTitle, compact && styles.lifestyleTitleCompact]}>Không gian gia đình{compact ? ' ' : '\n'}gọn gàng, tiện nghi và hiện đại</Text><Text style={styles.lifestyleText}>Chọn nhanh combo nồi cơm điện, máy xay, nồi chiên và thiết bị vệ sinh phù hợp nhu cầu gia đình.</Text><PrimaryButton label="Khám phá thiết bị" onPress={() => void openLegacy('/products?category=Thiết bị gia dụng thông minh')} /></View></View>;
+  return <View style={[styles.lifestyle, compact && styles.lifestyleCompact]}><Image source={{ uri: lifestyleImage }} accessibilityLabel="Không gian gia đình hiện đại" resizeMode="cover" style={styles.lifestyleImage} /><View style={styles.lifestyleOverlay} /><View style={styles.lifestyleCopy}><Text style={[styles.lifestyleTitle, compact && styles.lifestyleTitleCompact]}>Không gian gia đình{compact ? ' ' : '\n'}gọn gàng, tiện nghi và hiện đại</Text><Text style={styles.lifestyleText}>Chọn nhanh combo nồi cơm điện, máy xay, nồi chiên và thiết bị vệ sinh phù hợp nhu cầu gia đình.</Text><PrimaryButton label="Khám phá thiết bị" onPress={() => openHomeLink('/products?category=Thiết bị gia dụng thông minh')} /></View></View>;
 }
 
 function Brands() {
@@ -174,7 +177,7 @@ function Footer({ compact }: { compact: boolean }) {
 }
 
 function FooterColumn({ title, items, paths }: { title: string; items: string[]; paths: string[] }) {
-  return <View style={styles.footerColumn}><Text style={styles.footerTitle}>{title}</Text>{items.map((item, index) => <Pressable key={item} accessibilityRole="link" onPress={() => void openLegacy(paths[index])}><Text style={styles.footerLink}>{item}</Text></Pressable>)}</View>;
+  return <View style={styles.footerColumn}><Text style={styles.footerTitle}>{title}</Text>{items.map((item, index) => <Pressable key={item} accessibilityRole="link" onPress={() => openHomeLink(paths[index])}><Text style={styles.footerLink}>{item}</Text></Pressable>)}</View>;
 }
 
 function Section({ children }: { children: ReactNode }) {

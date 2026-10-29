@@ -1,7 +1,6 @@
 import { useEffect, type FormEvent } from 'react';
 import { Alert, Button, Col, Form, ProgressBar, Row, Spinner } from 'react-bootstrap';
 import { useRouter } from 'expo-router';
-import { openLegacy } from '../api';
 import { useProductReviews } from '../hooks/useProductReviews';
 import type { ReviewSummary } from '../types';
 
@@ -40,7 +39,7 @@ export function ProductReviews({ productId, onChange }: { productId: number; onC
         <Form.Group><Form.Label htmlFor={`review-comment-${productId}`}>Nhận xét của bạn <span>(không bắt buộc)</span></Form.Label><Form.Control id={`review-comment-${productId}`} as="textarea" rows={3} maxLength={2000} disabled={busy} placeholder="Sản phẩm có đáp ứng mong đợi của bạn?" value={comment} onChange={event => setComment(event.target.value)} /></Form.Group>
         <div className="gdv-review-form-footer"><span>{comment.length}/2000 ký tự · Không chia sẻ số điện thoại, địa chỉ trong đánh giá.</span><Button type="submit" disabled={busy || !rating}>{busy ? 'Đang lưu…' : own.review ? 'Cập nhật đánh giá' : 'Gửi đánh giá'}</Button></div>
         {!!saveError && <Alert variant="danger" className="mt-3 mb-0">{saveError}</Alert>}
-      </Form> : own ? <div className="gdv-review-access">✓ Bạn có thể đánh giá sau khi đơn hàng chứa sản phẩm này đã giao và thanh toán. <button type="button" onClick={() => void openLegacy('/orders')}>Xem đơn hàng</button></div> : <div className="gdv-review-access">Đang kiểm tra đơn hàng của bạn…</div> : <div className="gdv-review-access"><button type="button" onClick={() => router.push({ pathname: '/login', params: { redirect: `/products/${productId}` } })}>Đăng nhập</button> để đánh giá sản phẩm bạn đã mua. Đánh giá chỉ mở sau khi giao hàng và thanh toán.</div>}
+      </Form> : own ? <div className="gdv-review-access">✓ Bạn có thể đánh giá sau khi đơn hàng chứa sản phẩm này đã giao và thanh toán. <button type="button" onClick={() => router.push('/orders')}>Xem đơn hàng</button></div> : <div className="gdv-review-access">Đang kiểm tra đơn hàng của bạn…</div> : <div className="gdv-review-access"><button type="button" onClick={() => router.push({ pathname: '/login', params: { redirect: `/products/${productId}` } })}>Đăng nhập</button> để đánh giá sản phẩm bạn đã mua. Đánh giá chỉ mở sau khi giao hàng và thanh toán.</div>}
       {saved && <Alert variant="success" className="gdv-review-saved">✓ Đã lưu đánh giá của bạn.</Alert>}
 
       {data && <><div className="gdv-review-filters" aria-label="Lọc đánh giá"><Button aria-pressed={!filter} className={!filter ? 'active' : ''} onClick={() => chooseFilter(0)}>Tất cả ({data.summary.reviewCount})</Button>{[5, 4, 3, 2, 1].map(stars => <Button key={stars} aria-pressed={filter === stars} className={filter === stars ? 'active' : ''} onClick={() => chooseFilter(stars)}>{stars} sao ({data.summary.ratingCounts[stars] ?? 0})</Button>)}</div>

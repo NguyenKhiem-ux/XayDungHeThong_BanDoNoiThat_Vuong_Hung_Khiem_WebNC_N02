@@ -1,24 +1,40 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { accountApi, ApiError, authApi, clearToken, getToken, saveToken, type RegisterInput } from './api';
-import type { Cart, ChatResponse, CheckoutShipping, User } from './types';
+import { addFavorite as addFavoriteToList, favoriteIds as getFavoriteIds, removeFavorite as removeFavoriteFromList } from './favorites.mjs';
+import type { Cart, ChatResponse, CheckoutShipping, Favorite, User } from './types';
+
+interface PasswordResetState {
+  email: string;
+  expiresAt: string;
+  otp: string;
+}
 
 interface StoreValue {
   user: User | null;
   authReady: boolean;
   cart: Cart | null;
   checkoutShipping: CheckoutShipping | null;
+  checkoutCouponCode: string;
   checkoutPaymentPin: string;
+  passwordReset: PasswordResetState | null;
   cartLoading: boolean;
   cartError: string;
+  favorites: Favorite[];
   favoriteIds: number[];
+  favoritesLoading: boolean;
+  favoritesError: string;
   notice: string;
   setNotice: (message: string) => void;
+  refreshUser: () => Promise<User | null>;
   setCheckoutShipping: (shipping: CheckoutShipping | null) => void;
+  setCheckoutCouponCode: (code: string) => void;
   setCheckoutPaymentPin: (pin: string) => void;
+  setPasswordReset: (state: PasswordResetState | null) => void;
   login: (usernameOrEmail: string, password: string) => Promise<User>;
   register: (data: RegisterInput) => Promise<User>;
   logout: () => Promise<void>;
   refreshCart: () => Promise<void>;
+  refreshFavorites: () => Promise<void>;
   addToCart: (productId: number, quantity?: number) => Promise<boolean>;
   updateCart: (productId: number, quantity: number) => Promise<boolean>;
   removeFromCart: (productId: number) => Promise<boolean>;
@@ -33,26 +49,48 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [authReady, setAuthReady] = useState(false);
   const [cart, setCart] = useState<Cart | null>(null);
   const [checkoutShipping, setCheckoutShipping] = useState<CheckoutShipping | null>(null);
+  const [checkoutCouponCode, setCheckoutCouponCode] = useState('');
   const [checkoutPaymentPin, setCheckoutPaymentPin] = useState('');
+  const [passwordReset, setPasswordReset] = useState<PasswordResetState | null>(null);
   const [cartLoading, setCartLoading] = useState(false);
   const [cartError, setCartError] = useState('');
-  const [favoriteIds, setFavoriteIds] = useState<number[]>([]);
+  const [favorites, setFavorites] = useState<Favorite[]>([]);
+  const [favoritesLoading, setFavoritesLoading] = useState(false);
+  const [favoritesError, setFavoritesError] = useState('');
   const [notice, setNoticeState] = useState('');
+  const accountDataVersion = useRef(0);
+  const favoriteMutations = useRef(new Set<number>());
+  const favoriteIds = useMemo(() => getFavoriteIds(favorites), [favorites]);
 
   const setNotice = useCallback((message: string) => {
     setNoticeState(message);
     setTimeout(() => setNoticeState(''), 2600);
   }, []);
 
+  const refreshFavorites = useCallback(async () => {
+    const version = accountDataVersion.current;
+    setFavoritesLoading(true);
+    setFavoritesError('');
+    try {
+      const result = await accountApi.favorites();
+      if (version === accountDataVersion.current) setFavorites(result);
+    } catch (error) {
+      if (version === accountDataVersion.current) setFavoritesError(error instanceof Error ? error.message : 'Không thể tải sản phẩm yêu thích.');
+    } finally {
+      if (version === accountDataVersion.current) setFavoritesLoading(false);
+    }
+  }, []);
+
   const loadAccountData = useCallback(async () => {
+    const version = accountDataVersion.current;
     setCartLoading(true);
     setCartError('');
-    const [cartResult, favoriteResult] = await Promise.allSettled([accountApi.cart(), accountApi.favorites()]);
+    const [cartResult] = await Promise.allSettled([accountApi.cart(), refreshFavorites()]);
+    if (version !== accountDataVersion.current) return;
     if (cartResult.status === 'fulfilled') setCart(cartResult.value);
     else setCartError(cartResult.reason instanceof Error ? cartResult.reason.message : 'Không thể tải giỏ hàng.');
-    if (favoriteResult.status === 'fulfilled') setFavoriteIds(favoriteResult.value.map(item => item.productId));
     setCartLoading(false);
-  }, []);
+  }, [refreshFavorites]);
 
   useEffect(() => {
     let active = true;
@@ -61,6 +99,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (!await getToken()) return;
         const account = await accountApi.me();
         if (!active) return;
+        accountDataVersion.current++;
         setUser(account);
         await loadAccountData();
       } catch (error) {
@@ -74,6 +113,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const applyAuth = useCallback(async (response: { accessToken: string; user: User }) => {
     await saveToken(response.accessToken);
+    accountDataVersion.current++;
+    setPasswordReset(null);
     setUser(response.user);
     setAuthReady(true);
     await loadAccountData();
@@ -89,16 +130,28 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [applyAuth]);
 
   const logout = useCallback(async () => {
+    accountDataVersion.current++;
     await clearToken();
     setUser(null);
     setCart(null);
     setCheckoutShipping(null);
+    setCheckoutCouponCode('');
     setCheckoutPaymentPin('');
+    setPasswordReset(null);
     setCartError('');
     setCartLoading(false);
-    setFavoriteIds([]);
+    setFavorites([]);
+    setFavoritesError('');
+    setFavoritesLoading(false);
     setNotice('Đã đăng xuất.');
   }, [setNotice]);
+
+  const refreshUser = useCallback(async () => {
+    if (!user) return null;
+    const account = await accountApi.me();
+    setUser(account);
+    return account;
+  }, [user]);
 
   const refreshCart = useCallback(async () => {
     if (!user) {
@@ -161,25 +214,36 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const toggleFavorite = useCallback(async (productId: number) => {
     if (!requireAccount()) return false;
+    if (favoriteMutations.current.has(productId)) return false;
+    const version = accountDataVersion.current;
     const saved = favoriteIds.includes(productId);
+    favoriteMutations.current.add(productId);
     try {
-      if (saved) await accountApi.removeFavorite(productId);
-      else await accountApi.addFavorite(productId);
-      setFavoriteIds(current => saved ? current.filter(id => id !== productId) : [...current, productId]);
+      if (saved) {
+        await accountApi.removeFavorite(productId);
+        if (version !== accountDataVersion.current) return false;
+        setFavorites(current => removeFavoriteFromList(current, productId));
+      } else {
+        const favorite = await accountApi.addFavorite(productId);
+        if (version !== accountDataVersion.current) return false;
+        setFavorites(current => addFavoriteToList(current, favorite));
+      }
       setNotice(saved ? 'Đã xóa khỏi yêu thích.' : 'Đã thêm vào yêu thích.');
       return true;
     } catch (error) {
       setNotice(error instanceof Error ? error.message : 'Không thể cập nhật yêu thích.');
       return false;
+    } finally {
+      favoriteMutations.current.delete(productId);
     }
   }, [favoriteIds, requireAccount, setNotice]);
 
   const syncChat = useCallback((response: ChatResponse) => {
     if (response.cart) setCart(response.cart);
-    if (response.favorites) setFavoriteIds(response.favorites.map(item => item.productId));
+    if (response.favorites) setFavorites(response.favorites);
   }, []);
 
-  const value = useMemo(() => ({ user, authReady, cart, checkoutShipping, checkoutPaymentPin, cartLoading, cartError, favoriteIds, notice, setNotice, setCheckoutShipping, setCheckoutPaymentPin, login, register, logout, refreshCart, addToCart, updateCart, removeFromCart, toggleFavorite, syncChat }), [user, authReady, cart, checkoutShipping, checkoutPaymentPin, cartLoading, cartError, favoriteIds, notice, setNotice, setCheckoutShipping, setCheckoutPaymentPin, login, register, logout, refreshCart, addToCart, updateCart, removeFromCart, toggleFavorite, syncChat]);
+  const value = useMemo(() => ({ user, authReady, cart, checkoutShipping, checkoutCouponCode, checkoutPaymentPin, passwordReset, cartLoading, cartError, favorites, favoriteIds, favoritesLoading, favoritesError, notice, setNotice, refreshUser, setCheckoutShipping, setCheckoutCouponCode, setCheckoutPaymentPin, setPasswordReset, login, register, logout, refreshCart, refreshFavorites, addToCart, updateCart, removeFromCart, toggleFavorite, syncChat }), [user, authReady, cart, checkoutShipping, checkoutCouponCode, checkoutPaymentPin, passwordReset, cartLoading, cartError, favorites, favoriteIds, favoritesLoading, favoritesError, notice, setNotice, refreshUser, setCheckoutShipping, setCheckoutCouponCode, setCheckoutPaymentPin, login, register, logout, refreshCart, refreshFavorites, addToCart, updateCart, removeFromCart, toggleFavorite, syncChat]);
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }
 

@@ -9,6 +9,7 @@
     "expo": "~58.0.20",
     "expo-constants": "~58.0.13",
     "expo-font": "~58.0.10",
+    "expo-image-picker": "~58.0.10",
     "expo-linking": "~58.0.14",
     "expo-router": "~58.0.27",
     "expo-secure-store": "~58.0.2",
@@ -32,9 +33,13 @@
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
     "test:assets": "node scripts/verify-image-urls.mjs",
+    "test:contact": "node scripts/verify-contact.mjs",
+    "test:favorites": "node scripts/verify-favorites.mjs",
+    "test:password-recovery": "node scripts/verify-password-recovery.mjs",
+    "test:profile": "node scripts/verify-profile.mjs",
     "export": "expo export --platform web",
     "export:web": "expo export --platform web",
-    "check": "npm run test:assets && npm run typecheck"
+    "check": "npm run test:assets && npm run test:contact && npm run test:favorites && npm run test:password-recovery && npm run test:profile && npm run typecheck"
   },
   "private": true
 }

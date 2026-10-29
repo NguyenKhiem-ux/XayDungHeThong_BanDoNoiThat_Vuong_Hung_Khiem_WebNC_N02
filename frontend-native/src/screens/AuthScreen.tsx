@@ -13,7 +13,7 @@ const emptyRegister = { fullName: '', username: '', email: '', phone: '', passwo
 
 export function AuthScreen({ mode }: { mode: Mode }) {
   const router = useRouter();
-  const params = useLocalSearchParams<{ redirect?: string | string[] }>();
+  const params = useLocalSearchParams<{ redirect?: string | string[]; message?: string | string[] }>();
   const { width } = useWindowDimensions();
   const compact = width < 780;
   const mobileWidth = Math.max(280, width - 44);
@@ -27,6 +27,7 @@ export function AuthScreen({ mode }: { mode: Mode }) {
   const [error, setError] = useState('');
 
   const rawRedirect = Array.isArray(params.redirect) ? params.redirect[0] : params.redirect;
+  const message = Array.isArray(params.message) ? params.message[0] : params.message;
   const destination = rawRedirect?.startsWith('/') && !rawRedirect.startsWith('//') ? rawRedirect : '/';
   const goAfterAuth = () => router.replace(destination as Href);
 
@@ -99,11 +100,13 @@ export function AuthScreen({ mode }: { mode: Mode }) {
               </View> : <>
                 <Text style={styles.formTitle}>{mode === 'login' ? 'Đăng nhập' : 'Tạo tài khoản'}</Text>
                 <Text style={styles.formSubtitle}>{mode === 'login' ? 'Chào mừng bạn quay lại Gia dụng Việt.' : 'Tạo tài khoản để mua sắm và theo dõi đơn hàng.'}</Text>
+                {!!message && <View accessibilityRole="alert" style={styles.success}><Ionicons name="checkmark-circle-outline" size={19} color="#537B55" /><Text style={styles.successText}>{message}</Text></View>}
                 {!!error && <View accessibilityRole="alert" style={styles.error}><Ionicons name="alert-circle-outline" size={19} color="#9B382F" /><Text style={styles.errorText}>{error}</Text></View>}
 
                 {mode === 'login' ? <>
                   <Field label="Tên đăng nhập hoặc email" value={loginId} onChangeText={setLoginId} placeholder="username hoặc your@email.com" autoCapitalize="none" autoComplete="username" />
                   <PasswordField label="Mật khẩu" value={password} onChangeText={setPassword} show={showPassword} onToggle={() => setShowPassword(value => !value)} autoComplete="current-password" onSubmit={submit} />
+                  <Pressable accessibilityRole="link" onPress={() => router.push('/forgot-password')} style={styles.forgotLink}><Text style={styles.switchLink}>Quên mật khẩu?</Text></Pressable>
                 </> : <>
                   <Field label="Họ tên" value={form.fullName} onChangeText={value => setRegisterValue('fullName', value)} autoComplete="name" />
                   <Field label="Tên đăng nhập" value={form.username} onChangeText={value => setRegisterValue('username', value)} placeholder="ví dụ: giadungviet" autoCapitalize="none" autoComplete="username-new" />
@@ -175,6 +178,9 @@ const styles = StyleSheet.create(withTypography({
   eye: { position: 'absolute', right: 5, width: 42, height: 42, alignItems: 'center', justifyContent: 'center' },
   error: { marginBottom: 17, padding: 12, borderRadius: 11, borderWidth: 1, borderColor: '#E8B9B4', backgroundColor: '#FBE8E5', flexDirection: 'row', gap: 8, alignItems: 'center' },
   errorText: { flex: 1, color: '#8C3028', fontSize: 12, lineHeight: 18, fontWeight: '600' },
+  success: { marginBottom: 17, padding: 12, borderRadius: 11, borderWidth: 1, borderColor: '#BFD7BF', backgroundColor: '#EAF2E8', flexDirection: 'row', gap: 8, alignItems: 'center' },
+  successText: { flex: 1, color: '#426845', fontSize: 12, lineHeight: 18, fontWeight: '600' },
+  forgotLink: { alignSelf: 'flex-end', paddingVertical: 3, marginTop: -7, marginBottom: 13 },
   submit: { minHeight: 50, borderRadius: 12, backgroundColor: '#755036', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9, marginTop: 4 },
   submitText: { color: '#fff', fontSize: 14, fontWeight: '900' },
   switchRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: 5, marginTop: 21 },

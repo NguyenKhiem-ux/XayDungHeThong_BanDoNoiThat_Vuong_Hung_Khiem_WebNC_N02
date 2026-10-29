@@ -4,7 +4,10 @@ export interface User {
   username: string | null;
   email: string;
   phone?: string | null;
+  birthDate?: string | null;
+  gender?: 'male' | 'female' | 'other' | null;
   address?: string | null;
+  avatarUrl?: string | null;
   savedCard?: SavedDemoCard | null;
   hasTransactionPin?: boolean;
   role?: 'USER' | 'ADMIN';
@@ -56,6 +59,7 @@ export interface CheckoutQuote {
 
 export interface Order {
   id: number;
+  createdAt: string;
   fullName: string;
   email: string;
   phone: string;
@@ -63,6 +67,7 @@ export interface Order {
   totalAmount: number;
   subtotalAmount: number;
   discountAmount: number;
+  shippingFee?: number;
   couponCode: string | null;
   status: 'PENDING' | 'CONFIRMED' | 'DELIVERED' | 'CANCELLED';
   paymentMethod: PaymentMethod;
@@ -138,7 +143,24 @@ export interface PromotionResponse {
 }
 
 export interface Favorite {
+  id: number;
   productId: number;
+  createdAt?: string;
+  product: Product;
+}
+
+export type CouponDiscountType = 'percentage' | 'fixed';
+
+export interface Coupon {
+  id: number;
+  code: string;
+  description: string | null;
+  discountType: CouponDiscountType;
+  discountValue: number | string;
+  minOrderAmount: number | string;
+  endDate: string;
+  isActive: boolean;
+  freeShipping: boolean;
 }
 
 export interface Cart {

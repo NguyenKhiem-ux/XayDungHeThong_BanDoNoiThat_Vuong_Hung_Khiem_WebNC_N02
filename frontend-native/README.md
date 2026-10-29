@@ -10,9 +10,19 @@ Copy-Item .env.example .env
 npm run web
 ```
 
-Expo Web mặc định gọi `/api` qua proxy dev trong `metro.config.js`, trỏ đến Backend `http://localhost:3000`; cách này giữ nguyên cấu hình CORS của Backend. Các màn hình chưa chuyển đổi mở trên website Vite tại `http://localhost:5173`.
+Expo Web mặc định gọi `/api` qua proxy dev trong `metro.config.js`, trỏ đến Backend `http://localhost:3000`; cách này giữ nguyên cấu hình CORS của Backend. Có thể đổi đích proxy bằng `EXPO_API_PROXY_TARGET`. Các màn hình chưa chuyển đổi mở trên website Vite tại `EXPO_PUBLIC_WEB_URL`.
 
-Khi chạy trên điện thoại thật, đặt các biến sau trong `.env` thành địa chỉ LAN mà điện thoại truy cập được. `EXPO_PUBLIC_WEB_URL` cần thiết để các màn hình chưa chuyển đổi có thể mở website Vite trên điện thoại:
+`EXPO_PUBLIC_API_URL` chấp nhận Backend origin hoặc URL kết thúc bằng `/api`; client chỉ thêm `/api` một lần. `EXPO_PUBLIC_API_ORIGIN` là origin không có `/api`, dùng cho ảnh/tệp tĩnh.
+
+Android Emulator:
+
+```env
+EXPO_PUBLIC_API_URL=http://10.0.2.2:3000/api
+EXPO_PUBLIC_API_ORIGIN=http://10.0.2.2:3000
+EXPO_PUBLIC_WEB_URL=http://10.0.2.2:5173
+```
+
+Điện thoại thật phải dùng IP LAN hoặc URL HTTPS truy cập được; không dùng `localhost` và không đoán/cố định IP trong source:
 
 ```env
 EXPO_PUBLIC_API_URL=http://<LAN-IP>:3000/api
@@ -27,7 +37,7 @@ cd ..\frontend
 npm run dev -- --host 0.0.0.0
 ```
 
-Với bản web đã export, máy chủ triển khai cần reverse proxy `/api` đến Backend hoặc cung cấp `EXPO_PUBLIC_API_URL` phù hợp lúc build.
+Với bản web đã export, máy chủ triển khai cần reverse proxy `/api` đến Backend hoặc cung cấp `EXPO_PUBLIC_API_URL` HTTPS phù hợp lúc build. Production native cũng phải dùng Backend HTTPS.
 
 ## Kiểm tra
 

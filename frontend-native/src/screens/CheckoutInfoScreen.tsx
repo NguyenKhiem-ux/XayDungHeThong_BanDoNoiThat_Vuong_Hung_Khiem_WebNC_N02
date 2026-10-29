@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { accountApi, formatVnd, imageUrl } from '../api';
 import { ChatWidget } from '../components/ChatWidget';
@@ -22,20 +22,20 @@ export default function CheckoutInfoScreen() {
   const [form, setForm] = useState<CheckoutShipping>(checkoutShipping ?? emptyForm);
   const [errors, setErrors] = useState<Errors>({});
   const [addressLoading, setAddressLoading] = useState(false);
+  const editedFields = useRef(new Set<FieldKey>());
 
   useEffect(() => {
     if (!authReady || !user) return;
-    if (checkoutShipping) {
-      setForm(checkoutShipping);
-      return;
-    }
-    setForm(current => ({ ...current, fullName: current.fullName || user.fullName, phone: current.phone || user.phone || '', address: current.address || user.address || '' }));
+    if (checkoutShipping) return;
+    setForm(current => ({ ...current, fullName: current.fullName || user.fullName, phone: current.phone || user.phone || '' }));
     let active = true;
     setAddressLoading(true);
     void accountApi.addresses().then(addresses => {
       const preferred = addresses.find(address => address.isDefault) ?? addresses[0];
-      if (active && preferred) setForm(current => current.address ? current : { ...current, fullName: current.fullName || preferred.fullName, phone: current.phone || preferred.phone, address: preferred.address });
-    }).catch(() => {}).finally(() => { if (active) setAddressLoading(false); });
+      if (active) setForm(current => ({ ...current, fullName: editedFields.current.has('fullName') ? current.fullName : current.fullName || preferred?.fullName || user.fullName, phone: editedFields.current.has('phone') ? current.phone : current.phone || preferred?.phone || user.phone || '', address: editedFields.current.has('address') ? current.address : current.address || preferred?.address || user.address || '' }));
+    }).catch(() => {
+      if (active) setForm(current => ({ ...current, address: editedFields.current.has('address') ? current.address : current.address || user.address || '' }));
+    }).finally(() => { if (active) setAddressLoading(false); });
     return () => { active = false; };
   }, [authReady, checkoutShipping, user]);
 
@@ -44,6 +44,7 @@ export default function CheckoutInfoScreen() {
   }, [authReady, cart, refreshCart, user]);
 
   const update = (key: FieldKey, value: string) => {
+    editedFields.current.add(key);
     setForm(current => ({ ...current, [key]: value }));
     setErrors(current => ({ ...current, [key]: undefined }));
   };
@@ -53,8 +54,6 @@ export default function CheckoutInfoScreen() {
     if (form.fullName.trim().length < 2) next.fullName = 'Vui lòng nhập họ tên người nhận.';
     const phone = form.phone.replace(/[\s().-]/g, '');
     if (!/^(?:0\d{9}|\+84\d{9})$/.test(phone)) next.phone = 'Số điện thoại chưa đúng định dạng.';
-    if (!form.province.trim()) next.province = 'Vui lòng nhập tỉnh / thành phố.';
-    if (!form.district.trim()) next.district = 'Vui lòng nhập quận / huyện.';
     if (form.address.trim().length < 5) next.address = 'Vui lòng nhập địa chỉ chi tiết.';
     return next;
   };
@@ -84,8 +83,8 @@ export default function CheckoutInfoScreen() {
           <View style={[styles.layout, compact && styles.layoutCompact]}>
             <View style={styles.formCard}><View style={styles.cardHeading}><Ionicons name="person-outline" size={20} color="#755036" /><View><Text style={styles.sectionTitle}>Thông tin người nhận</Text><Text style={styles.sectionHint}>Các trường có dấu * là bắt buộc.</Text></View>{addressLoading && <ActivityIndicator size="small" color="#A56E2D" />}</View>
               <View style={[styles.fieldRow, compact && styles.fieldRowCompact]}><Field label="Họ và tên người nhận" required value={form.fullName} placeholder="Nguyễn Văn A" error={errors.fullName} onChangeText={value => update('fullName', value)} autoComplete="name" /><Field label="Số điện thoại" required value={form.phone} placeholder="0901 234 567" error={errors.phone} onChangeText={value => update('phone', value)} keyboardType="phone-pad" autoComplete="tel" /></View>
-              <View style={[styles.fieldRow, compact && styles.fieldRowCompact]}><Field label="Tỉnh / Thành phố" required value={form.province} placeholder="Ví dụ: Hà Nội" error={errors.province} onChangeText={value => update('province', value)} /><Field label="Quận / Huyện" required value={form.district} placeholder="Ví dụ: Thanh Xuân" error={errors.district} onChangeText={value => update('district', value)} /></View>
-              <Field label="Địa chỉ chi tiết" required value={form.address} placeholder="Số nhà, tên đường, phường / xã" error={errors.address} onChangeText={value => update('address', value)} autoComplete="street-address" />
+              <View style={[styles.fieldRow, compact && styles.fieldRowCompact]}><Field label="Tỉnh / Thành phố" value={form.province} placeholder="Không bắt buộc nếu địa chỉ đã đầy đủ" error={errors.province} onChangeText={value => update('province', value)} /><Field label="Quận / Huyện" value={form.district} placeholder="Không bắt buộc nếu địa chỉ đã đầy đủ" error={errors.district} onChangeText={value => update('district', value)} /></View>
+              <Field label="Địa chỉ giao hàng đầy đủ" required value={form.address} placeholder="Số nhà, đường, phường / xã, quận / huyện, tỉnh / thành" error={errors.address} onChangeText={value => update('address', value)} autoComplete="street-address" />
               <Field label="Ghi chú đơn hàng" value={form.note} placeholder="Không bắt buộc · Gọi trước khi giao" onChangeText={value => update('note', value)} multiline />
               <View style={styles.actions}><Pressable style={styles.backButton} onPress={() => router.replace('/cart')}><Ionicons name="arrow-back" size={17} color="#755036" /><Text style={styles.backButtonText}>Quay lại giỏ hàng</Text></Pressable><Pressable style={styles.primaryButton} onPress={continueToPayment}><Text style={styles.primaryButtonText}>Tiếp tục đến thanh toán</Text><Ionicons name="arrow-forward" size={17} color="#fff" /></Pressable></View>
             </View>

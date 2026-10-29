@@ -1,9 +1,17 @@
 import * as SecureStore from 'expo-secure-store';
 import { Linking, Platform } from 'react-native';
-import type { Cart, ChatAction, ChatResponse, CheckoutQuote, Favorite, OwnReview, Order, PaymentMethod, Product, PromotionResponse, ReviewPage, ReviewSummary, User, UserAddress } from './types';
+import type { Cart, ChatAction, ChatResponse, CheckoutQuote, Coupon, Favorite, OwnReview, Order, PaymentMethod, Product, PromotionResponse, ReviewPage, ReviewSummary, User, UserAddress } from './types';
 
-const DEFAULT_BACKEND_ORIGIN = 'http://localhost:3000';
-const API_BASE = process.env.EXPO_PUBLIC_API_URL || (Platform.OS === 'web' ? '/api' : `${DEFAULT_BACKEND_ORIGIN}/api`);
+const WEB_DEV_BACKEND_ORIGIN = 'http://localhost:3000';
+const LOOPBACK_URL = /^https?:\/\/(?:localhost|127\.0\.0\.1|\[::1\])(?=[:/]|$)/i;
+
+function normalizeApiBase(value?: string) {
+  const base = value?.trim().replace(/\/+$/, '') || '';
+  return !base || /\/api$/i.test(base) ? base : `${base}/api`;
+}
+
+const configuredApiBase = normalizeApiBase(process.env.EXPO_PUBLIC_API_URL);
+const API_BASE = configuredApiBase || (Platform.OS === 'web' ? '/api' : '');
 const WEB_BASE = (process.env.EXPO_PUBLIC_WEB_URL || 'http://localhost:5173').replace(/\/$/, '');
 const TOKEN_KEY = 'giadung_token';
 
@@ -20,7 +28,16 @@ interface AuthResponse {
   user: User;
 }
 
-export const API_ORIGIN = process.env.EXPO_PUBLIC_API_ORIGIN || (API_BASE.startsWith('/') ? DEFAULT_BACKEND_ORIGIN : API_BASE.replace(/\/api\/?$/, ''));
+export const API_ORIGIN = (process.env.EXPO_PUBLIC_API_ORIGIN?.trim().replace(/\/+$/, '') || (API_BASE.startsWith('/') ? WEB_DEV_BACKEND_ORIGIN : API_BASE.replace(/\/api$/i, '')));
+
+const API_CONFIG_ERROR = Platform.OS === 'web' ? ''
+  : !API_BASE
+    ? 'Thiếu EXPO_PUBLIC_API_URL. Android Emulator dùng http://10.0.2.2:3000/api; thiết bị thật dùng IP LAN hoặc Backend HTTPS.'
+    : !/^https?:\/\//i.test(API_BASE) || LOOPBACK_URL.test(API_BASE)
+      ? 'EXPO_PUBLIC_API_URL trên Android/iOS phải là URL HTTP(S) truy cập được, không dùng localhost. Dùng 10.0.2.2 cho Android Emulator hoặc IP LAN/HTTPS cho thiết bị thật.'
+      : !/^https?:\/\//i.test(API_ORIGIN) || LOOPBACK_URL.test(API_ORIGIN)
+        ? 'EXPO_PUBLIC_API_ORIGIN trên Android/iOS phải là origin HTTP(S) truy cập được và không dùng localhost.'
+        : '';
 
 export class ApiError extends Error {
   constructor(message: string, readonly status: number) {
@@ -44,11 +61,13 @@ export async function saveToken(token: string) {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  if (API_CONFIG_ERROR) throw new Error(API_CONFIG_ERROR);
   const token = await getToken();
+  const isMultipart = typeof FormData !== 'undefined' && init?.body instanceof FormData;
   const response = await fetch(`${API_BASE}${path}`, {
     ...init,
     headers: {
-      'Content-Type': 'application/json',
+      ...(!isMultipart ? { 'Content-Type': 'application/json' } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...init?.headers,
     },
@@ -68,6 +87,13 @@ export const homeApi = {
   promotion: () => request<PromotionResponse>('/promotions/current'),
 };
 
+export const contactApi = {
+  create: (data: { name: string; email: string; phone?: string; message: string }) => request<unknown>('/contact', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+};
+
 export const authApi = {
   login: (usernameOrEmail: string, password: string) => request<AuthResponse>('/auth/login', {
     method: 'POST',
@@ -76,6 +102,22 @@ export const authApi = {
   register: (data: RegisterInput) => request<AuthResponse>('/auth/register', {
     method: 'POST',
     body: JSON.stringify(data),
+  }),
+  forgotPassword: (email: string) => request<{ message: string; expiresAt: string }>('/auth/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  }),
+  verifyResetOtp: (email: string, otp: string) => request<{ message: string }>('/auth/verify-reset-otp', {
+    method: 'POST',
+    body: JSON.stringify({ email, otp }),
+  }),
+  resetPassword: (email: string, otp: string, newPassword: string) => request<{ message: string }>('/auth/reset-password', {
+    method: 'POST',
+    body: JSON.stringify({ email, otp, newPassword }),
+  }),
+  changePassword: (currentPassword: string, newPassword: string, confirmPassword: string) => request<{ message: string }>('/auth/change-password', {
+    method: 'POST',
+    body: JSON.stringify({ currentPassword, newPassword, confirmPassword }),
   }),
 };
 
@@ -102,8 +144,16 @@ export const reviewApi = {
 
 export const accountApi = {
   me: () => request<User>('/auth/me'),
+  updateAvatar: (data: FormData) => request<User>('/auth/me/avatar', { method: 'POST', body: data }),
+  updateProfile: (data: { fullName: string; phone: string | null; birthDate: string | null; gender: User['gender']; address: string | null }) => request<User>('/auth/me', { method: 'PATCH', body: JSON.stringify(data) }),
+  updateCardProfile: (data: { holder: string; type: 'DOMESTIC' | 'INTERNATIONAL'; provider: string; last4: string; expMonth: number; expYear: number; pin?: string }) => request<User>('/auth/me/card', { method: 'PATCH', body: JSON.stringify(data) }),
   addresses: () => request<UserAddress[]>('/addresses'),
+  createAddress: (data: Pick<UserAddress, 'fullName' | 'phone' | 'address' | 'isDefault'>) => request<UserAddress>('/addresses', { method: 'POST', body: JSON.stringify(data) }),
+  updateAddress: (id: number, data: Partial<Pick<UserAddress, 'fullName' | 'phone' | 'address' | 'isDefault'>>) => request<UserAddress>(`/addresses/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  removeAddress: (id: number) => request<void>(`/addresses/${id}`, { method: 'DELETE' }),
   favorites: () => request<Favorite[]>('/favorites'),
+  orders: () => request<Order[]>('/orders'),
+  coupons: () => request<Coupon[]>('/coupons'),
   cart: () => request<Cart>('/cart'),
   addToCart: (productId: number, quantity = 1) => request<Cart>('/cart/add', { method: 'POST', body: JSON.stringify({ productId, quantity }) }),
   updateCart: (productId: number, quantity: number) => request<Cart>('/cart/update', { method: 'PUT', body: JSON.stringify({ productId, quantity }) }),
@@ -128,7 +178,16 @@ export interface OrderInput {
 export const orderApi = {
   preview: (data: OrderInput) => request<CheckoutQuote>('/orders/preview', { method: 'POST', body: JSON.stringify(data) }),
   create: (data: OrderInput) => request<Order>('/orders', { method: 'POST', body: JSON.stringify(data) }),
+  list: () => request<Order[]>('/orders'),
   detail: (id: number) => request<Order>(`/orders/${id}`),
+};
+
+export const couponApi = {
+  list: () => request<Coupon[]>('/coupons'),
+  validate: (code: string, orderAmount: number) => request<{ valid: boolean; coupon: Coupon; discountAmount: number; finalAmount: number }>('/coupons/validate', {
+    method: 'POST',
+    body: JSON.stringify({ code, orderAmount }),
+  }),
 };
 
 export const paymentApi = {
@@ -163,6 +222,7 @@ export function legacyUrl(path: string) {
 
 export async function openLegacy(path: string) {
   const url = legacyUrl(path);
+  if (Platform.OS !== 'web' && LOOPBACK_URL.test(url)) return;
   if (Platform.OS === 'web') globalThis.location.assign(url);
   else await Linking.openURL(url);
 }

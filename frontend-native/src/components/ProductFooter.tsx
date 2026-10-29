@@ -11,7 +11,7 @@ const columns = [
 
 export function ProductFooter() {
   const router = useRouter();
-  const open = (path: string) => path.startsWith('/products') ? router.push(path as Href) : void openLegacy(path);
+  const open = (path: string) => path.startsWith('/products') || ['/about', '/contact', '/policies'].includes(path) ? router.push(path as Href) : void openLegacy(path);
   return <View style={styles.footer}><View style={styles.grid}><View style={styles.brand}><View style={styles.brandRow}><View style={styles.mark}><Ionicons name="home-outline" size={21} color="#755036" /></View><Text style={styles.brandName}>Gia dụng Việt</Text></View><Text style={styles.note}>Shop thương mại điện tử chuyên đồ gia dụng, thiết bị nhà bếp và thiết bị chăm sóc nhà cửa chính hãng.</Text></View>{columns.map(([title, links]) => <View key={title} style={styles.column}><Text style={styles.title}>{title}</Text>{links.map(([label, path]) => <Pressable key={label} onPress={() => open(path)}><Text style={styles.link}>{label}</Text></Pressable>)}</View>)}<View style={styles.column}><Text style={styles.title}>Liên hệ</Text>{['123 Nguyễn Trãi, Thanh Xuân, Hà Nội', '1800 6868', 'support@giadungviet.vn', '8:00 - 22:00 mỗi ngày'].map(item => <Text key={item} style={styles.link}>{item}</Text>)}</View></View><Text style={styles.copy}>© 2023 Gia dụng Việt. All rights reserved.</Text></View>;
 }
 
