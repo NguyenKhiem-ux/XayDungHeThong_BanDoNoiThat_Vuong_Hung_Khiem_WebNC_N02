@@ -89,6 +89,9 @@ DB_SYNCHRONIZE=false
 JWT_SECRET=replace-with-a-long-random-secret
 JWT_EXPIRES_IN=7d
 
+# Đặt 1 khi chạy sau ngrok/reverse proxy để rate limit nhận đúng IP người dùng
+TRUST_PROXY=
+
 # Điền nếu sử dụng thanh toán QR PayOS
 PAYOS_CLIENT_ID=
 PAYOS_API_KEY=

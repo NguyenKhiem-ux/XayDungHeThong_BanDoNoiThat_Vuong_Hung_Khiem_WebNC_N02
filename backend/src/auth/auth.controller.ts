@@ -5,6 +5,7 @@ import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { LoginThrottle, OtpThrottle, RegisterThrottle } from '../common/throttle';
 import { AuthUser } from '../common/types/auth-user.type';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
@@ -26,31 +27,37 @@ export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
   @Post('register')
+  @RegisterThrottle()
   register(@Body() dto: RegisterDto) {
     return this.auth.register(dto);
   }
 
   @Post('login')
+  @LoginThrottle()
   login(@Body() dto: LoginDto) {
     return this.auth.login(dto);
   }
 
   @Post('forgot-password')
+  @OtpThrottle()
   forgotPassword(@Body() dto: ForgotPasswordDto) {
     return this.auth.forgotPassword(dto.email);
   }
 
   @Post('verify-reset-otp')
+  @OtpThrottle()
   verifyResetOtp(@Body() dto: VerifyResetOtpDto) {
     return this.auth.verifyResetOtp(dto.email, dto.otp);
   }
 
   @Post('reset-password')
+  @OtpThrottle()
   resetPassword(@Body() dto: ResetPasswordDto) {
     return this.auth.resetPassword(dto.email, dto.otp, dto.newPassword);
   }
 
   @Post('change-password')
+  @LoginThrottle()
   @UseGuards(JwtAuthGuard)
   changePassword(@CurrentUser() user: AuthUser, @Body() dto: ChangePasswordDto) {
     return this.auth.changePassword(user.id, dto.currentPassword, dto.newPassword, dto.confirmPassword);
