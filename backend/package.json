@@ -21,6 +21,7 @@
     "db:reviews": "node scripts/setup-reviews.cjs",
     "db:checkout": "node scripts/setup-checkout.cjs",
     "db:auth-profile": "node scripts/setup-auth-profile.cjs",
+    "db:products-index": "node scripts/setup-products-index.cjs",
     "format": "prettier --write \"src/**/*.ts\"",
     "lint": "eslint \"src/**/*.ts\""
   },

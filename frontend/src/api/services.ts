@@ -1,7 +1,7 @@
 // file tập trung các hàm gọi api cho các chức năng của ứng dụng.
 import { api } from './client';
 import { readChatStream } from './chat-stream';
-import type { OwnReview, ReviewPage, ReviewSummary } from './types';
+import type { OwnReview, ProductPage, ProductQuery, ReviewPage, ReviewSummary } from './types';
 import type { Cart, ChatCheckoutQuote, ChatRequestOptions, ChatResponse, ContactMessage, Coupon, DashboardData, Favorite, Order, OrderInput, Product, PromotionEvent, PromotionInput, User, UserAddress } from './types';
 
 export const authApi = {
@@ -19,6 +19,7 @@ export const authApi = {
 
 export const productApi = {
   list: (params?: { keyword?: string; category?: string }) => api.get<Product[]>('/products', { params }),
+  page: (params: ProductQuery, signal?: AbortSignal) => api.get<ProductPage>('/products', { params, signal }),
   featured: () => api.get<Product[]>('/products/featured'),
   categories: () => api.get<string[]>('/products/categories/list'),
   detail: (id: number) => api.get<Product>(`/products/${id}`),

@@ -80,7 +80,8 @@ CREATE TABLE IF NOT EXISTS products (
     image_url       VARCHAR(500),
     is_featured     BOOLEAN DEFAULT FALSE,        -- sản phẩm nổi bật trang chủ
     created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at      DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_at      DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX IX_products_category (category)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ==========================================

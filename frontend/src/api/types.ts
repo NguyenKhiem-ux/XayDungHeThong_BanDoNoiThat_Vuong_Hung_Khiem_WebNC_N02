@@ -59,6 +59,10 @@ export interface Product {
   isFeatured: boolean;
 }
 
+export type ProductSort = 'newest' | 'price-asc' | 'price-desc' | 'name';
+export interface ProductQuery { keyword?: string; category?: string; page: number; limit?: number; sort?: ProductSort; minPrice?: number; maxPrice?: number }
+export interface ProductPage { items: Product[]; total: number; page: number; limit: number }
+
 export interface ReviewSummary { averageRating: number; reviewCount: number; ratingCounts: Record<number, number> }
 export interface ProductReview { id: number; rating: number; comment: string; author: string; createdAt: string; updatedAt: string }
 export interface ReviewPage { summary: ReviewSummary; reviews: ProductReview[]; total: number; page: number; pageSize: number }

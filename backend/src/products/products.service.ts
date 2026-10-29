@@ -3,18 +3,51 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, Repository } from 'typeorm';
 import { Product } from '../database/entities/product.entity';
+import { PromotionItem } from '../database/entities/promotion.entity';
 import { CreateProductDto } from './dto/create-product.dto';
+import { ListProductsDto } from './dto/list-products.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { PromotionsService } from '../promotions/promotions.service';
 import { reviewSummaries } from '../reviews/reviews.service';
+
+export const DEFAULT_PAGE_SIZE = 12;
+// Cùng công thức làm tròn với salePrice() trong promotions/promotion-price.ts; DECIMAL(15,0) nên MySQL tính chính xác.
+const EFFECTIVE_PRICE = 'CASE WHEN pi.discount_percent IS NULL THEN p.price ELSE FLOOR((p.price * (100 - pi.discount_percent) + 50) / 100) END';
 
 @Injectable()
 export class ProductsService {
   constructor(@InjectRepository(Product) private readonly products: Repository<Product>, private readonly promotions: PromotionsService) {}
 
-  async list(query?: { keyword?: string; category?: string }) {
-    const qb = this.products.createQueryBuilder('p').orderBy('p.id', 'DESC');
-    if (query?.keyword?.trim()) {
+  async list(query: ListProductsDto = {}) {
+    const qb = this.filtered(query);
+    if (query.page === undefined) return this.publicProducts(await qb.orderBy('p.id', 'DESC').getMany());
+
+    const limit = query.limit ?? DEFAULT_PAGE_SIZE;
+    // Giá lọc/sắp xếp là giá đang bán, nên ghép mức giảm của sự kiện đang chạy (mỗi sản phẩm tối đa một dòng nhờ UQ_promotion_product).
+    qb.leftJoin(PromotionItem, 'pi', 'pi.product_id = p.id AND pi.promotion_id = :eventId', { eventId: await this.promotions.activeId() ?? 0 })
+      .addSelect(EFFECTIVE_PRICE, 'effective_price');
+    if (query.minPrice !== undefined) qb.andWhere(`${EFFECTIVE_PRICE} >= :minPrice`, { minPrice: query.minPrice });
+    if (query.maxPrice !== undefined) qb.andWhere(`${EFFECTIVE_PRICE} <= :maxPrice`, { maxPrice: query.maxPrice });
+    if (query.sort === 'price-asc' || query.sort === 'price-desc') qb.orderBy('effective_price', query.sort === 'price-asc' ? 'ASC' : 'DESC');
+    else if (query.sort === 'name') qb.orderBy(await this.vietnameseNameOrder() ? 'p.name COLLATE utf8mb4_vi_0900_ai_ci' : 'p.name', 'ASC');
+    // id là khóa phụ để thứ tự ổn định giữa các trang.
+    qb.addOrderBy('p.id', 'DESC').offset((query.page - 1) * limit).limit(limit);
+    const [items, total] = await qb.getManyAndCount();
+    return { items: await this.publicProducts(items), total, page: query.page, limit };
+  }
+
+  private vietnameseCollation?: Promise<boolean>;
+
+  // Collation mặc định coi "ô" = "o" nên "Bộ" đứng trước "Bóng"; bản tiếng Việt chỉ có trên MySQL 8, MariaDB (XAMPP) thì không.
+  private vietnameseNameOrder() {
+    this.vietnameseCollation ??= this.products.manager.query("SHOW COLLATION LIKE 'utf8mb4_vi_0900_ai_ci'")
+      .then((rows: unknown[]) => rows.length > 0, () => false);
+    return this.vietnameseCollation;
+  }
+
+  private filtered(query: ListProductsDto) {
+    const qb = this.products.createQueryBuilder('p');
+    if (query.keyword?.trim()) {
       const keyword = `%${query.keyword.trim().toLowerCase()}%`;
       qb.andWhere(
         new Brackets((sub) => {
@@ -24,9 +57,8 @@ export class ProductsService {
         }),
       );
     }
-    if (query?.category?.trim()) qb.andWhere('p.category = :category', { category: query.category.trim() });
-    const items = await qb.getMany();
-    return this.publicProducts(items);
+    if (query.category?.trim()) qb.andWhere('p.category = :category', { category: query.category.trim() });
+    return qb;
   }
 
   async featured() {

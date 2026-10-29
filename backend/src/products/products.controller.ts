@@ -6,6 +6,7 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { imageUpload } from '../common/upload';
 import { CreateProductDto } from './dto/create-product.dto';
+import { ListProductsDto } from './dto/list-products.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductsService } from './products.service';
 
@@ -16,8 +17,8 @@ export class ProductsController {
   constructor(private readonly products: ProductsService) {}
 
   @Get()
-  list(@Query('keyword') keyword?: string, @Query('category') category?: string) {
-    return this.products.list({ keyword, category });
+  list(@Query() query: ListProductsDto) {
+    return this.products.list(query);
   }
 
   @Get('featured')
