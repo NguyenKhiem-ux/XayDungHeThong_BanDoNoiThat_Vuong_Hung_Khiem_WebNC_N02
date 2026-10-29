@@ -139,6 +139,8 @@ Tạo file `frontend/.env`:
 
 ```env
 VITE_API_URL=http://localhost:3000/api
+# Tùy chọn: host ngoài localhost được mở dev server (ví dụ domain ngrok), phân cách bằng dấu phẩy
+VITE_ALLOWED_HOSTS=
 ```
 
 Mở terminal mới và chạy:
