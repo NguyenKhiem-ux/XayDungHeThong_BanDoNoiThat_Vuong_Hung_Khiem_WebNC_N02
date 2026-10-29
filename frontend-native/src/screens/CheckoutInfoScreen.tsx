@@ -103,7 +103,7 @@ function Field({ label, required, value, placeholder, error, onChangeText, keybo
 }
 
 function Progress() {
-  return <View style={styles.progress}><View style={styles.progressItem}><View style={[styles.progressCircle, styles.progressActive]}><Text style={styles.progressNumber}>1</Text></View><Text style={styles.progressActiveText}>Thông tin giao hàng</Text></View><View style={styles.progressLine} /><View style={styles.progressItem}><View style={styles.progressCircle}><Text style={styles.progressNumberMuted}>2</Text></View><Text style={styles.progressMutedText}>Thanh toán</Text></View></View>;
+  return <View style={styles.progress}><View style={styles.progressItem}><View style={[styles.progressCircle, styles.progressActive]}><Text style={styles.progressNumber}>1</Text></View><Text style={styles.progressActiveText}>Thông tin giao hàng</Text></View><View style={styles.progressLine} /><View style={styles.progressItem}><View style={styles.progressCircle}><Text style={styles.progressNumberMuted}>2</Text></View><Text style={styles.progressMutedText}>Thanh toán</Text></View><View style={styles.progressLine} /><View style={styles.progressItem}><View style={styles.progressCircle}><Text style={styles.progressNumberMuted}>3</Text></View><Text style={styles.progressMutedText}>Hoàn tất</Text></View></View>;
 }
 
 function OrderSummary({ cart, compact }: { cart: NonNullable<ReturnType<typeof useStore>['cart']>; compact: boolean }) {

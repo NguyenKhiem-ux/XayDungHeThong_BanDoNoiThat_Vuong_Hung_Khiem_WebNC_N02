@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { confirmAction } from '../api';
 import { useStore } from '../store';
 import { withTypography } from '../typography';
 
@@ -19,7 +20,7 @@ export function PageHeader({ back = false }: { back?: boolean }) {
           <Text style={styles.brandText}>Gia dụng <Text style={styles.accent}>Việt</Text></Text>
         </Pressable>
         <View style={styles.actions}>
-          {user ? <>{!compact && <Text numberOfLines={1} style={styles.userName}>{user.fullName}</Text>}<Pressable accessibilityRole="button" accessibilityLabel="Đăng xuất" onPress={() => void logout()} style={styles.iconButton}><Ionicons name="log-out-outline" size={21} color="#755036" /></Pressable></> : <Pressable accessibilityRole="link" accessibilityLabel="Đăng nhập" onPress={() => router.push('/login')} style={styles.login}><Ionicons name="person-outline" size={19} color="#755036" />{!compact && <Text style={styles.loginText}>Đăng nhập</Text>}</Pressable>}
+          {user ? <><Pressable accessibilityRole="link" accessibilityLabel="Tài khoản" onPress={() => router.push('/profile')} style={styles.login}><Ionicons name="person-outline" size={19} color="#755036" />{!compact && <Text numberOfLines={1} style={styles.userName}>{user.fullName}</Text>}</Pressable><Pressable accessibilityRole="button" accessibilityLabel="Đăng xuất" onPress={() => void confirmAction('Đăng xuất khỏi tài khoản?').then(ok => { if (ok) void logout(); })} style={styles.iconButton}><Ionicons name="log-out-outline" size={21} color="#755036" /></Pressable></> : <Pressable accessibilityRole="link" accessibilityLabel="Đăng nhập" onPress={() => router.push('/login')} style={styles.login}><Ionicons name="person-outline" size={19} color="#755036" />{!compact && <Text style={styles.loginText}>Đăng nhập</Text>}</Pressable>}
           <Pressable accessibilityRole="link" accessibilityLabel="Giỏ hàng" onPress={() => router.push('/cart')} style={styles.iconButton}><Ionicons name="bag-handle-outline" size={22} color="#30251D" />{!!cart?.itemCount && <View style={styles.count}><Text style={styles.countText}>{cart.itemCount}</Text></View>}</Pressable>
         </View>
       </View>

@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, type Href } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { imageUrl, openLegacy } from '../api';
+import { Image, Linking, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { confirmAction, imageUrl, openLegacy } from '../api';
 import { useStore } from '../store';
 import { withTypography } from '../typography';
 
@@ -19,7 +19,7 @@ export function Header({ compact, categories }: { compact: boolean; categories: 
 
   return (
     <View style={styles.shell}>
-      {!compact && <View style={styles.topStrip}><Text style={styles.topText}>🚚 Miễn phí giao hàng từ 500K</Text><Text style={styles.topText}>✓ Bảo hành chính hãng</Text><Text style={styles.topText}>Hotline: 1800 6868</Text><Text style={styles.topRight}>Theo dõi đơn hàng  ·  Trợ giúp</Text></View>}
+      {!compact && <View style={styles.topStrip}><Text style={styles.topText}>🚚 Miễn phí giao hàng từ 500K</Text><Text style={styles.topText}>✓ Bảo hành chính hãng</Text><Text accessibilityRole="link" onPress={() => void Linking.openURL('tel:18006868')} style={styles.topText}>Hotline: 1800 6868</Text><Text style={styles.topRight}><Text accessibilityRole="link" onPress={() => router.push('/orders')}>Theo dõi đơn hàng</Text>  ·  <Text accessibilityRole="link" onPress={() => router.push('/contact')}>Trợ giúp</Text></Text></View>}
       <View style={[styles.nav, compact && styles.navCompact]}>
         <Pressable accessibilityRole="link" accessibilityLabel="Gia dụng Việt - Trang chủ" onPress={() => router.replace('/')} style={styles.brand}>
           <View style={styles.brandMark}><Ionicons name="home-outline" size={24} color="#FFFCF7" /></View>
@@ -32,7 +32,7 @@ export function Header({ compact, categories }: { compact: boolean; categories: 
 
         <View style={styles.actions}>
           <Pressable accessibilityRole="link" accessibilityLabel={user ? 'Tài khoản' : 'Đăng nhập'} onPress={() => user ? router.push('/profile') : router.push('/login')} style={styles.actionButton}>{user?.avatarUrl ? <HeaderAvatar uri={user.avatarUrl} /> : <Ionicons name="person-outline" size={22} color="#30251D" />}{!compact && <Text numberOfLines={1} style={styles.actionLabel}>{user?.fullName || 'Đăng nhập'}</Text>}</Pressable>
-          {!!user && <Pressable accessibilityRole="button" accessibilityLabel="Đăng xuất" onPress={() => void logout()} style={styles.iconButton}><Ionicons name="log-out-outline" size={22} color="#755036" /></Pressable>}
+          {!!user && <Pressable accessibilityRole="button" accessibilityLabel="Đăng xuất" onPress={() => void confirmAction('Đăng xuất khỏi tài khoản?').then(ok => { if (ok) void logout(); })} style={styles.iconButton}><Ionicons name="log-out-outline" size={22} color="#755036" /></Pressable>}
           <Pressable accessibilityRole="link" accessibilityLabel="Giỏ hàng" onPress={() => router.push('/cart')} style={styles.iconButton}><Ionicons name="bag-handle-outline" size={23} color="#30251D" />{!!cart?.itemCount && <View style={styles.count}><Text style={styles.countText}>{cart.itemCount}</Text></View>}</Pressable>
           {compact && <Pressable accessibilityRole="button" accessibilityLabel={menuOpen ? 'Đóng menu' : 'Mở menu'} onPress={() => setMenuOpen(value => !value)} style={styles.iconButton}><Ionicons name={menuOpen ? 'close' : 'menu'} size={26} color="#30251D" /></Pressable>}
         </View>

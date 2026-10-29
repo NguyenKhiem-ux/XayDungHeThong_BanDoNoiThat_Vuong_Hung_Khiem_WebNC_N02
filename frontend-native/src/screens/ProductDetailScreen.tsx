@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View, type ImageStyle } from 'react-native';
-import { formatVnd, imageUrl } from '../api';
+import { formatVnd, imageUrl, ratingStars } from '../api';
 import { ChatWidget } from '../components/ChatWidget';
 import { PageHeader } from '../components/PageHeader';
 import { ProductFooter } from '../components/ProductFooter';
@@ -39,7 +39,7 @@ export default function ProductDetailScreen() {
 
             <View style={[styles.info, compact && styles.fullWidth, compact && { width: mobileWidth }]}>
               <View style={styles.headingRow}><View style={styles.headingCopy}><Text style={styles.category}>{product.category || 'Gia dụng'}</Text><Text style={[styles.title, compact && styles.titleCompact]}>{product.name}</Text></View><Pressable accessibilityRole="button" accessibilityLabel={saved ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'} accessibilityState={{ selected: saved }} onPress={() => void toggleSaved()} style={({ pressed }) => [styles.favorite, pressed && styles.pressed]}><Ionicons name={saved ? 'heart' : 'heart-outline'} size={23} color={saved ? '#9B382F' : '#755036'} /></Pressable></View>
-              <View style={styles.rating}><Text style={styles.stars}>★★★★★</Text><Text style={styles.ratingText}>{product.averageRating?.toFixed(1) || '0.0'} · {product.reviewCount ?? 0} đánh giá</Text></View>
+              <View style={styles.rating}><Text accessibilityLabel={`${product.averageRating ?? 0} trên 5 sao`} style={styles.stars}>{ratingStars(product.averageRating)}</Text><Text style={styles.ratingText}>{product.averageRating?.toFixed(1) || '0.0'} · {product.reviewCount ?? 0} đánh giá</Text></View>
               {!!product.brand && <Text style={styles.brand}>Thương hiệu: <Text style={styles.brandStrong}>{product.brand}</Text></Text>}
 
               <View style={styles.priceStock}>

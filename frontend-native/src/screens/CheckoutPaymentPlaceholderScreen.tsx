@@ -217,7 +217,7 @@ function Breadcrumb({ router }: { router: ReturnType<typeof useRouter> }) {
 }
 
 function Progress() {
-  return <View style={styles.progress}><View style={styles.progressItem}><View style={styles.done}><Ionicons name="checkmark" size={15} color="#fff" /></View><Text style={styles.doneText}>Thông tin giao hàng</Text></View><View style={styles.line} /><View style={styles.progressItem}><View style={styles.active}><Text style={styles.number}>2</Text></View><Text style={styles.activeText}>Phương thức thanh toán</Text></View></View>;
+  return <View style={styles.progress}><View style={styles.progressItem}><View style={styles.done}><Ionicons name="checkmark" size={15} color="#fff" /></View><Text style={styles.doneText}>Thông tin giao hàng</Text></View><View style={styles.line} /><View style={styles.progressItem}><View style={styles.active}><Text style={styles.number}>2</Text></View><Text style={styles.activeText}>Phương thức thanh toán</Text></View><View style={styles.line} /><View style={styles.progressItem}><View style={[styles.active, { backgroundColor: '#F6EFE6' }]}><Text style={[styles.number, { color: '#9B8A7C' }]}>3</Text></View><Text style={[styles.activeText, { color: '#9B8A7C' }]}>Hoàn tất</Text></View></View>;
 }
 
 function ShippingCard({ shipping, email, onEdit }: { shipping: NonNullable<ReturnType<typeof useStore>['checkoutShipping']>; email: string; onEdit: () => void }) {

@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
-import { formatVnd, imageUrl } from '../api';
+import { formatVnd, imageUrl, ratingStars } from '../api';
 import { useStore } from '../store';
 import { withTypography } from '../typography';
 import type { Product } from '../types';
@@ -58,7 +58,7 @@ export function ProductCard({ product, deal = false, style }: Props) {
           <Text numberOfLines={2} style={styles.name}>{product.name}</Text>
         </Pressable>
         <View style={styles.ratingRow}>
-          <Text style={styles.stars}>★★★★★</Text>
+          <Text accessibilityLabel={`${product.averageRating ?? 0} trên 5 sao`} style={styles.stars}>{ratingStars(product.averageRating)}</Text>
           <Text style={styles.ratingText}>({product.reviewCount ?? 0})</Text>
         </View>
         <Text style={styles.price}>{formatVnd(product.price)}</Text>

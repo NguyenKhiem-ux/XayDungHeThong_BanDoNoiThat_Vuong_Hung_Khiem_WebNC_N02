@@ -1,5 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
-import { Linking, Platform } from 'react-native';
+import { Alert, Linking, Platform } from 'react-native';
 import type { Cart, ChatAction, ChatResponse, CheckoutQuote, Coupon, Favorite, OwnReview, Order, PaymentMethod, Product, PromotionResponse, ReviewPage, ReviewSummary, User, UserAddress } from './types';
 
 const WEB_DEV_BACKEND_ORIGIN = 'http://localhost:3000';
@@ -214,6 +214,16 @@ export function imageUrl(value?: string | null) {
 
 export function formatVnd(value: number) {
   return new Intl.NumberFormat('vi-VN').format(value) + '₫';
+}
+
+// Alert.alert không hiện hộp thoại trên Expo Web nên web dùng window.confirm.
+export function confirmAction(message: string) {
+  if (Platform.OS === 'web') return Promise.resolve(globalThis.confirm(message));
+  return new Promise<boolean>(resolve => Alert.alert('Xác nhận', message, [{ text: 'Hủy', style: 'cancel', onPress: () => resolve(false) }, { text: 'Đồng ý', onPress: () => resolve(true) }], { cancelable: true, onDismiss: () => resolve(false) }));
+}
+
+export function ratingStars(value = 0) {
+  return [1, 2, 3, 4, 5].map(star => star <= Math.round(value) ? '★' : '☆').join('');
 }
 
 export function legacyUrl(path: string) {

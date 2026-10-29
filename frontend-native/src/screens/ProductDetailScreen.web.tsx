@@ -5,7 +5,7 @@ import { useWindowDimensions } from 'react-native';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import '../styles/typography.web.css';
 import './product-detail.web.css';
-import { formatVnd, imageUrl } from '../api';
+import { formatVnd, imageUrl, ratingStars } from '../api';
 import { ChatWidget } from '../components/ChatWidget';
 import { PageHeader } from '../components/PageHeader';
 import { ProductFooter } from '../components/ProductFooter';
@@ -51,7 +51,7 @@ export default function ProductDetailScreen() {
           <Col lg={4}>
             <Card className="gdv-product-card gdv-buy-card h-100"><Card.Body>
               <div className="gdv-title-row"><div><span className="gdv-kicker">{product.category || 'Gia dụng'}</span><h1>{product.name}</h1></div><Button className="gdv-favorite" aria-label={saved ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'} aria-pressed={saved} onClick={() => void toggleSaved()}><Ionicons name={saved ? 'heart' : 'heart-outline'} size={22} /></Button></div>
-              <div className="gdv-rating-line"><span aria-label={`${product.averageRating ?? 0} trên 5 sao`}>★★★★★</span><small>{product.averageRating?.toFixed(1) || '0.0'} · {product.reviewCount ?? 0} đánh giá</small></div>
+              <div className="gdv-rating-line"><span aria-label={`${product.averageRating ?? 0} trên 5 sao`}>{ratingStars(product.averageRating)}</span><small>{product.averageRating?.toFixed(1) || '0.0'} · {product.reviewCount ?? 0} đánh giá</small></div>
               {!!product.brand && <p className="gdv-brand">Thương hiệu: <strong>{product.brand}</strong></p>}
               <div className="gdv-price-row"><div><strong>{formatVnd(product.price)}</strong>{onSale && <p><del>{formatVnd(product.originalPrice!)}</del><span>-{product.discountPercent}%</span></p>}</div><span className={soldOut ? 'out' : 'in'}>{soldOut ? '✕ Hết hàng' : `✓ Còn ${product.stock}`}</span></div>
               {!!product.discountPercent && !!product.promotionTitle && <p className="gdv-promotion">{product.promotionTitle}{product.saleEndsAt ? ` · Đến ${new Date(product.saleEndsAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}` : ''}. Giá được kiểm tra lại khi xác nhận đơn.</p>}

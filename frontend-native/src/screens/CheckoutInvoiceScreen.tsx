@@ -92,7 +92,8 @@ export default function CheckoutInvoiceScreen() {
       if (order.paymentMethod === 'CASH') {
         setCheckoutShipping(null);
         setCheckoutPaymentPin('');
-        setActionMessage('Đơn hàng đã được tạo và đang chờ cửa hàng xác nhận. Bạn thanh toán khi nhận hàng.');
+        // Đơn COD đã được tạo ở bước thanh toán, ở đây chỉ chuyển sang xem đơn.
+        router.replace({ pathname: '/orders/[id]', params: { id: String(order.id) } });
         return;
       }
       if (order.paymentMethod === 'CARD') {
@@ -207,11 +208,11 @@ export default function CheckoutInvoiceScreen() {
 
             <View style={[styles.actions, compact && styles.actionsCompact]}>
               <Pressable style={styles.outlineButton} onPress={printInvoice}><Ionicons name="print-outline" size={17} color="#755036" /><Text style={styles.outlineText}>In hóa đơn</Text></Pressable>
-              <Pressable style={[styles.primaryButton, busy && styles.disabled]} disabled={busy || order.status === 'CANCELLED' || (order.paymentMethod === 'CARD' && order.paymentStatus === 'PAID')} onPress={() => void confirmOrder()}>
+              <Pressable style={[styles.primaryButton, busy && styles.disabled]} disabled={busy || order.status === 'CANCELLED' || (order.paymentMethod !== 'CASH' && order.paymentStatus === 'PAID')} onPress={() => void confirmOrder()}>
                 {busy ? <ActivityIndicator color="#fff" /> : <Ionicons name={order.paymentMethod === 'QR' || order.paymentMethod === 'PAYOS' ? 'qr-code-outline' : order.paymentMethod === 'CARD' ? 'card-outline' : 'checkmark-circle-outline'} size={17} color="#fff" />}
-                <Text style={styles.primaryText}>{busy ? 'Đang xử lý...' : order.paymentMethod === 'CASH' ? 'Xác nhận đơn hàng' : order.paymentMethod === 'CARD' ? 'Xác minh PIN và thanh toán' : 'Mở thanh toán PayOS / QR'}</Text>
+                <Text style={styles.primaryText}>{busy ? 'Đang xử lý...' : order.paymentMethod === 'CASH' ? 'Xem đơn hàng' : order.paymentStatus === 'PAID' ? 'Đã thanh toán' : order.paymentMethod === 'CARD' ? 'Xác minh PIN và thanh toán' : 'Mở thanh toán PayOS / QR'}</Text>
               </Pressable>
-              <Pressable style={styles.outlineButton} onPress={() => router.replace('/cart')}><Ionicons name="arrow-back" size={17} color="#755036" /><Text style={styles.outlineText}>Quay lại</Text></Pressable>
+              <Pressable style={styles.outlineButton} onPress={() => router.replace('/orders')}><Ionicons name="arrow-back" size={17} color="#755036" /><Text style={styles.outlineText}>Đơn hàng của tôi</Text></Pressable>
             </View>
           </View>
         </View>
