@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { after, test } from 'node:test';
 import { ServiceUnavailableException } from '@nestjs/common';
-import { EmailService } from './email.service';
+import { EmailService } from '../../backend/src/email/email.service';
 
 const originalApiKey = process.env.RESEND_API_KEY;
 delete process.env.RESEND_API_KEY;

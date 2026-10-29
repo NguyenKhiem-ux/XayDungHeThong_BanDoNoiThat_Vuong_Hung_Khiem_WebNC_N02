@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { retryTransientRead } from './retry-transient-read';
+import { retryTransientRead } from '../../backend/src/database/retry-transient-read';
 
 test('retries a read once after a transient database disconnect', async () => {
   let calls = 0;
