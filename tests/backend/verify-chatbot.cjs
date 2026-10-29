@@ -1,4 +1,5 @@
 const backendRequire = require("node:module").createRequire(require("node:path").resolve(__dirname, "../../backend/package.json"));
+const { mysqlSsl } = require('../../backend/scripts/db-ssl.cjs');
 const { PromotionsService } = require('../../backend/dist/promotions/promotions.service');
 const { Promotion, PromotionItem } = require('../../backend/dist/database/entities/promotion.entity');
 // Opt-in integration check: real MySQL, all test knowledge rolled back; --gemini makes one live AI call.
@@ -51,7 +52,7 @@ async function verify() {
   const source = new DataSource({
     type: 'mysql', host: process.env.DB_HOST, port: Number(process.env.DB_PORT),
     username: process.env.DB_USERNAME, password: process.env.DB_PASSWORD, database: process.env.DB_NAME,
-    ssl: { rejectUnauthorized: false }, connectTimeout: 10000, charset: 'utf8mb4',
+    ssl: mysqlSsl(), connectTimeout: 10000, charset: 'utf8mb4',
     entities: [Product, ChatbotKnowledge, Promotion, PromotionItem], synchronize: false, logging: false,
   });
   if (process.argv.includes('--migration')) await verifyMigration(source.options);

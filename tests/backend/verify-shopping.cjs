@@ -1,4 +1,5 @@
 const backendRequire = require("node:module").createRequire(require("node:path").resolve(__dirname, "../../backend/package.json"));
+const { mysqlSsl } = require('../../backend/scripts/db-ssl.cjs');
 const { PromotionsService } = require('../../backend/dist/promotions/promotions.service');
 const { Promotion, PromotionItem } = require('../../backend/dist/database/entities/promotion.entity');
 // Real MySQL repositories; connection-local temporary tables keep customer carts, products and addresses untouched.
@@ -27,7 +28,7 @@ async function verify() {
   process.loadEnvFile(resolve(__dirname, '../../backend/.env'));
   const source = new DataSource({ type: 'mysql', host: process.env.DB_HOST, port: Number(process.env.DB_PORT),
     username: process.env.DB_USERNAME, password: process.env.DB_PASSWORD, database: process.env.DB_NAME,
-    ssl: { rejectUnauthorized: false }, connectTimeout: 10000, charset: 'utf8mb4', entities,
+    ssl: mysqlSsl(), connectTimeout: 10000, charset: 'utf8mb4', entities,
     supportBigNumbers: true, bigNumberStrings: false, synchronize: false, logging: false });
   await source.initialize();
   const runner = source.createQueryRunner();

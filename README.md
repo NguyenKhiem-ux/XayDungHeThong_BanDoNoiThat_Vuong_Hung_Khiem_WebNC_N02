@@ -69,11 +69,13 @@ Tạo database bằng file `database/schema.sql` (file có lệnh tạo database
 mysql -u root -p < database/schema.sql
 ```
 
-Nếu dùng MySQL cục bộ, đảm bảo MySQL đang chạy và database/tài khoản trong file cấu hình khớp với máy của bạn. Kết nối backend hiện cấu hình SSL; môi trường MySQL không hỗ trợ SSL có thể cần điều chỉnh cấu hình trong `backend/src/database/database.module.ts`.
+Nếu dùng MySQL cục bộ, đảm bảo MySQL đang chạy và database/tài khoản trong file cấu hình khớp với máy của bạn. Kết nối backend hiện cấu hình SSL; môi trường MySQL không hỗ trợ SSL có thể cần điều chỉnh cấu hình trong `backend/src/database/ssl.ts`.
+
+Với Aiven, tải **CA certificate** trong trang Overview của dịch vụ MySQL, lưu vào ví dụ `backend/certs/aiven-ca.pem` (không commit) rồi đặt `DB_CA_CERT=certs/aiven-ca.pem`. Biến này cũng nhận trực tiếp nội dung PEM (viết `\n` thay cho xuống dòng), tiện khi deploy. Nếu để trống, backend và các script `db:*` vẫn kết nối nhưng không kiểm tra chứng chỉ và ghi cảnh báo ra log.
 
 ### 2. Cấu hình backend
 
-Tạo file `backend/.env` (không đưa file này lên Git) với các giá trị phù hợp:
+Tạo file `backend/.env` từ `backend/.env.example` (không đưa `.env` lên Git) với các giá trị phù hợp:
 
 ```env
 PORT=3000
@@ -85,6 +87,8 @@ DB_USERNAME=root
 DB_PASSWORD=your_mysql_password
 DB_NAME=giadung_shop
 DB_SYNCHRONIZE=false
+# Đường dẫn hoặc nội dung CA certificate Aiven; để trống ở dev local
+DB_CA_CERT=
 
 JWT_SECRET=replace-with-a-long-random-secret
 JWT_EXPIRES_IN=7d
