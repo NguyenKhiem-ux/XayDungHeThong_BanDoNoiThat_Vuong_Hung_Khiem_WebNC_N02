@@ -1,3 +1,4 @@
+const { mysqlSsl } = require('./db-ssl.cjs');
 const { readFileSync } = require('node:fs');
 const { resolve } = require('node:path');
 
@@ -26,7 +27,7 @@ async function setup() {
   process.loadEnvFile(resolve(__dirname, '../.env'));
   const connection = await require('mysql2/promise').createConnection({
     host: process.env.DB_HOST, port: Number(process.env.DB_PORT), user: process.env.DB_USERNAME,
-    password: process.env.DB_PASSWORD, database: process.env.DB_NAME, ssl: { rejectUnauthorized: false },
+    password: process.env.DB_PASSWORD, database: process.env.DB_NAME, ssl: mysqlSsl(),
     connectTimeout: 10000, charset: 'utf8mb4',
   });
   try {

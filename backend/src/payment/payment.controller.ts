@@ -1,5 +1,6 @@
 // file khai báo các endpoint thanh toán PayOS cho frontend và webhook.
 import { Body, Controller, Param, ParseIntPipe, Post, UseGuards } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import { type Webhook } from '@payos/node';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -24,6 +25,8 @@ export class PaymentController {
   }
 
   @Post('payos/webhook')
+  // PayOS gửi từ vài IP cố định và tự retry; chặn ở đây có thể làm mất cập nhật thanh toán.
+  @SkipThrottle()
   handlePayOSWebhook(@Body() body: Webhook) {
     return this.payment.handlePayOSWebhook(body);
   }

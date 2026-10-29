@@ -10,3 +10,9 @@ coverage/
 .idea/
 # Temporary Chrome profile
 .tmp-chrome-checkout/
+artifacts/
+ảnh/
+anh/
+__pycache__/
+*.pyc
+

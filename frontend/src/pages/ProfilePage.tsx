@@ -246,7 +246,7 @@ export function ProfilePage() {
         <img src={avatar} alt="Ảnh đại diện" />
         <strong>{displayName}</strong>
         <span>{user.email}</span>
-        <label className="avatar-change-button">{avatarBusy ? 'Đang tải ảnh…' : 'Đổi ảnh đại diện'}<input type="file" accept="image/*" onChange={changeAvatar} disabled={avatarBusy} /></label>
+        <label className="avatar-change-button">{avatarBusy ? 'Đang tải ảnh…' : 'Đổi ảnh đại diện'}<input type="file" accept="image/jpeg,image/png,image/webp" onChange={changeAvatar} disabled={avatarBusy} /></label>
       </div>
       <button type="button" className="profile-menu-toggle" aria-expanded={menuOpen} aria-controls="profile-navigation" onClick={() => setMenuOpen(value => !value)}>
         Menu tài khoản <ChevronDown size={18} aria-hidden="true" />

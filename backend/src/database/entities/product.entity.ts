@@ -1,7 +1,8 @@
 // file định nghĩa entity product và ánh xạ dữ liệu của entity này với bảng trong database.
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 
 @Entity('products')
+@Index('IX_products_category', ['category'])
 export class Product {
   @PrimaryGeneratedColumn('increment', { type: 'bigint' })
   id: number;
