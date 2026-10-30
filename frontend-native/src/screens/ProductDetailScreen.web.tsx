@@ -12,6 +12,7 @@ import { ProductFooter } from '../components/ProductFooter';
 import { ProductReviews } from '../components/ProductReviews';
 import { useProductDetail } from '../hooks/useProductDetail';
 import { ScrollTopButton, useWebScrollTop } from '../components/ScrollTopButton';
+import { colors } from '../theme';
 
 const policies = [
   ['shield-checkmark-outline', 'Bảo hành 12-24 tháng', 'Bảo hành chính hãng theo chính sách nhà sản xuất'],
@@ -28,7 +29,7 @@ export default function ProductDetailScreen() {
   const [imageFailed, setImageFailed] = useState(false);
 
   if (loading) return <div className="gdv-detail-page gdv-typography"><PageHeader back /><div className="gdv-page-state"><Spinner animation="border" /><span>Đang tải sản phẩm…</span></div></div>;
-  if (error || !product) return <div className="gdv-detail-page gdv-typography"><PageHeader back /><div className="gdv-page-state"><Ionicons name="alert-circle-outline" size={40} color="#9B382F" /><h1>Chưa thể mở sản phẩm</h1><p>{error || 'Không tìm thấy sản phẩm.'}</p><div><Button variant="outline-primary" onClick={() => router.replace('/')}>Về trang chủ</Button><Button onClick={() => void load()}>Thử lại</Button></div></div></div>;
+  if (error || !product) return <div className="gdv-detail-page gdv-typography"><PageHeader back /><div className="gdv-page-state"><Ionicons name="alert-circle-outline" size={40} color={colors.danger} /><h1>Chưa thể mở sản phẩm</h1><p>{error || 'Không tìm thấy sản phẩm.'}</p><div><Button variant="outline-primary" onClick={() => router.replace('/')}>Về trang chủ</Button><Button onClick={() => void load()}>Thử lại</Button></div></div></div>;
 
   const soldOut = product.stock <= 0;
   const saved = favoriteIds.includes(product.id);

@@ -1,3 +1,6 @@
+// Ảnh máy xay lấy từ sản phẩm id 68 (Xiaomi Smart Blender) trong bảng products: nền trắng, không logo cửa hàng.
+const blenderImage = 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQx_vNJcrH3sDSb4onku97TLbE0Y_4FvuaA4ojY3ZRfpQ&s=10';
+
 export const slides = [
   {
     src: 'https://images.pexels.com/photos/31473208/pexels-photo-31473208/free-photo-of-modern-kitchen-counter-with-tulips-and-appliances.jpeg?auto=compress&fit=crop&w=1800&q=85',
@@ -16,7 +19,7 @@ export const slides = [
 export const categories = [
   ['Nồi cơm điện', 'Cơm ngon mỗi ngày', 'https://dienmaytienphong.com/wp-content/uploads/2025/06/SR-MVN18LRAX.png'],
   ['Robot hút bụi', 'Nhà sạch thảnh thơi', 'https://caothienphat.com/wp-content/uploads/2025/04/Dreame-1-768x768.jpg'],
-  ['Máy xay sinh tố', 'Tươi ngon tại nhà', 'https://dienmayquanghanh.com/Upload/avatar/ava-hr2223.jpg'],
+  ['Máy xay sinh tố', 'Tươi ngon tại nhà', blenderImage],
   ['Đồ dùng nhà bếp', 'Trọn vẹn bữa cơm nhà', 'https://images.unsplash.com/photo-1556911220-bff31c812dba?auto=format&fit=crop&w=400&q=75'],
   ['Quạt điện', 'Mát lành, dễ chịu', 'https://images.unsplash.com/photo-1565031491910-e57fac031c41?auto=format&fit=crop&w=400&q=75'],
   ['Máy hút bụi', 'Tiện nghi gia đình', 'https://images.unsplash.com/photo-1558317374-067fb5f30001?auto=format&fit=crop&w=400&q=75'],
@@ -25,7 +28,7 @@ export const categories = [
 export const miniCategories = [
   ['Nồi cơm điện', 'https://dienmaytienphong.com/wp-content/uploads/2025/06/SR-MVN18LRAX.png'],
   ['Đồ dùng nhà bếp', 'https://images.unsplash.com/photo-1556911220-bff31c812dba?auto=format&fit=crop&w=600&q=80'],
-  ['Máy xay sinh tố', 'https://dienmayquanghanh.com/Upload/avatar/ava-hr2223.jpg'],
+  ['Máy xay sinh tố', blenderImage],
   ['Máy hút bụi', 'https://images.unsplash.com/photo-1558317374-067fb5f30001?auto=format&fit=crop&w=600&q=80'],
 ] as const;
 

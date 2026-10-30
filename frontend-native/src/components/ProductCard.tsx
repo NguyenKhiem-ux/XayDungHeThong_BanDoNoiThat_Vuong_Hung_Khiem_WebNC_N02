@@ -6,6 +6,7 @@ import { formatVnd, imageUrl, ratingStars } from '../api';
 import { useStore } from '../store';
 import { withTypography } from '../typography';
 import type { Product } from '../types';
+import { colors } from '../theme';
 
 interface Props {
   product: Product;
@@ -35,7 +36,7 @@ export function ProductCard({ product, deal = false, style }: Props) {
         {product.imageUrl && !imageFailed ? (
           <Image source={{ uri: imageUrl(product.imageUrl) }} resizeMode="contain" style={styles.image} onError={() => setImageFailed(true)} />
         ) : (
-          <View style={styles.fallback}><Ionicons name="home-outline" size={34} color="#6E6E73" /></View>
+          <View style={styles.fallback}><Ionicons name="home-outline" size={34} color={colors.muted} /></View>
         )}
         <View style={[styles.badge, soldOut ? styles.badgeMuted : deal || product.discountPercent ? styles.badgeSale : styles.badgeFeatured]}>
           <Text style={[styles.badgeText, !soldOut && !deal && !product.discountPercent && styles.badgeTextDark]}>{soldOut ? 'Hết hàng' : product.discountPercent ? `-${product.discountPercent}%` : product.isFeatured ? 'Nổi bật' : 'Mới'}</Text>
@@ -49,7 +50,7 @@ export function ProductCard({ product, deal = false, style }: Props) {
         onPress={() => { if (requireAccount()) void toggleFavorite(product.id); }}
         style={({ pressed }) => [styles.favorite, pressed && styles.pressed]}
       >
-        <Ionicons name={saved ? 'heart' : 'heart-outline'} size={18} color={saved ? '#9B382F' : '#1D1D1F'} />
+        <Ionicons name={saved ? 'heart' : 'heart-outline'} size={18} color={saved ? colors.danger : colors.ink} />
       </Pressable>
 
       <View style={styles.info}>
@@ -71,7 +72,7 @@ export function ProductCard({ product, deal = false, style }: Props) {
           onPress={() => { if (requireAccount()) void addToCart(product.id); }}
           style={({ pressed }) => [styles.cartButton, soldOut && styles.disabled, pressed && styles.pressed]}
         >
-          <Ionicons name="cart-outline" size={17} color="#FFFFFF" />
+          <Ionicons name="cart-outline" size={17} color={colors.white} />
           <Text style={styles.cartButtonText}>{soldOut ? 'Hết hàng' : 'Thêm giỏ'}</Text>
         </Pressable>
       </View>
@@ -86,30 +87,30 @@ export function ProductSkeleton({ style }: { style?: ViewStyle }) {
 const styles = StyleSheet.create(withTypography({
   // "Kệ trắng": sản phẩm đặt trên khối xám nhạt, thẻ không viền không bóng, giá là chữ đậm nhất.
   card: { minWidth: 178, position: 'relative' },
-  media: { aspectRatio: 1, borderRadius: 18, overflow: 'hidden', backgroundColor: '#F5F5F7', alignItems: 'center', justifyContent: 'center' },
+  media: { aspectRatio: 1, borderRadius: 18, overflow: 'hidden', backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center' },
   image: { width: '80%', height: '80%' },
   fallback: { width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' },
   badge: { position: 'absolute', top: 12, left: 12, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
-  badgeSale: { backgroundColor: '#1D1D1F' },
-  badgeFeatured: { backgroundColor: '#FFFFFF' },
-  badgeMuted: { backgroundColor: '#6E6E73' },
-  badgeText: { color: '#FFFFFF', fontSize: 12, fontWeight: '800' },
-  badgeTextDark: { color: '#1D1D1F' },
-  favorite: { position: 'absolute', top: 10, right: 10, width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
+  badgeSale: { backgroundColor: colors.brand },
+  badgeFeatured: { backgroundColor: colors.white },
+  badgeMuted: { backgroundColor: colors.muted },
+  badgeText: { color: colors.white, fontSize: 12, fontWeight: '800' },
+  badgeTextDark: { color: colors.ink },
+  favorite: { position: 'absolute', top: 10, right: 10, width: 40, height: 40, borderRadius: 20, backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center' },
   info: { paddingTop: 12, paddingHorizontal: 2, gap: 4 },
-  category: { color: '#6E6E73', fontSize: 13 },
-  name: { color: '#1D1D1F', fontSize: 16, lineHeight: 22, fontWeight: '600', minHeight: 44 },
+  category: { color: colors.muted, fontSize: 13 },
+  name: { color: colors.ink, fontSize: 16, lineHeight: 22, fontWeight: '600', minHeight: 44 },
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   stars: { color: '#D99B2B', fontSize: 13, letterSpacing: -1 },
-  ratingText: { color: '#6E6E73', fontSize: 13 },
-  price: { color: '#1D1D1F', fontSize: 20, fontWeight: '900' },
-  originalPrice: { color: '#6E6E73', fontSize: 13, textDecorationLine: 'line-through' },
+  ratingText: { color: colors.muted, fontSize: 13 },
+  price: { color: colors.ink, fontSize: 20, fontWeight: '900' },
+  originalPrice: { color: colors.muted, fontSize: 13, textDecorationLine: 'line-through' },
   priceSpacer: { height: 18 },
-  cartButton: { marginTop: 8, minHeight: 44, borderRadius: 999, backgroundColor: '#1D1D1F', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
-  cartButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
+  cartButton: { marginTop: 8, minHeight: 44, borderRadius: 999, backgroundColor: colors.brand, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
+  cartButtonText: { color: colors.white, fontSize: 14, fontWeight: '700' },
   disabled: { opacity: 0.48 },
   pressed: { opacity: 0.72 },
   skeletonCard: { pointerEvents: 'none' },
-  skeleton: { backgroundColor: '#E8E8ED' },
-  skeletonLine: { height: 13, borderRadius: 8, backgroundColor: '#E8E8ED', marginVertical: 3 },
+  skeleton: { backgroundColor: colors.lineSoft },
+  skeletonLine: { height: 13, borderRadius: 8, backgroundColor: colors.lineSoft, marginVertical: 3 },
 }));

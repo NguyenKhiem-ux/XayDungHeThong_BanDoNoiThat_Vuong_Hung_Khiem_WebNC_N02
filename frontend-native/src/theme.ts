@@ -1,0 +1,20 @@
+// file là bảng màu dùng chung của app, lấy theo token storefront của frontend (styles/user.css, .site-shell).
+export const colors = {
+  ink: '#171A1E',
+  brand: '#087FA5',
+  muted: '#626C76',
+  subtle: '#8A95A0',
+  line: '#DFE6EB',
+  lineSoft: '#EAF0F4',
+  white: '#FFFFFF',
+  bg: '#F4F7FA',
+  danger: '#B83232',
+  success: '#147348',
+  header: '#202226',
+  headerLine: '#34383D',
+  headerRaised: '#2B2E33',
+  accent: '#0789B2',
+  accentBright: '#2CB9DF',
+  onDark: '#E6E9EC',
+  onDarkMuted: 'rgba(255, 255, 255, 0.7)',
+};

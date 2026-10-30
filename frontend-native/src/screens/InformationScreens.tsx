@@ -8,6 +8,7 @@ import { Header } from '../components/Header';
 import { ProductFooter } from '../components/ProductFooter';
 import { withTypography } from '../typography';
 import { ScrollTopButton, useScrollTop } from '../components/ScrollTopButton';
+import { colors } from '../theme';
 
 const aboutImage = 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=85';
 const policies = [
@@ -21,7 +22,7 @@ const policies = [
 export function AboutScreen() {
   const router = useRouter();
   const compact = useWindowDimensions().width < 760;
-  return <InformationPage compact={compact}><Hero eyebrow="ABOUT GIA DỤNG VIỆT" title="Cửa hàng gia dụng dành cho gia đình cần sản phẩm tiện ích, bền và dễ sử dụng" text="Gia dụng Việt tập trung vào đồ gia dụng, linh kiện và phụ kiện điện tử chính hãng. Giao diện mua sắm được thiết kế rõ ràng để khách chọn nhanh, so sánh dễ và đặt hàng tự tin." /><View style={[styles.split, compact && styles.stack]}><View style={styles.splitCopy}><Text style={styles.eyebrow}>CAM KẾT</Text><Text style={styles.sectionTitle}>Tư vấn thật, sản phẩm thật, bảo hành minh bạch</Text><Text style={styles.bodyText}>Chúng tôi ưu tiên cấu hình phù hợp nhu cầu hơn là bán món đắt nhất. Mỗi sản phẩm đều có thông tin rõ, tình trạng tồn kho, giá và chính sách hỗ trợ sau mua.</Text><Pressable accessibilityRole="link" onPress={() => router.push('/products')} style={styles.primaryButton}><Text style={styles.primaryButtonText}>Xem sản phẩm</Text><Ionicons name="arrow-forward" size={17} color="#fff" /></Pressable></View><Image source={{ uri: aboutImage }} accessibilityLabel="Không gian gia đình hiện đại" resizeMode="cover" style={[styles.aboutImage, compact && styles.aboutImageCompact]} /></View><View style={[styles.commitments, compact && styles.commitmentsCompact]}><View style={styles.commitmentLead}><Text style={styles.commitmentNumber}>100%</Text><Text style={styles.commitmentLabel}>Sản phẩm chính hãng</Text></View>{['Bảo hành 12-24 tháng tùy dòng sản phẩm.', 'Giao hàng nhanh tại TP.HCM và toàn quốc.', 'Hỗ trợ tư vấn cấu hình trước khi mua.'].map(item => <View key={item} style={styles.commitment}><Ionicons name="checkmark-circle" size={21} color="#1D1D1F" /><Text style={styles.commitmentText}>{item}</Text></View>)}</View></InformationPage>;
+  return <InformationPage compact={compact}><Hero eyebrow="ABOUT GIA DỤNG VIỆT" title="Cửa hàng gia dụng dành cho gia đình cần sản phẩm tiện ích, bền và dễ sử dụng" text="Gia dụng Việt tập trung vào đồ gia dụng, linh kiện và phụ kiện điện tử chính hãng. Giao diện mua sắm được thiết kế rõ ràng để khách chọn nhanh, so sánh dễ và đặt hàng tự tin." /><View style={[styles.split, compact && styles.stack]}><View style={styles.splitCopy}><Text style={styles.eyebrow}>CAM KẾT</Text><Text style={styles.sectionTitle}>Tư vấn thật, sản phẩm thật, bảo hành minh bạch</Text><Text style={styles.bodyText}>Chúng tôi ưu tiên cấu hình phù hợp nhu cầu hơn là bán món đắt nhất. Mỗi sản phẩm đều có thông tin rõ, tình trạng tồn kho, giá và chính sách hỗ trợ sau mua.</Text><Pressable accessibilityRole="link" onPress={() => router.push('/products')} style={styles.primaryButton}><Text style={styles.primaryButtonText}>Xem sản phẩm</Text><Ionicons name="arrow-forward" size={17} color={colors.white} /></Pressable></View><Image source={{ uri: aboutImage }} accessibilityLabel="Không gian gia đình hiện đại" resizeMode="cover" style={[styles.aboutImage, compact && styles.aboutImageCompact]} /></View><View style={[styles.commitments, compact && styles.commitmentsCompact]}><View style={styles.commitmentLead}><Text style={styles.commitmentNumber}>100%</Text><Text style={styles.commitmentLabel}>Sản phẩm chính hãng</Text></View>{['Bảo hành 12-24 tháng tùy dòng sản phẩm.', 'Giao hàng nhanh tại TP.HCM và toàn quốc.', 'Hỗ trợ tư vấn cấu hình trước khi mua.'].map(item => <View key={item} style={styles.commitment}><Ionicons name="checkmark-circle" size={21} color={colors.ink} /><Text style={styles.commitmentText}>{item}</Text></View>)}</View></InformationPage>;
 }
 
 type ContactForm = { name: string; email: string; phone: string; message: string };
@@ -57,13 +58,13 @@ export function ContactScreen() {
     }
   };
 
-  return <InformationPage compact={compact}><Hero eyebrow="CONTACT" title="Cần tư vấn đồ gia dụng hoặc thiết bị nhà bếp?" text="Gửi thông tin cho Gia dụng Việt, đội ngũ hỗ trợ sẽ phản hồi và gợi ý sản phẩm gia dụng phù hợp nhu cầu của bạn." /><View style={[styles.contactGrid, compact && styles.stack]}><View style={styles.contactCard}><Text style={styles.sectionTitle}>Thông tin cửa hàng</Text><ContactItem icon="location-outline" text="123 Nguyễn Trãi, Thanh Xuân, Hà Nội" /><ContactItem icon="call-outline" text={'1800 6868\n8:00 - 22:00 mỗi ngày'} /><ContactItem icon="mail-outline" text="support@giadungviet.vn" /><ContactItem icon="car-outline" text="Giao hàng toàn quốc, hỗ trợ kiểm tra hàng khi nhận." /></View><View style={styles.contactCard}><Text style={styles.sectionTitle}>Gửi yêu cầu</Text><Text style={styles.formHint}>Các trường họ tên, email và nội dung là bắt buộc.</Text>{sent && <View accessibilityRole="alert" style={styles.success}><Ionicons name="checkmark-circle-outline" size={19} color="#47724A" /><Text style={styles.successText}>Đã gửi tin nhắn. Cảm ơn bạn!</Text></View>}{!!error && <View accessibilityRole="alert" style={styles.error}><Ionicons name="alert-circle-outline" size={19} color="#9B382F" /><Text style={styles.errorText}>{error}</Text></View>}<ContactField label="Họ và tên" value={form.name} onChangeText={value => setField('name', value)} autoComplete="name" /><ContactField label="Email" value={form.email} onChangeText={value => setField('email', value)} keyboardType="email-address" autoCapitalize="none" autoComplete="email" /><ContactField label="Số điện thoại" value={form.phone} onChangeText={value => setField('phone', value)} keyboardType="phone-pad" autoComplete="tel" /><ContactField label="Nội dung cần hỗ trợ" value={form.message} onChangeText={value => setField('message', value)} multiline placeholder="Bạn cần tư vấn sản phẩm nào?" /><Pressable accessibilityRole="button" accessibilityState={{ disabled: busy }} disabled={busy} onPress={() => void submit()} style={({ pressed }) => [styles.submitButton, busy && styles.disabled, pressed && styles.pressed]}>{busy ? <ActivityIndicator color="#fff" /> : <><Text style={styles.primaryButtonText}>Gửi liên hệ</Text><Ionicons name="send-outline" size={17} color="#fff" /></>}</Pressable></View></View></InformationPage>;
+  return <InformationPage compact={compact}><Hero eyebrow="CONTACT" title="Cần tư vấn đồ gia dụng hoặc thiết bị nhà bếp?" text="Gửi thông tin cho Gia dụng Việt, đội ngũ hỗ trợ sẽ phản hồi và gợi ý sản phẩm gia dụng phù hợp nhu cầu của bạn." /><View style={[styles.contactGrid, compact && styles.stack]}><View style={styles.contactCard}><Text style={styles.sectionTitle}>Thông tin cửa hàng</Text><ContactItem icon="location-outline" text="123 Nguyễn Trãi, Thanh Xuân, Hà Nội" /><ContactItem icon="call-outline" text={'1800 6868\n8:00 - 22:00 mỗi ngày'} /><ContactItem icon="mail-outline" text="support@giadungviet.vn" /><ContactItem icon="car-outline" text="Giao hàng toàn quốc, hỗ trợ kiểm tra hàng khi nhận." /></View><View style={styles.contactCard}><Text style={styles.sectionTitle}>Gửi yêu cầu</Text><Text style={styles.formHint}>Các trường họ tên, email và nội dung là bắt buộc.</Text>{sent && <View accessibilityRole="alert" style={styles.success}><Ionicons name="checkmark-circle-outline" size={19} color={colors.success} /><Text style={styles.successText}>Đã gửi tin nhắn. Cảm ơn bạn!</Text></View>}{!!error && <View accessibilityRole="alert" style={styles.error}><Ionicons name="alert-circle-outline" size={19} color={colors.danger} /><Text style={styles.errorText}>{error}</Text></View>}<ContactField label="Họ và tên" value={form.name} onChangeText={value => setField('name', value)} autoComplete="name" /><ContactField label="Email" value={form.email} onChangeText={value => setField('email', value)} keyboardType="email-address" autoCapitalize="none" autoComplete="email" /><ContactField label="Số điện thoại" value={form.phone} onChangeText={value => setField('phone', value)} keyboardType="phone-pad" autoComplete="tel" /><ContactField label="Nội dung cần hỗ trợ" value={form.message} onChangeText={value => setField('message', value)} multiline placeholder="Bạn cần tư vấn sản phẩm nào?" /><Pressable accessibilityRole="button" accessibilityState={{ disabled: busy }} disabled={busy} onPress={() => void submit()} style={({ pressed }) => [styles.submitButton, busy && styles.disabled, pressed && styles.pressed]}>{busy ? <ActivityIndicator color={colors.white} /> : <><Text style={styles.primaryButtonText}>Gửi liên hệ</Text><Ionicons name="send-outline" size={17} color={colors.white} /></>}</Pressable></View></View></InformationPage>;
 }
 
 export function PoliciesScreen() {
   const router = useRouter();
   const compact = useWindowDimensions().width < 760;
-  return <InformationPage compact={compact}><Hero eyebrow="GIA DỤNG VIỆT" title="Chính sách và điều khoản" text="Thông tin về giao hàng, đổi trả, bảo hành, thanh toán và quyền riêng tư khi mua sắm." /><View style={styles.policies}>{policies.map((policy, index) => <View key={policy.title} style={styles.policy}><View style={styles.policyIcon}><Text style={styles.policyNumber}>{String(index + 1).padStart(2, '0')}</Text></View><View style={styles.policyCopy}><Text style={styles.policyTitle}>{policy.title}</Text><Text style={styles.bodyText}>{policy.text}</Text></View></View>)}<View style={styles.support}><Text style={styles.supportText}>Cần hỗ trợ thêm về chính sách mua hàng?</Text><Pressable accessibilityRole="link" onPress={() => router.push('/contact')} style={styles.outlineButton}><Text style={styles.outlineButtonText}>Liên hệ Gia dụng Việt</Text><Ionicons name="arrow-forward" size={16} color="#1D1D1F" /></Pressable></View></View></InformationPage>;
+  return <InformationPage compact={compact}><Hero eyebrow="GIA DỤNG VIỆT" title="Chính sách và điều khoản" text="Thông tin về giao hàng, đổi trả, bảo hành, thanh toán và quyền riêng tư khi mua sắm." /><View style={styles.policies}>{policies.map((policy, index) => <View key={policy.title} style={styles.policy}><View style={styles.policyIcon}><Text style={styles.policyNumber}>{String(index + 1).padStart(2, '0')}</Text></View><View style={styles.policyCopy}><Text style={styles.policyTitle}>{policy.title}</Text><Text style={styles.bodyText}>{policy.text}</Text></View></View>)}<View style={styles.support}><Text style={styles.supportText}>Cần hỗ trợ thêm về chính sách mua hàng?</Text><Pressable accessibilityRole="link" onPress={() => router.push('/contact')} style={styles.outlineButton}><Text style={styles.outlineButtonText}>Liên hệ Gia dụng Việt</Text><Ionicons name="arrow-forward" size={16} color={colors.ink} /></Pressable></View></View></InformationPage>;
 }
 
 function InformationPage({ compact, children }: { compact: boolean; children: ReactNode }) {
@@ -76,65 +77,65 @@ function Hero({ eyebrow, title, text }: { eyebrow: string; title: string; text: 
 }
 
 function ContactItem({ icon, text }: { icon: keyof typeof Ionicons.glyphMap; text: string }) {
-  return <View style={styles.contactItem}><View style={styles.contactIcon}><Ionicons name={icon} size={20} color="#1D1D1F" /></View><Text style={styles.contactText}>{text}</Text></View>;
+  return <View style={styles.contactItem}><View style={styles.contactIcon}><Ionicons name={icon} size={20} color={colors.ink} /></View><Text style={styles.contactText}>{text}</Text></View>;
 }
 
 type ContactFieldProps = { label: string; value: string; onChangeText: (value: string) => void; keyboardType?: 'default' | 'email-address' | 'phone-pad'; autoCapitalize?: 'none' | 'sentences' | 'words'; autoComplete?: 'name' | 'email' | 'tel'; multiline?: boolean; placeholder?: string };
 function ContactField({ label, multiline, ...props }: ContactFieldProps) {
-  return <View style={styles.field}><Text style={styles.label}>{label}</Text><TextInput {...props} accessibilityLabel={label} multiline={multiline} textAlignVertical={multiline ? 'top' : 'center'} placeholderTextColor="#6E6E73" style={[styles.input, multiline && styles.textarea]} /></View>;
+  return <View style={styles.field}><Text style={styles.label}>{label}</Text><TextInput {...props} accessibilityLabel={label} multiline={multiline} textAlignVertical={multiline ? 'top' : 'center'} placeholderTextColor={colors.muted} style={[styles.input, multiline && styles.textarea]} /></View>;
 }
 
 const styles = StyleSheet.create(withTypography({
-  page: { flex: 1, backgroundColor: '#F5F5F7' },
+  page: { flex: 1, backgroundColor: colors.bg },
   scroll: { flex: 1 },
   content: { flexGrow: 1 },
   shell: { width: '100%', maxWidth: 1180, alignSelf: 'center', paddingHorizontal: 22, paddingTop: 18, paddingBottom: 12, gap: 18 },
   shellCompact: { paddingHorizontal: 12, paddingTop: 12 },
-  hero: { padding: 28, borderRadius: 18, backgroundColor: '#D2D2D7', borderWidth: 1, borderColor: '#A1A1A6' },
-  eyebrow: { color: '#1D1D1F', fontSize: 12, fontWeight: '900', letterSpacing: 1.25 },
-  heroTitle: { maxWidth: 850, color: '#1D1D1F', fontSize: 30, lineHeight: 38, fontWeight: '900', marginTop: 6 },
-  heroText: { maxWidth: 820, color: '#6E6E73', fontSize: 13, lineHeight: 21, marginTop: 9 },
-  split: { flexDirection: 'row', borderRadius: 17, overflow: 'hidden', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D2D2D7' },
+  hero: { padding: 28, borderRadius: 18, backgroundColor: colors.line, borderWidth: 1, borderColor: colors.subtle },
+  eyebrow: { color: colors.ink, fontSize: 12, fontWeight: '900', letterSpacing: 1.25 },
+  heroTitle: { maxWidth: 850, color: colors.ink, fontSize: 30, lineHeight: 38, fontWeight: '900', marginTop: 6 },
+  heroText: { maxWidth: 820, color: colors.muted, fontSize: 13, lineHeight: 21, marginTop: 9 },
+  split: { flexDirection: 'row', borderRadius: 17, overflow: 'hidden', backgroundColor: colors.white, borderWidth: 1, borderColor: colors.line },
   stack: { flexDirection: 'column' },
   splitCopy: { flex: 1, padding: 28, justifyContent: 'center', alignItems: 'flex-start' },
-  sectionTitle: { color: '#1D1D1F', fontSize: 21, lineHeight: 28, fontWeight: '900', marginBottom: 10 },
-  bodyText: { color: '#6E6E73', fontSize: 13, lineHeight: 21 },
+  sectionTitle: { color: colors.ink, fontSize: 21, lineHeight: 28, fontWeight: '900', marginBottom: 10 },
+  bodyText: { color: colors.muted, fontSize: 13, lineHeight: 21 },
   aboutImage: { width: '46%', minHeight: 330 },
   aboutImageCompact: { width: '100%', minHeight: 230 },
-  primaryButton: { minHeight: 44, marginTop: 18, paddingHorizontal: 16, borderRadius: 999, backgroundColor: '#1D1D1F', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
-  primaryButtonText: { color: '#fff', fontSize: 12, fontWeight: '900' },
-  commitments: { padding: 20, borderRadius: 16, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D2D2D7', flexDirection: 'row', alignItems: 'stretch', gap: 12 },
+  primaryButton: { minHeight: 44, marginTop: 18, paddingHorizontal: 16, borderRadius: 999, backgroundColor: colors.brand, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
+  primaryButtonText: { color: colors.white, fontSize: 12, fontWeight: '900' },
+  commitments: { padding: 20, borderRadius: 16, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.line, flexDirection: 'row', alignItems: 'stretch', gap: 12 },
   commitmentsCompact: { flexDirection: 'column' },
-  commitmentLead: { minWidth: 180, padding: 15, borderRadius: 12, backgroundColor: '#1D1D1F', justifyContent: 'center' },
-  commitmentNumber: { color: '#fff', fontSize: 29, fontWeight: '900' },
-  commitmentLabel: { color: '#E8E8ED', fontSize: 11, marginTop: 2 },
-  commitment: { flex: 1, minWidth: 170, padding: 15, borderRadius: 12, backgroundColor: '#E8E8ED', flexDirection: 'row', alignItems: 'center', gap: 9 },
-  commitmentText: { flex: 1, color: '#6E6E73', fontSize: 11, lineHeight: 17, fontWeight: '700' },
+  commitmentLead: { minWidth: 180, padding: 15, borderRadius: 12, backgroundColor: colors.brand, justifyContent: 'center' },
+  commitmentNumber: { color: colors.white, fontSize: 29, fontWeight: '900' },
+  commitmentLabel: { color: colors.lineSoft, fontSize: 11, marginTop: 2 },
+  commitment: { flex: 1, minWidth: 170, padding: 15, borderRadius: 12, backgroundColor: colors.lineSoft, flexDirection: 'row', alignItems: 'center', gap: 9 },
+  commitmentText: { flex: 1, color: colors.muted, fontSize: 11, lineHeight: 17, fontWeight: '700' },
   contactGrid: { flexDirection: 'row', alignItems: 'flex-start', gap: 16 },
-  contactCard: { flex: 1, width: '100%', padding: 22, borderRadius: 16, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D2D2D7' },
-  contactItem: { flexDirection: 'row', alignItems: 'center', gap: 11, paddingVertical: 12, borderTopWidth: 1, borderTopColor: '#E8E8ED' },
-  contactIcon: { width: 39, height: 39, borderRadius: 12, backgroundColor: '#E8E8ED', alignItems: 'center', justifyContent: 'center' },
-  contactText: { flex: 1, color: '#6E6E73', fontSize: 12, lineHeight: 19 },
-  formHint: { color: '#6E6E73', fontSize: 11, marginTop: -4, marginBottom: 15 },
+  contactCard: { flex: 1, width: '100%', padding: 22, borderRadius: 16, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.line },
+  contactItem: { flexDirection: 'row', alignItems: 'center', gap: 11, paddingVertical: 12, borderTopWidth: 1, borderTopColor: colors.lineSoft },
+  contactIcon: { width: 39, height: 39, borderRadius: 12, backgroundColor: colors.lineSoft, alignItems: 'center', justifyContent: 'center' },
+  contactText: { flex: 1, color: colors.muted, fontSize: 12, lineHeight: 19 },
+  formHint: { color: colors.muted, fontSize: 11, marginTop: -4, marginBottom: 15 },
   field: { gap: 6, marginBottom: 13 },
-  label: { color: '#1D1D1F', fontSize: 11, fontWeight: '800' },
-  input: { width: '100%', minHeight: 46, paddingHorizontal: 13, borderRadius: 10, borderWidth: 1, borderColor: '#D2D2D7', backgroundColor: '#fff', color: '#1D1D1F', fontSize: 13 },
+  label: { color: colors.ink, fontSize: 11, fontWeight: '800' },
+  input: { width: '100%', minHeight: 46, paddingHorizontal: 13, borderRadius: 10, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.white, color: colors.ink, fontSize: 13 },
   textarea: { minHeight: 112, paddingTop: 12 },
-  submitButton: { minHeight: 47, borderRadius: 999, backgroundColor: '#1D1D1F', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  submitButton: { minHeight: 47, borderRadius: 999, backgroundColor: colors.brand, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   success: { marginBottom: 14, padding: 11, borderRadius: 10, backgroundColor: '#EAF2E8', borderWidth: 1, borderColor: '#BFD7BF', flexDirection: 'row', alignItems: 'center', gap: 8 },
-  successText: { flex: 1, color: '#47724A', fontSize: 11, fontWeight: '700' },
+  successText: { flex: 1, color: colors.success, fontSize: 11, fontWeight: '700' },
   error: { marginBottom: 14, padding: 11, borderRadius: 10, backgroundColor: '#FBE8E5', borderWidth: 1, borderColor: '#E8B9B4', flexDirection: 'row', alignItems: 'center', gap: 8 },
-  errorText: { flex: 1, color: '#9B382F', fontSize: 11, lineHeight: 17, fontWeight: '700' },
+  errorText: { flex: 1, color: colors.danger, fontSize: 11, lineHeight: 17, fontWeight: '700' },
   policies: { gap: 11 },
-  policy: { padding: 19, borderRadius: 15, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D2D2D7', flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
-  policyIcon: { width: 42, height: 42, borderRadius: 13, backgroundColor: '#D2D2D7', alignItems: 'center', justifyContent: 'center' },
-  policyNumber: { color: '#1D1D1F', fontSize: 12, fontWeight: '900' },
+  policy: { padding: 19, borderRadius: 15, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.line, flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
+  policyIcon: { width: 42, height: 42, borderRadius: 13, backgroundColor: colors.line, alignItems: 'center', justifyContent: 'center' },
+  policyNumber: { color: colors.ink, fontSize: 12, fontWeight: '900' },
   policyCopy: { flex: 1 },
-  policyTitle: { color: '#1D1D1F', fontSize: 16, fontWeight: '900', marginBottom: 5 },
-  support: { marginTop: 5, padding: 18, borderRadius: 15, backgroundColor: '#D2D2D7', borderWidth: 1, borderColor: '#A1A1A6', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 },
-  supportText: { color: '#1D1D1F', fontSize: 13, fontWeight: '800' },
-  outlineButton: { minHeight: 41, paddingHorizontal: 14, borderRadius: 999, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#A1A1A6', flexDirection: 'row', alignItems: 'center', gap: 7 },
-  outlineButtonText: { color: '#1D1D1F', fontSize: 11, fontWeight: '900' },
+  policyTitle: { color: colors.ink, fontSize: 16, fontWeight: '900', marginBottom: 5 },
+  support: { marginTop: 5, padding: 18, borderRadius: 15, backgroundColor: colors.line, borderWidth: 1, borderColor: colors.subtle, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 },
+  supportText: { color: colors.ink, fontSize: 13, fontWeight: '800' },
+  outlineButton: { minHeight: 41, paddingHorizontal: 14, borderRadius: 999, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.subtle, flexDirection: 'row', alignItems: 'center', gap: 7 },
+  outlineButtonText: { color: colors.ink, fontSize: 11, fontWeight: '900' },
   disabled: { opacity: .55 },
   pressed: { opacity: .76 },
 }));

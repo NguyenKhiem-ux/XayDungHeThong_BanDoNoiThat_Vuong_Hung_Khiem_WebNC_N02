@@ -9,6 +9,7 @@ import { PageHeader } from '../components/PageHeader';
 import { ProductFooter } from '../components/ProductFooter';
 import { useStore } from '../store';
 import { withTypography } from '../typography';
+import { colors } from '../theme';
 
 const statusLabels: Record<Order['status'], string> = {
   PENDING: 'Chờ xác nhận',
@@ -92,20 +93,20 @@ export default function CheckoutSuccessScreen() {
   let title = 'Đang kiểm tra đơn hàng';
   let accentText = 'Hệ thống đang tải trạng thái mới nhất.';
   let detailText = 'Vui lòng chờ trong giây lát.';
-  let stateColor = '#47724A';
+  let stateColor = colors.success;
   let stateIcon = 'checkmark-circle-outline';
 
   if (!order && !loading && error) {
     title = 'Không thể tải trạng thái đơn';
     accentText = 'Hệ thống chưa cập nhật trạng thái đơn hàng.';
     detailText = error;
-    stateColor = '#9B382F';
+    stateColor = colors.danger;
     stateIcon = 'alert-circle-outline';
   } else if (isCancelled) {
     title = 'Đơn hàng đã bị hủy';
     accentText = 'Đơn hàng này không còn hiệu lực.';
     detailText = 'Nếu bạn cần hỗ trợ, vui lòng kiểm tra lại hoặc liên hệ bộ phận hỗ trợ.';
-    stateColor = '#9B382F';
+    stateColor = colors.danger;
     stateIcon = 'close-circle-outline';
   } else if (order && isCash) {
     title = 'Đặt hàng thành công';
@@ -115,13 +116,13 @@ export default function CheckoutSuccessScreen() {
     title = 'Chờ xác minh thanh toán';
     accentText = 'Thanh toán thẻ mô phỏng chưa được xác nhận.';
     detailText = 'Vui lòng kiểm tra lại trạng thái và PIN hoặc xem đơn hàng để thực hiện tiếp.';
-    stateColor = '#1D1D1F';
+    stateColor = colors.ink;
     stateIcon = 'time-outline';
   } else if (order && isPayOS && !isPaid) {
     title = 'Chờ xác nhận thanh toán';
     accentText = 'Đơn hàng đã được tạo, nhưng thanh toán chưa được xác minh từ cổng thanh toán.';
     detailText = 'Bạn có thể kiểm tra lại đơn hàng hoặc tiếp tục thanh toán nếu cần.';
-    stateColor = '#1D1D1F';
+    stateColor = colors.ink;
     stateIcon = 'time-outline';
   } else if (order && isPaid) {
     title = 'Thanh toán thành công';
@@ -136,7 +137,7 @@ export default function CheckoutSuccessScreen() {
         <View style={styles.content}>
           <View style={styles.card}>
             <View style={[styles.icon, { backgroundColor: stateColor }]}>
-              <Ionicons name={stateIcon as any} size={38} color="#fff" />
+              <Ionicons name={stateIcon as any} size={38} color={colors.white} />
             </View>
             <Text style={styles.title}>{title}</Text>
             <Text style={styles.order}>Mã đơn hàng: #{orderId ?? params.id ?? '—'}</Text>
@@ -154,7 +155,7 @@ export default function CheckoutSuccessScreen() {
 
             {loading && (
               <View style={styles.loadingRow}>
-                <ActivityIndicator color="#1D1D1F" />
+                <ActivityIndicator color={colors.ink} />
                 <Text style={styles.loadingText}>Đang tải trạng thái đơn hàng...</Text>
               </View>
             )}
@@ -194,26 +195,26 @@ export default function CheckoutSuccessScreen() {
 }
 
 const styles = StyleSheet.create(withTypography({
-  page: { flex: 1, backgroundColor: '#F5F5F7' },
+  page: { flex: 1, backgroundColor: colors.bg },
   scroll: { flexGrow: 1, paddingHorizontal: 20, paddingTop: 28 },
   scrollCompact: { paddingHorizontal: 12, paddingTop: 16 },
   content: { width: '100%', maxWidth: 850, alignSelf: 'center' },
-  card: { padding: 38, borderRadius: 20, alignItems: 'center', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D2D2D7' },
+  card: { padding: 38, borderRadius: 20, alignItems: 'center', backgroundColor: colors.white, borderWidth: 1, borderColor: colors.line },
   icon: { width: 76, height: 76, borderRadius: 38, alignItems: 'center', justifyContent: 'center' },
-  title: { marginTop: 18, color: '#1D1D1F', fontSize: 28, lineHeight: 35, fontWeight: '900', textAlign: 'center' },
-  order: { marginTop: 8, color: '#1D1D1F', fontSize: 16, fontWeight: '900' },
-  description: { maxWidth: 560, marginTop: 9, color: '#6E6E73', fontSize: 13, lineHeight: 20, textAlign: 'center' },
-  orderMeta: { width: '100%', marginTop: 18, padding: 14, borderRadius: 12, backgroundColor: '#F5F5F7', borderWidth: 1, borderColor: '#D2D2D7' },
-  metaRow: { color: '#1D1D1F', fontSize: 12, lineHeight: 22 },
+  title: { marginTop: 18, color: colors.ink, fontSize: 28, lineHeight: 35, fontWeight: '900', textAlign: 'center' },
+  order: { marginTop: 8, color: colors.ink, fontSize: 16, fontWeight: '900' },
+  description: { maxWidth: 560, marginTop: 9, color: colors.muted, fontSize: 13, lineHeight: 20, textAlign: 'center' },
+  orderMeta: { width: '100%', marginTop: 18, padding: 14, borderRadius: 12, backgroundColor: colors.bg, borderWidth: 1, borderColor: colors.line },
+  metaRow: { color: colors.ink, fontSize: 12, lineHeight: 22 },
   metaLabel: { fontWeight: '800' },
   loadingRow: { marginTop: 18, flexDirection: 'row', alignItems: 'center', gap: 8 },
-  loadingText: { color: '#6E6E73', fontSize: 12 },
+  loadingText: { color: colors.muted, fontSize: 12 },
   actions: { marginTop: 24, flexDirection: 'row', justifyContent: 'center', flexWrap: 'wrap', gap: 10 },
   actionsCompact: { flexDirection: 'column' },
-  primaryButton: { minHeight: 45, paddingHorizontal: 20, borderRadius: 999, backgroundColor: '#1D1D1F', alignItems: 'center', justifyContent: 'center' },
-  primaryText: { color: '#fff', fontSize: 12, fontWeight: '800' },
-  secondaryButton: { minHeight: 45, paddingHorizontal: 20, borderRadius: 999, borderWidth: 1, borderColor: '#A1A1A6', alignItems: 'center', justifyContent: 'center' },
-  secondaryText: { color: '#1D1D1F', fontSize: 12, fontWeight: '800' },
-  ghostButton: { minHeight: 45, paddingHorizontal: 20, borderRadius: 9, borderWidth: 1, borderColor: '#A1A1A6', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
-  ghostText: { color: '#1D1D1F', fontSize: 12, fontWeight: '800' },
+  primaryButton: { minHeight: 45, paddingHorizontal: 20, borderRadius: 999, backgroundColor: colors.brand, alignItems: 'center', justifyContent: 'center' },
+  primaryText: { color: colors.white, fontSize: 12, fontWeight: '800' },
+  secondaryButton: { minHeight: 45, paddingHorizontal: 20, borderRadius: 999, borderWidth: 1, borderColor: colors.subtle, alignItems: 'center', justifyContent: 'center' },
+  secondaryText: { color: colors.ink, fontSize: 12, fontWeight: '800' },
+  ghostButton: { minHeight: 45, paddingHorizontal: 20, borderRadius: 9, borderWidth: 1, borderColor: colors.subtle, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.white },
+  ghostText: { color: colors.ink, fontSize: 12, fontWeight: '800' },
 }));

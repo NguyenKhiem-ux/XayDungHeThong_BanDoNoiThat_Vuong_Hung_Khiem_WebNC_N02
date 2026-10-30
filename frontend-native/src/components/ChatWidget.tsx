@@ -7,6 +7,7 @@ import { useStore } from '../store';
 import { withTypography } from '../typography';
 import { Buttons, ChatAccountCards, ChatCartCard, ChatCheckoutCards, ChatCheckoutReview, ChatChips } from './ChatCards';
 import type { ChatAction, ChatResponse } from '../types';
+import { colors } from '../theme';
 
 interface Message {
   id: number;
@@ -72,11 +73,11 @@ export function ChatWidget({ compact }: { compact: boolean }) {
     <View pointerEvents="box-none" style={styles.layer}>
       {open && <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={[styles.panel, compact && styles.panelCompact, expanded && styles.panelExpanded]}>
         <View style={styles.header}>
-          <View style={styles.avatar}><Ionicons name="sparkles" size={18} color="#fff" /></View>
+          <View style={styles.avatar}><Ionicons name="sparkles" size={18} color={colors.white} /></View>
           <View style={styles.heading}><Text style={styles.title}>Trợ lý gia dụng</Text><Text style={styles.subtitle}>Mua sắm và quản lý đơn hàng</Text></View>
-          <Pressable accessibilityRole="button" accessibilityLabel="Cuộc trò chuyện mới" disabled={loading} onPress={reset} style={styles.headerButton}><Ionicons name="refresh" size={18} color="#FFFFFF" /></Pressable>
-          <Pressable accessibilityRole="button" accessibilityLabel={expanded ? 'Thu nhỏ khung chat' : 'Mở toàn màn hình'} onPress={() => setExpanded(value => !value)} style={styles.headerButton}><Ionicons name={expanded ? 'contract-outline' : 'expand-outline'} size={18} color="#FFFFFF" /></Pressable>
-          <Pressable accessibilityRole="button" accessibilityLabel="Đóng chatbot" onPress={() => { setOpen(false); setExpanded(false); }} style={styles.headerButton}><Ionicons name="close" size={21} color="#FFFFFF" /></Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel="Cuộc trò chuyện mới" disabled={loading} onPress={reset} style={styles.headerButton}><Ionicons name="refresh" size={18} color={colors.white} /></Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel={expanded ? 'Thu nhỏ khung chat' : 'Mở toàn màn hình'} onPress={() => setExpanded(value => !value)} style={styles.headerButton}><Ionicons name={expanded ? 'contract-outline' : 'expand-outline'} size={18} color={colors.white} /></Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel="Đóng chatbot" onPress={() => { setOpen(false); setExpanded(false); }} style={styles.headerButton}><Ionicons name="close" size={21} color={colors.white} /></Pressable>
         </View>
 
         <ScrollView style={styles.flex} contentContainerStyle={styles.messages} keyboardShouldPersistTaps="handled">
@@ -103,23 +104,23 @@ export function ChatWidget({ compact }: { compact: boolean }) {
               {response && !response.checkoutFlow && <ChatAccountCards response={response} disabled={disabled} onAction={act} />}
             </View>;
           })}
-          {loading && <View style={[styles.message, styles.assistantMessage, styles.loading]}><ActivityIndicator size="small" color="#1D1D1F" /><Text style={styles.messageText}>Đang xử lý yêu cầu...</Text></View>}
+          {loading && <View style={[styles.message, styles.assistantMessage, styles.loading]}><ActivityIndicator size="small" color={colors.ink} /><Text style={styles.messageText}>Đang xử lý yêu cầu...</Text></View>}
         </ScrollView>
 
         {!!error && <View style={styles.error}><Text style={styles.errorText}>{error}</Text></View>}
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.shortcutBar} contentContainerStyle={styles.shortcuts}>
-          {([['cart_view', 'Giỏ hàng', 'cart-outline'], ['orders_list', 'Đơn hàng', 'receipt-outline'], ['favorites_list', 'Yêu thích', 'heart-outline'], ['addresses_list', 'Địa chỉ', 'location-outline'], ['coupons_list', 'Voucher', 'ticket-outline']] as const).map(([type, label, icon]) => <Pressable key={type} disabled={loading} onPress={() => act({ type, label })} style={styles.shortcut}><Ionicons name={icon} size={14} color="#1D1D1F" /><Text style={styles.shortcutText}>{label}{type === 'cart_view' && cart?.itemCount ? ` (${cart.itemCount})` : ''}</Text></Pressable>)}
+          {([['cart_view', 'Giỏ hàng', 'cart-outline'], ['orders_list', 'Đơn hàng', 'receipt-outline'], ['favorites_list', 'Yêu thích', 'heart-outline'], ['addresses_list', 'Địa chỉ', 'location-outline'], ['coupons_list', 'Voucher', 'ticket-outline']] as const).map(([type, label, icon]) => <Pressable key={type} disabled={loading} onPress={() => act({ type, label })} style={styles.shortcut}><Ionicons name={icon} size={14} color={colors.ink} /><Text style={styles.shortcutText}>{label}{type === 'cart_view' && cart?.itemCount ? ` (${cart.itemCount})` : ''}</Text></Pressable>)}
         </ScrollView>
 
         <View style={styles.form}>
-          <TextInput accessibilityLabel="Tin nhắn cho chatbot" value={input} onChangeText={setInput} onSubmitEditing={() => void request(input)} blurOnSubmit={false} editable={!loading} maxLength={1000} placeholder="Nhập yêu cầu của bạn..." placeholderTextColor="#6E6E73" style={styles.input} />
-          <Pressable accessibilityRole="button" accessibilityLabel="Gửi tin nhắn" disabled={loading || !input.trim()} onPress={() => void request(input)} style={[styles.send, (loading || !input.trim()) && styles.disabled]}><Ionicons name="send" size={18} color="#fff" /></Pressable>
+          <TextInput accessibilityLabel="Tin nhắn cho chatbot" value={input} onChangeText={setInput} onSubmitEditing={() => void request(input)} blurOnSubmit={false} editable={!loading} maxLength={1000} placeholder="Nhập yêu cầu của bạn..." placeholderTextColor={colors.muted} style={styles.input} />
+          <Pressable accessibilityRole="button" accessibilityLabel="Gửi tin nhắn" disabled={loading || !input.trim()} onPress={() => void request(input)} style={[styles.send, (loading || !input.trim()) && styles.disabled]}><Ionicons name="send" size={18} color={colors.white} /></Pressable>
         </View>
       </KeyboardAvoidingView>}
 
       {!expanded && <Pressable accessibilityRole="button" accessibilityLabel={open ? 'Đóng chatbot' : 'Mở chatbot'} accessibilityState={{ expanded: open }} onPress={() => setOpen(value => !value)} style={({ pressed }) => [styles.toggle, pressed && styles.pressed]}>
-        <Ionicons name={open ? 'close' : 'chatbubble-ellipses'} size={24} color="#fff" />
+        <Ionicons name={open ? 'close' : 'chatbubble-ellipses'} size={24} color={colors.white} />
       </Pressable>}
     </View>
   );
@@ -127,39 +128,39 @@ export function ChatWidget({ compact }: { compact: boolean }) {
 
 const styles = StyleSheet.create(withTypography({
   layer: { position: 'absolute', inset: 0, zIndex: 100 },
-  panel: { position: 'absolute', right: 24, bottom: 86, width: 390, maxHeight: 590, minHeight: 480, borderRadius: 18, overflow: 'hidden', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D2D2D7', boxShadow: '0 20px 60px rgba(0, 0, 0, .24)' },
+  panel: { position: 'absolute', right: 24, bottom: 86, width: 390, maxHeight: 590, minHeight: 480, borderRadius: 18, overflow: 'hidden', backgroundColor: colors.white, borderWidth: 1, borderColor: colors.line, boxShadow: '0 20px 60px rgba(0, 0, 0, .24)' },
   panelCompact: { left: 10, right: 10, bottom: 76, width: 'auto', maxHeight: '75%' },
   panelExpanded: { top: 0, left: 0, right: 0, bottom: 0, width: 'auto', maxHeight: '100%', minHeight: 0, borderRadius: 0, borderWidth: 0 },
   flex: { flex: 1 },
   shortcutBar: { flexGrow: 0, flexShrink: 0 },
-  header: { minHeight: 62, backgroundColor: '#1D1D1F', paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 9 },
-  avatar: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#1D1D1F', alignItems: 'center', justifyContent: 'center' },
+  header: { minHeight: 62, backgroundColor: colors.brand, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 9 },
+  avatar: { width: 34, height: 34, borderRadius: 17, backgroundColor: colors.brand, alignItems: 'center', justifyContent: 'center' },
   heading: { flex: 1 },
-  title: { color: '#fff', fontSize: 15, fontWeight: '900' },
-  subtitle: { color: '#6E6E73', fontSize: 12, marginTop: 2 },
+  title: { color: colors.white, fontSize: 15, fontWeight: '900' },
+  subtitle: { color: colors.muted, fontSize: 12, marginTop: 2 },
   headerButton: { width: 34, height: 34, alignItems: 'center', justifyContent: 'center' },
   messages: { padding: 12, gap: 9, flexGrow: 1 },
   message: { maxWidth: '88%', borderRadius: 13, padding: 10, gap: 7 },
-  assistantMessage: { alignSelf: 'flex-start', backgroundColor: '#E8E8ED' },
-  userMessage: { alignSelf: 'flex-end', backgroundColor: '#1D1D1F' },
-  messageText: { color: '#1D1D1F', fontSize: 13, lineHeight: 19 },
-  userMessageText: { color: '#fff' },
+  assistantMessage: { alignSelf: 'flex-start', backgroundColor: colors.lineSoft },
+  userMessage: { alignSelf: 'flex-end', backgroundColor: colors.brand },
+  messageText: { color: colors.ink, fontSize: 13, lineHeight: 19 },
+  userMessageText: { color: colors.white },
   loading: { flexDirection: 'row', alignItems: 'center' },
   results: { gap: 6 },
-  result: { padding: 8, borderRadius: 9, backgroundColor: '#fff', borderWidth: 1, borderColor: '#D2D2D7' },
-  resultName: { color: '#1D1D1F', fontSize: 12, fontWeight: '700' },
-  resultPrice: { color: '#1D1D1F', fontSize: 12, fontWeight: '900', marginTop: 3 },
+  result: { padding: 8, borderRadius: 9, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.line },
+  resultName: { color: colors.ink, fontSize: 12, fontWeight: '700' },
+  resultPrice: { color: colors.ink, fontSize: 12, fontWeight: '900', marginTop: 3 },
   wideMessage: { maxWidth: '96%' },
-  inlineLink: { color: '#1D1D1F', fontSize: 12, fontWeight: '900' },
+  inlineLink: { color: colors.ink, fontSize: 12, fontWeight: '900' },
   error: { marginHorizontal: 12, padding: 8, borderRadius: 8, backgroundColor: '#FBE8E5' },
-  errorText: { color: '#9B382F', fontSize: 11 },
+  errorText: { color: colors.danger, fontSize: 11 },
   shortcuts: { paddingHorizontal: 10, paddingVertical: 8, gap: 6 },
-  shortcut: { alignSelf: 'center', paddingHorizontal: 9, paddingVertical: 7, borderRadius: 999, borderWidth: 1, borderColor: '#D2D2D7', flexDirection: 'row', alignItems: 'center', gap: 4 },
-  shortcutText: { color: '#1D1D1F', fontSize: 12, fontWeight: '700' },
-  form: { minHeight: 62, padding: 10, borderTopWidth: 1, borderTopColor: '#D2D2D7', flexDirection: 'row', alignItems: 'center', gap: 8 },
-  input: { flex: 1, minHeight: 42, borderRadius: 12, borderWidth: 1, borderColor: '#D2D2D7', backgroundColor: '#fff', color: '#1D1D1F', paddingHorizontal: 12, fontSize: 13 },
-  send: { width: 42, height: 42, borderRadius: 12, backgroundColor: '#1D1D1F', alignItems: 'center', justifyContent: 'center' },
-  toggle: { position: 'absolute', right: 24, bottom: 22, width: 54, height: 54, borderRadius: 27, backgroundColor: '#1D1D1F', alignItems: 'center', justifyContent: 'center', boxShadow: '0 10px 30px rgba(0, 0, 0, .25)' },
+  shortcut: { alignSelf: 'center', paddingHorizontal: 9, paddingVertical: 7, borderRadius: 999, borderWidth: 1, borderColor: colors.line, flexDirection: 'row', alignItems: 'center', gap: 4 },
+  shortcutText: { color: colors.ink, fontSize: 12, fontWeight: '700' },
+  form: { minHeight: 62, padding: 10, borderTopWidth: 1, borderTopColor: colors.line, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  input: { flex: 1, minHeight: 42, borderRadius: 12, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.white, color: colors.ink, paddingHorizontal: 12, fontSize: 13 },
+  send: { width: 42, height: 42, borderRadius: 12, backgroundColor: colors.brand, alignItems: 'center', justifyContent: 'center' },
+  toggle: { position: 'absolute', right: 24, bottom: 22, width: 54, height: 54, borderRadius: 27, backgroundColor: colors.brand, alignItems: 'center', justifyContent: 'center', boxShadow: '0 10px 30px rgba(0, 0, 0, .25)' },
   disabled: { opacity: 0.45 },
   pressed: { transform: [{ scale: 0.96 }] },
 }));
