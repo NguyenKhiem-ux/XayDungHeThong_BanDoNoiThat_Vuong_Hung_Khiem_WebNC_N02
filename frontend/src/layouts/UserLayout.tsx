@@ -7,12 +7,14 @@ import { useCart } from '../context/CartContext';
 import { useReveal } from '../hooks/useReveal';
 import { productApi } from '../api/services';
 import { ChatWidget } from '../components/ChatWidget';
+import { Button, Container, Form, Nav, Navbar } from 'react-bootstrap';
 
 export function UserLayout() {
   const { user, logout } = useAuth();
   const { cart } = useCart();
   const [menuOpen, setMenuOpen] = useState(false);
   const [keyword, setKeyword] = useState('');
+  const [searchExpanded, setSearchExpanded] = useState(false);
   const [categories, setCategories] = useState<string[]>([]);
   const [mobileCategoriesOpen, setMobileCategoriesOpen] = useState(false);
   const [showTopButton, setShowTopButton] = useState(false);
@@ -51,8 +53,11 @@ export function UserLayout() {
   const search = (e: FormEvent) => {
     e.preventDefault();
     const q = keyword.trim();
+    setSearchExpanded(false);
     navigate(`/products${q ? `?keyword=${encodeURIComponent(q)}` : ''}`);
   };
+
+  const openSearch = () => setSearchExpanded(true);
 
   return (
     <div className="site-shell">
@@ -66,20 +71,13 @@ export function UserLayout() {
           <span>Hotline: 1800 6868</span>
         </div>
 
-        <nav className="navbar" id="mainNav">
+        <Navbar as="nav" className="navbar" id="mainNav">
           <Link className="brand" to="/" aria-label="Gia dụng Việt">
             <span className="brand-mark"><i className="fa-solid fa-bolt" /></span>
             <span className="brand-copy">Gia dụng <span>Việt</span></span>
           </Link>
 
-          <form className="nav-search" role="search" onSubmit={search}>
-            <i className="fa-solid fa-magnifying-glass" />
-            <input value={keyword} onChange={e => setKeyword(e.target.value)}
-              type="search" aria-label="Tìm kiếm sản phẩm" placeholder="Tìm sản phẩm cho nhà bạn..." autoComplete="off" />
-            <button type="submit" aria-label="Tìm kiếm" title="Tìm kiếm"><i className="fa-solid fa-arrow-right" /></button>
-          </form>
-
-          <div className="nav-links">
+          <Nav as="div" className="nav-links">
             <NavLink end to="/">Trang chủ</NavLink>
             <div className="nav-category-menu">
               <NavLink to="/products" aria-haspopup="true">Sản phẩm <i className="fa-solid fa-chevron-down nav-category-chevron" /></NavLink>
@@ -92,7 +90,7 @@ export function UserLayout() {
             <NavLink to="/about">Giới thiệu</NavLink>
             <NavLink to="/contact">Liên hệ</NavLink>
             <NavLink to="/orders">Đơn hàng</NavLink>
-          </div>
+          </Nav>
 
           <div className="nav-actions">
             <Link to="/cart" className="icon-btn" aria-label="Giỏ hàng">
@@ -119,18 +117,31 @@ export function UserLayout() {
               </div>
             )}
 
+            <Form className={`nav-search ${searchExpanded ? 'is-expanded' : ''}`} role="search" onSubmit={search}
+              onMouseEnter={() => setSearchExpanded(true)}
+              onMouseLeave={e => { if (!e.currentTarget.contains(document.activeElement)) setSearchExpanded(false); }}
+              onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setSearchExpanded(false); }}>
+              <Button type="button" variant="link" className="search-toggle" aria-label={searchExpanded ? 'Thu gọn tìm kiếm' : 'Mở tìm kiếm'}
+                aria-expanded={searchExpanded} title={searchExpanded ? 'Tìm kiếm' : 'Mở tìm kiếm'} onClick={openSearch}>
+                <i className="fa-solid fa-magnifying-glass" />
+              </Button>
+              <Form.Control value={keyword} onChange={e => setKeyword(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Escape') { setSearchExpanded(false); e.currentTarget.blur(); } }}
+                type="search" aria-label="Tìm kiếm sản phẩm" placeholder="Tìm sản phẩm..." autoComplete="off" tabIndex={searchExpanded ? 0 : -1} />
+            </Form>
+
             <button className="menu-toggle" type="button" aria-label="Mở menu"
               aria-expanded={menuOpen} aria-controls="mobileMenu" onClick={() => setMenuOpen(v => !v)}>
               <i className={menuOpen ? 'fa-solid fa-xmark' : 'fa-solid fa-bars'} />
             </button>
           </div>
-        </nav>
+        </Navbar>
 
         <div className={`mobile-panel ${menuOpen ? 'open' : ''}`} id="mobileMenu">
-          <form onSubmit={search} className="mobile-search">
-            <input value={keyword} onChange={e => setKeyword(e.target.value)} type="search" aria-label="Tìm kiếm sản phẩm" placeholder="Tìm kiếm sản phẩm..." />
-            <button type="submit" aria-label="Tìm kiếm"><i className="fa-solid fa-magnifying-glass" /></button>
-          </form>
+          <Form onSubmit={search} className="mobile-search">
+            <Form.Control value={keyword} onChange={e => setKeyword(e.target.value)} type="search" aria-label="Tìm kiếm sản phẩm" placeholder="Tìm kiếm sản phẩm..." />
+            <Button type="submit" variant="link" aria-label="Tìm kiếm"><i className="fa-solid fa-magnifying-glass" /></Button>
+          </Form>
           <NavLink end to="/">Trang chủ</NavLink>
           <button type="button" className="mobile-category-toggle" aria-expanded={mobileCategoriesOpen} onClick={() => setMobileCategoriesOpen(open => !open)}>Sản phẩm <i className={`fa-solid fa-chevron-${mobileCategoriesOpen ? 'up' : 'down'}`} /></button>
           {mobileCategoriesOpen && <div className="mobile-category-list"><NavLink end to="/products">Tất cả sản phẩm</NavLink>{categories.map(category => <NavLink key={category} to={`/products?category=${encodeURIComponent(category)}`}>{category}</NavLink>)}</div>}
@@ -148,7 +159,7 @@ export function UserLayout() {
       <main id="main-content" tabIndex={-1}><Outlet /></main>
 
       <footer className="site-footer">
-        <div className="footer-main">
+        <Container fluid="xl" className="footer-main">
           <div className="footer-brand">
             <Link className="brand" to="/">
               <span className="brand-mark"><i className="fa-solid fa-bolt" /></span>
@@ -185,7 +196,7 @@ export function UserLayout() {
             <p><i className="fa-solid fa-envelope" /> support@giadungviet.vn</p>
             <p><i className="fa-solid fa-clock" /> 8:00 - 22:00 mỗi ngày</p>
           </div>
-        </div>
+        </Container>
         <div className="footer-bottom">
           <span>© 2023 Gia dụng Việt. All rights reserved.</span>
           <span>Thẻ, chuyển khoản & thanh toán khi nhận hàng</span>

@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-do
 import { BarChart3, BookOpen, Boxes, FileText, LayoutDashboard, LogOut, Mail, ShoppingBag, Ticket, Users, Zap } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { ThemeToggle } from '../components/ThemeToggle';
+import { Container, Nav } from 'react-bootstrap';
 
 export function AdminLayout() {
   const { user, logout } = useAuth();
@@ -23,7 +24,25 @@ export function AdminLayout() {
   ];
 
   return <div className="admin-app">
-    <header className="admin-navbar"><div className="admin-navbar-inner"><div className="admin-logo"><Link to="/admin">Gia dụng Việt <small>QUẢN TRỊ</small></Link></div><nav className="admin-nav-menu" aria-label="Điều hướng quản trị">{nav.map(({ to, label, icon: Icon, end }) => <NavLink key={to} to={to} end={end} className="admin-nav-link"><Icon size={16} />{label}</NavLink>)}</nav><div className="admin-nav-right"><ThemeToggle /><span className="admin-user">{user.username || user.email}</span><button className="admin-nav-logout" onClick={() => { logout(); navigate('/login'); }}><LogOut size={15} />Đăng xuất</button></div></div></header>
+    <header className="admin-navbar">
+      <Container fluid="xxl" className="admin-navbar-inner">
+        <div className="admin-logo"><Link to="/admin">Gia dụng Việt <small>QUẢN TRỊ</small></Link></div>
+        <Nav as="nav" className="admin-nav-menu" aria-label="Điều hướng quản trị">
+          {nav.map(({ to, label, icon: Icon, end }) => (
+            <Nav.Link as={NavLink} key={to} to={to} end={end} className="admin-nav-link">
+              <Icon size={16} />{label}
+            </Nav.Link>
+          ))}
+        </Nav>
+        <div className="admin-nav-right">
+          <ThemeToggle />
+          <span className="admin-user">{user.username || user.email}</span>
+          <button className="admin-nav-logout" onClick={() => { logout(); navigate('/login'); }}>
+            <LogOut size={15} />Đăng xuất
+          </button>
+        </div>
+      </Container>
+    </header>
     {location.pathname !== '/admin' && <div className="admin-breadcrumb"><FileText size={14} /> Quản trị / {location.pathname.split('/').filter(Boolean).slice(1).join(' / ')}</div>}
     <main className="admin-page"><Outlet /></main>
     <footer className="admin-footer">

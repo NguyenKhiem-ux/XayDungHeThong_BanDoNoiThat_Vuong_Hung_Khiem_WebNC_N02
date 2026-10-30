@@ -7,6 +7,7 @@ import type { Product } from '../api/types';
 import { ProductCard, ProductCardSkeleton } from '../components/ProductCard';
 import { FlashSale } from '../components/FlashSale';
 import { usePriceRevision } from '../hooks/usePriceRevision';
+import { Col, Row } from 'react-bootstrap';
 
 const slides = [
   {
@@ -119,14 +120,16 @@ export function HomePage() {
         <div><h2>Mua theo danh mục</h2></div>
         <Link to="/products" className="text-link">Tất cả <i className="fa-solid fa-arrow-right" /></Link>
       </div>
-      <div className="category-grid">
+      <Row className="category-grid g-4">
         {categories.map(([name, sub, image], i) => (
-          <Link key={name} to={`/products?category=${encodeURIComponent(name === 'Robot hút bụi' ? 'Thiết bị gia dụng thông minh' : name)}`} className="cat-card reveal" style={{ '--delay': `${i * 60}ms` } as React.CSSProperties}>
-            <img src={image} alt={name} loading="lazy" />
-            <div className="cat-label"><strong>{name}</strong><span>{sub}</span><ArrowRight className="cat-arrow" size={18} aria-hidden="true" /></div>
-          </Link>
+          <Col key={name} xs={6} md={4} className="category-column">
+            <Link to={`/products?category=${encodeURIComponent(name === 'Robot hút bụi' ? 'Thiết bị gia dụng thông minh' : name)}`} className="cat-card reveal" style={{ '--delay': `${i * 60}ms` } as React.CSSProperties}>
+              <img src={image} alt={name} loading="lazy" />
+              <div className="cat-label"><strong>{name}</strong><span>{sub}</span><ArrowRight className="cat-arrow" size={18} aria-hidden="true" /></div>
+            </Link>
+          </Col>
         ))}
-      </div>
+      </Row>
     </section>
 
     <FlashSale />
@@ -136,8 +139,8 @@ export function HomePage() {
         <div><h2>Sản phẩm nổi bật</h2></div>
         <Link to="/products" className="text-link">Xem thêm <i className="fa-solid fa-arrow-right" /></Link>
       </div>
-      {loading ? <div className="product-grid" role="status" aria-label="Đang tải sản phẩm" aria-busy="true">{Array.from({ length: 4 }, (_, i) => <ProductCardSkeleton key={i} />)}</div> :
-        featured.length ? <div className="product-grid">{featured.map((p, i) => <ProductCard key={p.id} product={p} home index={i} />)}</div> :
+      {loading ? <Row className="product-grid g-3" role="status" aria-label="Đang tải sản phẩm" aria-busy="true">{Array.from({ length: 4 }, (_, i) => <Col key={i} xs={6} md={4} lg={4} className="product-column"><ProductCardSkeleton /></Col>)}</Row> :
+        featured.length ? <Row className="product-grid g-3">{featured.map((p, i) => <Col key={p.id} xs={6} md={4} lg={4} className="product-column"><ProductCard product={p} home index={i} /></Col>)}</Row> :
         <div className="empty-state" role="status"><h3>{failed ? 'Chưa thể tải sản phẩm' : 'Chưa có sản phẩm nổi bật'}</h3><p>{failed ? 'Vui lòng kiểm tra kết nối và thử lại.' : 'Khám phá thêm các sản phẩm trong cửa hàng.'}</p>{failed ? <button className="btn btn-outline" onClick={() => setRetry(v => v + 1)}><RotateCw size={16} /> Thử lại</button> : <Link to="/products" className="btn btn-primary">Xem tất cả sản phẩm</Link>}</div>}
     </section>
 

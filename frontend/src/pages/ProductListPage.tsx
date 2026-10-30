@@ -6,6 +6,7 @@ import { productApi } from '../api/services';
 import type { Product } from '../api/types';
 import { ProductCard, ProductCardSkeleton } from '../components/ProductCard';
 import { usePriceRevision } from '../hooks/usePriceRevision';
+import { Col, Row } from 'react-bootstrap';
 
 const quickPriceRanges = [
   { label: 'Dưới 5 triệu', min: 0, max: 5_000_000 },
@@ -84,9 +85,9 @@ export function ProductListPage() {
             </div>
           </div>
         </div>
-        {loading ? <div className="product-grid" role="status" aria-label="Đang tải sản phẩm" aria-busy="true">{Array.from({ length: 6 }, (_, i) => <ProductCardSkeleton key={i} />)}</div> :
+        {loading ? <Row className="product-grid g-3" role="status" aria-label="Đang tải sản phẩm" aria-busy="true">{Array.from({ length: 6 }, (_, i) => <Col key={i} xs={6} md={4} className="product-column"><ProductCardSkeleton /></Col>)}</Row> :
           failed ? <div className="empty-state" role="alert"><RotateCw size={32} /><h2>Chưa thể tải sản phẩm</h2><p>Vui lòng kiểm tra kết nối và thử lại.</p><button className="btn btn-primary" onClick={() => setRetry(v => v + 1)}><RotateCw size={16} /> Thử lại</button></div> :
-          visibleProducts.length ? <div className="product-grid" id="productsGrid">{visibleProducts.map((p,i)=><ProductCard key={p.id} product={p} index={i}/>)}</div> :
+          visibleProducts.length ? <Row className="product-grid g-3" id="productsGrid">{visibleProducts.map((p,i)=><Col key={p.id} xs={6} md={4} className="product-column"><ProductCard product={p} index={i}/></Col>)}</Row> :
           <div className="empty-state reveal"><i className="fa-solid fa-magnifying-glass" /><h2>{products.length ? 'Không có sản phẩm trong khoảng giá này' : 'Không tìm thấy sản phẩm'}</h2><p>{products.length ? 'Hãy chọn một khoảng giá khác.' : 'Thử từ khóa khác hoặc quay về toàn bộ sản phẩm.'}</p>{(minPrice !== null || maxPrice !== null) ? <button type="button" className="btn btn-primary" onClick={() => selectPricePreset('')}>Xem tất cả mức giá</button> : <Link to="/products" className="btn btn-primary">Xem tất cả</Link>}</div>}
       </div>
     </section>
