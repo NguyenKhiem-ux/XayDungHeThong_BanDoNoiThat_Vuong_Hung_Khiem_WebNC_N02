@@ -7,7 +7,7 @@
   margin: 0;
   padding: 56px 20px;
   overflow: hidden;
-  background: linear-gradient(120deg, #edf5ee, #faf8ed 52%, #edf4ed);
+  background: linear-gradient(120deg, #eef7fa, #fff 52%, #f1f6f8);
 }
 .auth-login-scene::before {
   content: '';
@@ -16,9 +16,9 @@
   inset: -18%;
   pointer-events: none;
   background:
-    radial-gradient(ellipse 42% 48% at 18% 28%, rgb(52 133 82 / 30%), transparent 76%),
-    radial-gradient(ellipse 38% 42% at 82% 72%, rgb(222 177 45 / 29%), transparent 76%),
-    radial-gradient(ellipse 36% 38% at 58% 12%, rgb(117 175 124 / 24%), transparent 76%);
+    radial-gradient(ellipse 42% 48% at 18% 28%, rgb(27 163 198 / 22%), transparent 76%),
+    radial-gradient(ellipse 38% 42% at 82% 72%, rgb(102 198 220 / 18%), transparent 76%),
+    radial-gradient(ellipse 36% 38% at 58% 12%, rgb(94 162 193 / 16%), transparent 76%);
   filter: blur(52px);
   animation: login-glow 24s ease-in-out infinite alternate;
 }
@@ -27,10 +27,10 @@
   z-index: 1;
   width: min(100%, 540px);
   padding: clamp(28px, 4vw, 42px) !important;
-  border: 1px solid #e0e9e1 !important;
+  border: 1px solid #dfe8ed !important;
   border-radius: 14px !important;
   background: #fff !important;
-  box-shadow: 0 16px 48px rgb(29 69 43 / 8%) !important;
+  box-shadow: 0 16px 48px rgb(28 54 66 / 9%) !important;
   animation: login-card-in .45s ease-out both;
 }
 .auth-login-card .auth-header h1 { letter-spacing: -.035em; }

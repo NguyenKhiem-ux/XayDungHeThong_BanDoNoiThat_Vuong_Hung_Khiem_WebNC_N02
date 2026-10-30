@@ -36,9 +36,12 @@ html, body { background-color: var(--theme-bg); color: var(--theme-text); transi
   --border: var(--theme-border); --border-hi: rgba(86, 139, 244, .42);
   background: radial-gradient(ellipse at 10% 0%, rgba(37, 99, 235, .09), transparent 34rem), var(--theme-bg);
   transition: background-color .25s ease, color .25s ease;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 .admin-navbar { background: color-mix(in srgb, var(--theme-surface) 91%, transparent); border-color: var(--theme-border); box-shadow: 0 8px 30px rgba(15, 23, 42, .07); }
-.admin-navbar-inner { max-width: 1500px; min-height: 76px; height: auto; gap: 1.15rem; }
+.admin-navbar-inner { width: min(1480px, calc(100% - clamp(36px, 8vw, 96px))); max-width: 1480px; min-height: 76px; height: auto; gap: 1.15rem; }
 .admin-logo a { flex-direction: column; align-items: flex-start; gap: 0; font-size: .95rem; letter-spacing: -.02em; }
 .admin-logo a::before { display: none; }
 .admin-logo small { color: var(--accent); font-size: .62rem; letter-spacing: .14em; }
@@ -47,8 +50,11 @@ html, body { background-color: var(--theme-bg); color: var(--theme-text); transi
 .admin-nav-link:hover { transform: translateY(-1px); }
 .admin-nav-link.active { box-shadow: inset 0 0 0 1px rgba(37, 99, 235, .08); }
 .admin-user { background: var(--theme-surface-raised); color: var(--theme-muted); border-color: var(--theme-border); }
-.admin-page { max-width: 1500px; padding-top: 1.8rem; padding-bottom: 3rem; }
-.admin-breadcrumb { max-width: 1500px; padding-top: 1.1rem; }
+.admin-page { width: min(1440px, calc(100% - clamp(36px, 8vw, 96px))); max-width: 1440px; margin-inline: auto; padding-top: 1.8rem; padding-bottom: 3rem; flex: 1 0 auto; min-width: 0; }
+.admin-breadcrumb { width: min(1440px, calc(100% - clamp(36px, 8vw, 96px))); max-width: 1440px; margin-inline: auto; padding-top: 1.1rem; }
+.admin-footer { width: min(1440px, calc(100% - clamp(36px, 8vw, 96px))); min-height: 58px; margin: 0 auto; padding: 10px 0; display: flex; align-items: center; justify-content: space-between; gap: 16px; border-top: 1px solid var(--theme-border); background: var(--theme-surface); color: var(--theme-muted); font-size: .82rem; }
+.admin-footer a { color: var(--theme-text); font-weight: 650; text-underline-offset: 3px; }
+.admin-footer a:hover { color: #2563eb; }
 .admin-page-header { margin-bottom: 1.35rem; }
 .admin-page-header h1 { letter-spacing: -.04em; }
 .eyebrow, .admin-kicker { color: var(--accent); letter-spacing: .12em; }
