@@ -85,7 +85,7 @@ export default function AdminRevenueScreen() {
         <Text style={styles.definitionText}>Backend tính tổng giá trị đơn có trạng thái khác CANCELLED. Chỉ số này không đồng nghĩa với số tiền đã thanh toán.</Text>
       </View>
 
-      {error && rows.length > 0 && <View style={styles.errorBanner}><Ionicons name="warning-outline" size={18} color={colors.danger} /><Text style={styles.errorText}>{error}</Text><Pressable accessibilityRole="button" onPress={() => void load()}><Text style={styles.errorAction}>Thử lại</Text></Pressable></View>}
+      {error.length > 0 && rows.length > 0 && <View style={styles.errorBanner}><Ionicons name="warning-outline" size={18} color={colors.danger} /><Text style={styles.errorText}>{error}</Text><Pressable accessibilityRole="button" onPress={() => void load()}><Text style={styles.errorAction}>Thử lại</Text></Pressable></View>}
 
       {loading && rows.length === 0 ? <StatePanel loading title="Đang tải báo cáo" message="Hệ thống đang tổng hợp dữ liệu doanh thu theo tháng." />
         : error && rows.length === 0 ? <StatePanel title="Không thể tải báo cáo" message={error} action="Thử lại" onPress={() => void load()} />
