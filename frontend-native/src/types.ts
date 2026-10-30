@@ -13,6 +13,16 @@ export interface User {
   role?: 'USER' | 'ADMIN';
 }
 
+export interface AdminUser {
+  id: number;
+  fullName: string;
+  username: string | null;
+  email: string;
+  phone: string | null;
+  role: 'USER' | 'ADMIN';
+  createdAt: string;
+}
+
 export interface SavedDemoCard {
   holder: string;
   type: 'DOMESTIC' | 'INTERNATIONAL';
@@ -76,6 +86,23 @@ export interface Order {
   items: Array<{ id: number; productId: number | null; productName: string; productImage: string | null; price: number; quantity: number; subtotal: number }>;
 }
 
+export interface DashboardData {
+  revenue: number;
+  orders: number;
+  pendingOrders: number;
+  users: number;
+  products: number;
+  recentOrders: Order[];
+  chartRevenueByDay: Array<{ day: string; value: number }>;
+  chartOrdersByDay: Array<{ day: string; value: number }>;
+}
+
+export interface RevenueRow {
+  period: string;
+  orders: number;
+  revenue: number;
+}
+
 export interface Product {
   id: number;
   name: string;
@@ -96,6 +123,15 @@ export interface Product {
   promotionId?: number | null;
   promotionTitle?: string | null;
   saleEndsAt?: string | null;
+}
+
+export type ProductSort = 'newest' | 'price-asc' | 'price-desc' | 'name';
+
+export interface ProductPage {
+  items: Product[];
+  total: number;
+  page: number;
+  limit: number;
 }
 
 export interface ReviewSummary {
@@ -132,9 +168,27 @@ export interface PromotionEvent {
   id: number;
   title: string;
   description: string;
+  status: 'draft' | 'published' | 'paused';
+  phase: 'draft' | 'paused' | 'scheduled' | 'active' | 'ended';
+  startsAt: string;
   endsAt: string;
   maxDiscountPercent: number;
   products: Product[];
+}
+
+export interface PromotionInput {
+  bannerDiscountPercent: number | null;
+  title: string;
+  description: string;
+  status: PromotionEvent['status'];
+  startsAt: string;
+  endsAt: string;
+  items: Array<{ productId: number; discountPercent: number }>;
+}
+
+export interface PromotionAdminResponse {
+  serverTime: string;
+  events: PromotionEvent[];
 }
 
 export interface PromotionResponse {
@@ -158,10 +212,19 @@ export interface Coupon {
   discountType: CouponDiscountType;
   discountValue: number | string;
   minOrderAmount: number | string;
+  maxDiscountAmount: number | string | null;
+  usageLimit: number | null;
+  usedCount: number;
+  startDate: string;
   endDate: string;
   isActive: boolean;
+  userId: number | null;
   freeShipping: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
+
+export type CouponInput = Omit<Coupon, 'id' | 'usedCount' | 'createdAt' | 'updatedAt'>;
 
 export interface Cart {
   itemCount: number;

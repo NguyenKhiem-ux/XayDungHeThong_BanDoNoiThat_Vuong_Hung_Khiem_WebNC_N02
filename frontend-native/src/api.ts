@@ -1,6 +1,6 @@
 import * as SecureStore from 'expo-secure-store';
 import { Alert, Linking, Platform } from 'react-native';
-import type { Cart, ChatAction, ChatResponse, CheckoutQuote, Coupon, Favorite, OwnReview, Order, PaymentMethod, Product, PromotionResponse, ReviewPage, ReviewSummary, User, UserAddress } from './types';
+import type { AdminUser, Cart, ChatAction, ChatResponse, CheckoutQuote, Coupon, CouponInput, DashboardData, Favorite, OwnReview, Order, PaymentMethod, Product, ProductPage, ProductSort, PromotionAdminResponse, PromotionEvent, PromotionInput, PromotionResponse, RevenueRow, ReviewPage, ReviewSummary, User, UserAddress } from './types';
 
 const WEB_DEV_BACKEND_ORIGIN = 'http://localhost:3000';
 const LOOPBACK_URL = /^https?:\/\/(?:localhost|127\.0\.0\.1|\[::1\])(?=[:/]|$)/i;
@@ -87,6 +87,12 @@ export const homeApi = {
   promotion: () => request<PromotionResponse>('/promotions/current'),
 };
 
+export const promotionApi = {
+  list: (signal?: AbortSignal) => request<PromotionAdminResponse>('/promotions/admin', { signal }),
+  create: (data: PromotionInput) => request<PromotionEvent>('/promotions', { method: 'POST', body: JSON.stringify(data) }),
+  update: (id: number, data: PromotionInput) => request<PromotionEvent>(`/promotions/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+};
+
 export const contactApi = {
   create: (data: { name: string; email: string; phone?: string; message: string }) => request<unknown>('/contact', {
     method: 'POST',
@@ -131,6 +137,16 @@ export const productApi = {
   },
   categories: (signal?: AbortSignal) => request<string[]>('/products/categories/list', { signal }),
   detail: (id: number) => request<Product>(`/products/${id}`),
+  page: (query: { page: number; limit: number; keyword?: string; category?: string; sort?: ProductSort }, signal?: AbortSignal) => {
+    const params = new URLSearchParams({ page: String(query.page), limit: String(query.limit) });
+    if (query.keyword) params.set('keyword', query.keyword);
+    if (query.category) params.set('category', query.category);
+    if (query.sort) params.set('sort', query.sort);
+    return request<ProductPage>(`/products?${params.toString()}`, { signal });
+  },
+  create: (data: FormData) => request<Product>('/products', { method: 'POST', body: data }),
+  update: (id: number, data: FormData) => request<Product>(`/products/${id}`, { method: 'PATCH', body: data }),
+  remove: (id: number) => request<{ message: string }>(`/products/${id}`, { method: 'DELETE' }),
 };
 
 export const reviewApi = {
@@ -162,6 +178,12 @@ export const accountApi = {
   removeFavorite: (productId: number) => request<void>(`/favorites/${productId}`, { method: 'DELETE' }),
 };
 
+export const adminApi = {
+  dashboard: () => request<DashboardData>('/admin/dashboard'),
+  revenue: (signal?: AbortSignal) => request<RevenueRow[]>('/admin/revenue', { signal }),
+  users: (signal?: AbortSignal) => request<AdminUser[]>('/admin/users', { signal }),
+};
+
 export interface OrderInput {
   productId?: number;
   quoteId?: string;
@@ -180,10 +202,19 @@ export const orderApi = {
   create: (data: OrderInput) => request<Order>('/orders', { method: 'POST', body: JSON.stringify(data) }),
   list: () => request<Order[]>('/orders'),
   detail: (id: number) => request<Order>(`/orders/${id}`),
+  adminList: (signal?: AbortSignal) => request<Order[]>('/admin/orders', { signal }),
+  adminUpdateStatus: (id: number, status: Order['status']) => request<Order>(`/admin/orders/${id}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  }),
 };
 
 export const couponApi = {
   list: () => request<Coupon[]>('/coupons'),
+  adminList: (signal?: AbortSignal) => request<Coupon[]>('/coupons/admin/list', { signal }),
+  create: (data: CouponInput) => request<Coupon>('/coupons', { method: 'POST', body: JSON.stringify(data) }),
+  update: (id: number, data: CouponInput) => request<Coupon>(`/coupons/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  remove: (id: number) => request<{ message: string }>(`/coupons/${id}`, { method: 'DELETE' }),
   validate: (code: string, orderAmount: number, productId?: number) => request<{ valid: boolean; coupon: Coupon; discountAmount: number; finalAmount: number }>('/coupons/validate', {
     method: 'POST',
     body: JSON.stringify({ code, orderAmount, productId }),
