@@ -103,6 +103,48 @@ export interface RevenueRow {
   revenue: number;
 }
 
+export interface ContactMessage {
+  id: number;
+  name: string;
+  email: string;
+  phone: string | null;
+  message: string;
+  isRead: boolean;
+  createdAt: string;
+}
+
+export type KnowledgeStatus = 'pending_review' | 'approved' | 'rejected';
+export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH';
+export const chatIntents = ['small_talk', 'greeting', 'thanks', 'goodbye', 'product_search', 'product_detail',
+  'product_recommendation', 'product_comparison', 'product_price', 'product_stock', 'product_category',
+  'product_select', 'cart_add', 'cart_remove', 'cart_update_quantity', 'cart_view', 'buy_now', 'checkout_review',
+  'shipping', 'payment', 'promotion', 'warranty', 'return', 'refund', 'order', 'complaint', 'account',
+  'password', 'legal', 'general_store_question', 'general_question', 'unknown'] as const;
+export type ChatIntent = typeof chatIntents[number];
+
+export interface ChatbotKnowledge {
+  id: number;
+  question: string;
+  answer: string;
+  keywords: string;
+  contextHash: string;
+  normalizedQuestion: string;
+  intent: ChatIntent;
+  confidenceScore: number;
+  riskLevel: RiskLevel;
+  source: 'gemini' | 'admin' | 'system';
+  shouldStore: boolean;
+  reviewedBy: number | null;
+  reviewedAt: string | null;
+  status: KnowledgeStatus;
+  usageCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type KnowledgeInput = Pick<ChatbotKnowledge, 'question' | 'answer' | 'keywords'>;
+export interface KnowledgeListResponse { items: ChatbotKnowledge[]; total: number; page: number; limit: number }
+
 export interface Product {
   id: number;
   name: string;

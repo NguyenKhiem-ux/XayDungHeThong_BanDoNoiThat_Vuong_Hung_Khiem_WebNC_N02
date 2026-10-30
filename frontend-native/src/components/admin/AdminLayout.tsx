@@ -15,8 +15,8 @@ const adminItems = [
   ['Coupons', 'ticket-outline', '/admin/coupons'],
   ['Promotions', 'flash-outline', '/admin/promotions'],
   ['Revenue', 'bar-chart-outline', '/admin/revenue'],
-  ['Messages', 'mail-outline', null],
-  ['Chatbot Knowledge', 'book-outline', null],
+  ['Messages', 'mail-outline', '/admin/messages'],
+  ['Kiến thức Chatbot', 'book-outline', '/admin/chatbot-knowledge'],
 ] as const;
 
 export function AdminLayout({ user, onLogout, children }: { user: User; onLogout: () => void; children: ReactNode }) {

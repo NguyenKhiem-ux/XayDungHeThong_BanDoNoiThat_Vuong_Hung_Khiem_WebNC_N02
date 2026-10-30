@@ -1,6 +1,6 @@
 import * as SecureStore from 'expo-secure-store';
 import { Alert, Linking, Platform } from 'react-native';
-import type { AdminUser, Cart, ChatAction, ChatResponse, CheckoutQuote, Coupon, CouponInput, DashboardData, Favorite, OwnReview, Order, PaymentMethod, Product, ProductPage, ProductSort, PromotionAdminResponse, PromotionEvent, PromotionInput, PromotionResponse, RevenueRow, ReviewPage, ReviewSummary, User, UserAddress } from './types';
+import type { AdminUser, Cart, ChatAction, ChatResponse, ChatbotKnowledge, ChatIntent, CheckoutQuote, ContactMessage, Coupon, CouponInput, DashboardData, Favorite, KnowledgeInput, KnowledgeListResponse, KnowledgeStatus, OwnReview, Order, PaymentMethod, Product, ProductPage, ProductSort, PromotionAdminResponse, PromotionEvent, PromotionInput, PromotionResponse, RevenueRow, ReviewPage, ReviewSummary, RiskLevel, User, UserAddress } from './types';
 
 const WEB_DEV_BACKEND_ORIGIN = 'http://localhost:3000';
 const LOOPBACK_URL = /^https?:\/\/(?:localhost|127\.0\.0\.1|\[::1\])(?=[:/]|$)/i;
@@ -98,7 +98,30 @@ export const contactApi = {
     method: 'POST',
     body: JSON.stringify(data),
   }),
+  adminList: (signal?: AbortSignal) => request<ContactMessage[]>('/contact/admin', { signal }),
+  markRead: (id: number) => request<ContactMessage>(`/contact/admin/${id}/read`, { method: 'POST' }),
+  remove: (id: number) => request<{ message: string }>(`/contact/admin/${id}`, { method: 'DELETE' }),
 };
+
+const KNOWLEDGE_PATH = '/admin/chatbot/knowledge';
+export const knowledgeApi = {
+  list: (query: { status: KnowledgeStatus | ''; page: number; risk: RiskLevel | ''; intent: ChatIntent | '' }, signal?: AbortSignal) =>
+    request<KnowledgeListResponse>(`${KNOWLEDGE_PATH}?${knowledgeQueryString(query)}`, { signal }),
+  detail: (id: number) => request<ChatbotKnowledge>(`${KNOWLEDGE_PATH}/${id}`),
+  create: (data: KnowledgeInput) => request<ChatbotKnowledge>(KNOWLEDGE_PATH, { method: 'POST', body: JSON.stringify(data) }),
+  update: (id: number, data: KnowledgeInput) => request<ChatbotKnowledge>(`${KNOWLEDGE_PATH}/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  approve: (id: number) => request<ChatbotKnowledge>(`${KNOWLEDGE_PATH}/${id}/approve`, { method: 'PATCH' }),
+  reject: (id: number) => request<ChatbotKnowledge>(`${KNOWLEDGE_PATH}/${id}/reject`, { method: 'PATCH' }),
+  remove: (id: number) => request<{ message: string }>(`${KNOWLEDGE_PATH}/${id}`, { method: 'DELETE' }),
+};
+
+function knowledgeQueryString(query: { status: KnowledgeStatus | ''; page: number; risk: RiskLevel | ''; intent: ChatIntent | '' }) {
+  const params = new URLSearchParams({ page: String(query.page), limit: '20' });
+  if (query.status) params.set('status', query.status);
+  if (query.risk) params.set('risk', query.risk);
+  if (query.intent) params.set('intent', query.intent);
+  return params.toString();
+}
 
 export const authApi = {
   login: (usernameOrEmail: string, password: string) => request<AuthResponse>('/auth/login', {

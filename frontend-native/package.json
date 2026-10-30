@@ -44,9 +44,11 @@
     "test:admin-coupons": "node scripts/verify-admin-coupons.mjs",
     "test:admin-promotions": "node scripts/verify-admin-promotions.mjs",
     "test:admin-revenue": "node scripts/verify-admin-revenue.mjs",
+    "test:admin-messages": "node scripts/verify-admin-messages.mjs",
+    "test:admin-knowledge": "node scripts/verify-admin-knowledge.mjs",
     "export": "expo export --platform web",
     "export:web": "expo export --platform web",
-    "check": "npm run test:assets && npm run test:contact && npm run test:favorites && npm run test:password-recovery && npm run test:profile && npm run test:admin && npm run test:admin-products && npm run test:admin-orders && npm run test:admin-users && npm run test:admin-coupons && npm run test:admin-promotions && npm run test:admin-revenue && npm run typecheck"
+    "check": "npm run test:assets && npm run test:contact && npm run test:favorites && npm run test:password-recovery && npm run test:profile && npm run test:admin && npm run test:admin-products && npm run test:admin-orders && npm run test:admin-users && npm run test:admin-coupons && npm run test:admin-promotions && npm run test:admin-revenue && npm run test:admin-messages && npm run test:admin-knowledge && npm run typecheck"
   },
   "private": true
 }
