@@ -32,7 +32,7 @@ const slides = [
 const categories = [
   ['Nồi cơm điện','Cơm ngon mỗi ngày','https://dienmaytienphong.com/wp-content/uploads/2025/06/SR-MVN18LRAX.png'],
   ['Robot hút bụi','Nhà sạch thảnh thơi','https://caothienphat.com/wp-content/uploads/2025/04/Dreame-1-768x768.jpg'],
-  ['Máy xay sinh tố','Tươi ngon tại nhà','https://dienmayquanghanh.com/Upload/avatar/ava-hr2223.jpg'],
+  ['Máy xay sinh tố','Tươi ngon tại nhà','/images/blender-category.svg'],
   ['Đồ dùng nhà bếp','Trọn vẹn bữa cơm nhà','https://images.unsplash.com/photo-1556911220-bff31c812dba?auto=format&fit=crop&w=400&q=75'],
   ['Quạt điện','Mát lành, dễ chịu','https://images.unsplash.com/photo-1565031491910-e57fac031c41?auto=format&fit=crop&w=400&q=75'],
   ['Máy hút bụi','Tiện nghi gia đình','https://images.unsplash.com/photo-1558317374-067fb5f30001?auto=format&fit=crop&w=400&q=75'],
@@ -101,7 +101,7 @@ export function HomePage() {
       <aside className="hero-side reveal-right">
         <MiniCategory name="Nồi cơm điện" image="https://dienmaytienphong.com/wp-content/uploads/2025/06/SR-MVN18LRAX.png" />
         <MiniCategory name="Đồ dùng nhà bếp" image="https://images.unsplash.com/photo-1556911220-bff31c812dba?auto=format&fit=crop&w=600&q=80" />
-        <MiniCategory name="Máy xay sinh tố" image="https://dienmayquanghanh.com/Upload/avatar/ava-hr2223.jpg" />
+        <MiniCategory name="Máy xay sinh tố" image="/images/blender-category.svg" />
         <MiniCategory name="Máy hút bụi" image="https://images.unsplash.com/photo-1558317374-067fb5f30001?auto=format&fit=crop&w=600&q=80" />
       </aside>
     </section>
