@@ -16,11 +16,18 @@ export class PromotionsService {
   }
 
   async active(manager = this.dataSource.manager) {
-    const now = new Date();
+    return this.activeQuery(manager).leftJoinAndSelect('event.items', 'item').leftJoinAndSelect('item.product', 'product').getOne();
+  }
+
+  // Chỉ lấy id sự kiện đang chạy, dùng khi cần ghép giá khuyến mãi vào câu SQL (lọc/sắp xếp theo giá).
+  async activeId(manager = this.dataSource.manager) {
+    return (await this.activeQuery(manager).select('event.id', 'id').getRawOne<{ id: number }>())?.id ?? null;
+  }
+
+  private activeQuery(manager: EntityManager) {
     return manager.getRepository(Promotion).createQueryBuilder('event')
-      .leftJoinAndSelect('event.items', 'item').leftJoinAndSelect('item.product', 'product')
       .where('event.status = :status', { status: 'published' })
-      .andWhere('event.startsAt <= :now AND event.endsAt > :now', { now }).getOne();
+      .andWhere('event.startsAt <= :now AND event.endsAt > :now', { now: new Date() });
   }
 
   async prices(products: Array<Pick<Product, 'id' | 'price'>>, manager = this.dataSource.manager) {

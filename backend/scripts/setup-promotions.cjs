@@ -1,3 +1,4 @@
+const { mysqlSsl } = require('./db-ssl.cjs');
 const { readFileSync } = require('node:fs');
 const { resolve } = require('node:path');
 
@@ -23,7 +24,7 @@ async function setup() {
   process.loadEnvFile(resolve(__dirname, '../.env'));
   const connection = await require('mysql2/promise').createConnection({ host: process.env.DB_HOST, port: Number(process.env.DB_PORT),
     user: process.env.DB_USERNAME, password: process.env.DB_PASSWORD, database: process.env.DB_NAME,
-    ssl: { rejectUnauthorized: false }, connectTimeout: 10000, charset: 'utf8mb4' });
+    ssl: mysqlSsl(), connectTimeout: 10000, charset: 'utf8mb4' });
   try {
     const [[lock]] = await connection.query("SELECT GET_LOCK('giadung_promotions_upgrade', 10) AS acquired");
     if (Number(lock.acquired) !== 1) throw { code: 'MIGRATION_BUSY' };

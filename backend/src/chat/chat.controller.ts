@@ -2,6 +2,7 @@ import { Body, Controller, HttpException, Post, Req, Res, UseGuards } from '@nes
 import { Request, Response } from 'express';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { OptionalJwtAuthGuard } from '../common/guards/optional-jwt-auth.guard';
+import { ChatThrottle } from '../common/throttle';
 import { AuthUser } from '../common/types/auth-user.type';
 import { ChatDto } from './dto/chat.dto';
 import { ChatService } from './chat.service';
@@ -11,6 +12,7 @@ export class ChatController {
   constructor(private readonly chat: ChatService) {}
 
   @Post()
+  @ChatThrottle()
   @UseGuards(OptionalJwtAuthGuard)
   async send(@Body() dto: ChatDto, @Req() request: Request, @Res() response: Response, @CurrentUser() user?: AuthUser) {
     if (!request.accepts('text/event-stream') || !request.headers.accept?.includes('text/event-stream')) {

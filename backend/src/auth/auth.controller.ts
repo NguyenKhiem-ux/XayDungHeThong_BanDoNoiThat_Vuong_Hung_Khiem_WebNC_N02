@@ -1,11 +1,11 @@
 // file khai báo các api endpoint của chức năng auth và nhận request từ frontend.
 import { Body, Controller, Get, Patch, Post, UploadedFile, UseGuards, UseInterceptors, BadRequestException } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname } from 'path';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { LoginThrottle, OtpThrottle, RegisterThrottle } from '../common/throttle';
 import { AuthUser } from '../common/types/auth-user.type';
+import { imageUpload } from '../common/upload';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -16,41 +16,44 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UpdateCardProfileDto } from './dto/update-card-profile.dto';
 
-const avatarStorage = diskStorage({
-  destination: './uploads/avatars',
-  filename: (_req, file, cb) => cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}${extname(file.originalname).toLowerCase()}`),
-});
+const avatarImage = imageUpload('avatars', 5 * 1024 * 1024);
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
   @Post('register')
+  @RegisterThrottle()
   register(@Body() dto: RegisterDto) {
     return this.auth.register(dto);
   }
 
   @Post('login')
+  @LoginThrottle()
   login(@Body() dto: LoginDto) {
     return this.auth.login(dto);
   }
 
   @Post('forgot-password')
+  @OtpThrottle()
   forgotPassword(@Body() dto: ForgotPasswordDto) {
     return this.auth.forgotPassword(dto.email);
   }
 
   @Post('verify-reset-otp')
+  @OtpThrottle()
   verifyResetOtp(@Body() dto: VerifyResetOtpDto) {
     return this.auth.verifyResetOtp(dto.email, dto.otp);
   }
 
   @Post('reset-password')
+  @OtpThrottle()
   resetPassword(@Body() dto: ResetPasswordDto) {
     return this.auth.resetPassword(dto.email, dto.otp, dto.newPassword);
   }
 
   @Post('change-password')
+  @LoginThrottle()
   @UseGuards(JwtAuthGuard)
   changePassword(@CurrentUser() user: AuthUser, @Body() dto: ChangePasswordDto) {
     return this.auth.changePassword(user.id, dto.currentPassword, dto.newPassword, dto.confirmPassword);
@@ -76,11 +79,7 @@ export class AuthController {
 
   @Post('me/avatar')
   @UseGuards(JwtAuthGuard)
-  @UseInterceptors(FileInterceptor('avatar', {
-    storage: avatarStorage,
-    limits: { fileSize: 5 * 1024 * 1024 },
-    fileFilter: (_req, file, cb) => file.mimetype.startsWith('image/') ? cb(null, true) : cb(new BadRequestException('Chỉ chấp nhận tệp hình ảnh'), false),
-  }))
+  @UseInterceptors(FileInterceptor('avatar', avatarImage))
   updateAvatar(@CurrentUser() user: AuthUser, @UploadedFile() file?: Express.Multer.File) {
     if (!file) throw new BadRequestException('Vui lòng chọn ảnh đại diện');
     return this.auth.updateAvatar(user.id, `/uploads/avatars/${file.filename}`);
