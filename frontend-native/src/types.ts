@@ -266,6 +266,13 @@ export interface Coupon {
   updatedAt?: string;
 }
 
+export interface AvailableCoupon {
+  valid: true;
+  coupon: Coupon;
+  discountAmount: number;
+  finalAmount: number;
+}
+
 export type CouponInput = Omit<Coupon, 'id' | 'usedCount' | 'createdAt' | 'updatedAt'>;
 
 export interface Cart {

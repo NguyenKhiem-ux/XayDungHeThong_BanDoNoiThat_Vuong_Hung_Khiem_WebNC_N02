@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
   Param,
   ParseIntPipe,
   Patch,
@@ -16,6 +17,7 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { AuthUser } from '../common/types/auth-user.type';
 import { CouponsService } from './coupons.service';
 import { Coupon } from '../database/entities/coupon.entity';
+import { AvailableCouponsDto } from './available-coupons.dto';
 import { ValidateCouponDto } from './validate-coupon.dto';
 
 @Controller('coupons')
@@ -26,6 +28,16 @@ export class CouponsController {
   @UseGuards(JwtAuthGuard)
   async findAll(@CurrentUser() user: AuthUser) {
     return this.couponsService.findAll(user.id);
+  }
+
+  @Post('available')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard)
+  async available(
+    @Body() body: AvailableCouponsDto,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.couponsService.findAvailable(user.id, body.productId);
   }
 
   @Get('admin/list')

@@ -9,7 +9,7 @@ import { ProductFooter } from '../components/ProductFooter';
 import { checkoutCart, useCheckoutProductId } from '../hooks/useCheckoutProduct';
 import { useStore } from '../store';
 import { withTypography } from '../typography';
-import type { CheckoutQuote, Coupon, PaymentMethod } from '../types';
+import type { AvailableCoupon, CheckoutQuote, Coupon, PaymentMethod } from '../types';
 import { ScrollTopButton, useScrollTop } from '../components/ScrollTopButton';
 import { colors } from '../theme';
 
@@ -37,7 +37,9 @@ export default function CheckoutPaymentPlaceholderScreen() {
   const [pendingOrderId, setPendingOrderId] = useState<number | null>(null);
   const [couponInput, setCouponInput] = useState(checkoutCouponCode);
   const [appliedCouponCode, setAppliedCouponCode] = useState(checkoutCouponCode);
-  const [availableCoupons, setAvailableCoupons] = useState<Coupon[]>([]);
+  const [availableCoupons, setAvailableCoupons] = useState<AvailableCoupon[]>([]);
+  const [availableCouponsLoading, setAvailableCouponsLoading] = useState(false);
+  const [availableCouponsError, setAvailableCouponsError] = useState('');
   const [couponBusy, setCouponBusy] = useState(false);
   const [couponError, setCouponError] = useState('');
 
@@ -50,11 +52,30 @@ export default function CheckoutPaymentPlaceholderScreen() {
   }, [cardAvailable, method]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !cart?.items.length) {
+      setAvailableCoupons([]);
+      return;
+    }
     let active = true;
-    void couponApi.list().then(coupons => { if (active) setAvailableCoupons(coupons); }).catch(() => { if (active) setAvailableCoupons([]); });
+    setAvailableCouponsLoading(true);
+    setAvailableCouponsError('');
+    void couponApi.available(productId).then(coupons => {
+      if (!active) return;
+      setAvailableCoupons(coupons);
+      if (appliedCouponCode && !coupons.some(item => item.coupon.code === appliedCouponCode)) {
+        setCouponInput('');
+        setAppliedCouponCode('');
+        setCheckoutCouponCode('');
+        setQuote(null);
+        setCouponError('Voucher đã chọn không còn phù hợp với giỏ hàng và đã được gỡ.');
+      }
+    }).catch(error => {
+      if (!active) return;
+      setAvailableCoupons([]);
+      setAvailableCouponsError(error instanceof Error ? error.message : 'Không thể tải voucher phù hợp.');
+    }).finally(() => { if (active) setAvailableCouponsLoading(false); });
     return () => { active = false; };
-  }, [user]);
+  }, [cart, productId, setCheckoutCouponCode, user]);
 
   useEffect(() => {
     if (!authReady) return;
@@ -201,7 +222,7 @@ export default function CheckoutPaymentPlaceholderScreen() {
               <PaymentCard method={method} cardAvailable={cardAvailable} pendingOrderId={pendingOrderId} busy={busy || couponBusy} pin={pin} quoteLoading={quoteLoading} quoteError={quoteError} orderError={orderError} onMethodChange={next => { setMethod(next); setQuote(null); }} onPinChange={setPin} />
             </View>
             <View style={[styles.side, compact && styles.sideCompact]}>
-              <CouponCard value={couponInput} availableCoupons={availableCoupons} appliedCode={quote?.couponCode === appliedCouponCode ? appliedCouponCode : ''} discountAmount={quote?.discountAmount ?? 0} total={quote?.total} busy={couponBusy || (quoteLoading && !!appliedCouponCode)} disabled={busy || !!pendingOrderId} error={couponError} onChange={updateCouponInput} onApply={() => void applyCoupon()} onChoose={code => { setCouponInput(code); void applyCoupon(code); }} onRemove={removeCoupon} />
+              <CouponCard value={couponInput} availableCoupons={availableCoupons} availableLoading={availableCouponsLoading} availableError={availableCouponsError} appliedCode={quote?.couponCode === appliedCouponCode ? appliedCouponCode : ''} discountAmount={quote?.discountAmount ?? 0} total={quote?.total} busy={couponBusy || (quoteLoading && !!appliedCouponCode)} disabled={busy || !!pendingOrderId} error={couponError} onChange={updateCouponInput} onApply={() => void applyCoupon()} onChoose={code => { setCouponInput(code); void applyCoupon(code); }} onRemove={removeCoupon} />
               <OrderSummary quote={quote} cart={cart} compact={compact} />
               <View style={styles.sideActions}>
                 <Pressable style={[styles.primaryButton, (busy || couponBusy || quoteLoading || (!quote && !pendingOrderId)) && styles.disabled]} disabled={busy || couponBusy || quoteLoading || (!quote && !pendingOrderId)} onPress={() => void placeOrder()}>
@@ -234,9 +255,15 @@ function ShippingCard({ shipping, email, onEdit }: { shipping: NonNullable<Retur
   return <View style={styles.card}><View style={styles.cardHeading}><View style={styles.headingIcon}><Ionicons name="location-outline" size={19} color={colors.ink} /></View><View style={styles.headingCopy}><Text style={styles.sectionTitle}>Thông tin giao hàng</Text><Text style={styles.sectionHint}>Thông tin đã xác nhận ở bước 1</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Sửa thông tin giao hàng" onPress={onEdit} style={styles.edit}><Ionicons name="create-outline" size={15} color={colors.ink} /><Text style={styles.editText}>Sửa</Text></Pressable></View><View style={styles.shippingGrid}><View style={styles.shippingField}><Text style={styles.fieldLabel}>Người nhận</Text><Text style={styles.recipientName}>{shipping.fullName}</Text></View><View style={styles.shippingField}><Text style={styles.fieldLabel}>Điện thoại</Text><Text style={styles.recipientText}>{shipping.phone}</Text></View><View style={styles.shippingField}><Text style={styles.fieldLabel}>Email</Text><Text style={styles.recipientText}>{email}</Text></View><View style={styles.shippingField}><Text style={styles.fieldLabel}>Địa chỉ giao hàng</Text><Text style={styles.recipientText}>{[shipping.address, shipping.district, shipping.province].filter(Boolean).join(', ')}</Text></View></View>{shipping.note ? <View style={styles.noteBox}><Ionicons name="chatbubble-ellipses-outline" size={15} color={colors.ink} /><Text style={styles.note}>Ghi chú: {shipping.note}</Text></View> : null}</View>;
 }
 
-function CouponCard({ value, availableCoupons, appliedCode, discountAmount, total, busy, disabled, error, onChange, onApply, onChoose, onRemove }: { value: string; availableCoupons: Coupon[]; appliedCode: string; discountAmount: number; total?: number; busy: boolean; disabled: boolean; error: string; onChange: (value: string) => void; onApply: () => void; onChoose: (code: string) => void; onRemove: () => void }) {
-  const choices = availableCoupons.filter(coupon => coupon.isActive).slice(0, 4);
-  return <View style={styles.card}><View style={styles.cardHeading}><View style={styles.headingIcon}><Ionicons name="ticket-outline" size={19} color={colors.ink} /></View><View style={styles.headingCopy}><Text style={styles.sectionTitle}>Mã giảm giá</Text><Text style={styles.sectionHint}>Giảm giá và tổng tiền được xác nhận trực tiếp từ Backend</Text></View></View><View style={styles.couponRow}><TextInput accessibilityLabel="Mã giảm giá" value={value} editable={!disabled && !busy} autoCapitalize="characters" autoCorrect={false} maxLength={80} returnKeyType="done" onSubmitEditing={onApply} onChangeText={onChange} placeholder="Nhập mã giảm giá" placeholderTextColor={colors.muted} style={styles.couponInput} /><Pressable accessibilityRole="button" disabled={disabled || busy || !value.trim()} onPress={onApply} style={[styles.couponApply, (disabled || busy || !value.trim()) && styles.disabled]}>{busy ? <ActivityIndicator size="small" color={colors.white} /> : <Text style={styles.couponApplyText}>Áp dụng</Text>}</Pressable></View>{choices.length ? <View style={styles.couponChoices}><Text style={styles.couponChoiceLabel}>Mã có thể chọn</Text><View style={styles.couponChoiceRow}>{choices.map(coupon => <Pressable key={coupon.id} disabled={disabled || busy} onPress={() => onChoose(coupon.code)} style={styles.couponChoice}><Text style={styles.couponChoiceCode}>{coupon.code}</Text><Text numberOfLines={1} style={styles.couponChoiceDescription}>{coupon.description || 'Kiểm tra điều kiện áp dụng'}</Text></Pressable>)}</View></View> : null}{error ? <View style={styles.alert}><Ionicons name="alert-circle-outline" size={17} color={colors.danger} /><Text accessibilityRole="alert" style={styles.error}>{error}</Text></View> : null}{appliedCode ? <View style={styles.couponSuccess}><Ionicons name="checkmark-circle" size={19} color={colors.success} /><View style={styles.flex}><Text style={styles.couponSuccessTitle}>Đã áp dụng {appliedCode}</Text><Text style={styles.couponSuccessText}>Giảm {formatVnd(discountAmount)}{total === undefined ? '' : ` · Tổng còn ${formatVnd(total)}`}</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Gỡ mã giảm giá" disabled={disabled || busy} onPress={onRemove} style={styles.couponRemove}><Text style={styles.couponRemoveText}>Gỡ</Text></Pressable></View> : null}</View>;
+function CouponCard({ value, availableCoupons, availableLoading, availableError, appliedCode, discountAmount, total, busy, disabled, error, onChange, onApply, onChoose, onRemove }: { value: string; availableCoupons: AvailableCoupon[]; availableLoading: boolean; availableError: string; appliedCode: string; discountAmount: number; total?: number; busy: boolean; disabled: boolean; error: string; onChange: (value: string) => void; onApply: () => void; onChoose: (code: string) => void; onRemove: () => void }) {
+  const [open, setOpen] = useState(false);
+  return <View style={styles.card}><View style={styles.cardHeading}><View style={styles.headingIcon}><Ionicons name="ticket-outline" size={19} color={colors.ink} /></View><View style={styles.headingCopy}><Text style={styles.sectionTitle}>Mã giảm giá</Text><Text style={styles.sectionHint}>Giảm giá và tổng tiền được xác nhận trực tiếp từ Backend</Text></View></View><View style={styles.couponRow}><TextInput accessibilityLabel="Mã giảm giá" value={value} editable={!disabled && !busy} autoCapitalize="characters" autoCorrect={false} maxLength={80} returnKeyType="done" onSubmitEditing={onApply} onChangeText={onChange} placeholder="Nhập mã giảm giá" placeholderTextColor={colors.muted} style={styles.couponInput} /><Pressable accessibilityRole="button" disabled={disabled || busy || !value.trim()} onPress={onApply} style={[styles.couponApply, (disabled || busy || !value.trim()) && styles.disabled]}>{busy ? <ActivityIndicator size="small" color={colors.white} /> : <Text style={styles.couponApplyText}>Áp dụng</Text>}</Pressable></View><Pressable accessibilityRole="button" accessibilityState={{ expanded: open }} disabled={disabled} onPress={() => setOpen(current => !current)} style={styles.couponPickerToggle}><Ionicons name="ticket-outline" size={17} color={colors.ink} /><Text style={styles.couponPickerToggleText}>{open ? 'Đóng danh sách voucher' : 'Chọn voucher phù hợp'}</Text><Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color={colors.muted} /></Pressable>{open ? <View style={styles.couponChoices}>{availableLoading ? <View style={styles.couponLoading}><ActivityIndicator size="small" color={colors.ink} /><Text style={styles.couponChoiceDescription}>Đang kiểm tra voucher phù hợp...</Text></View> : availableError ? <Text accessibilityRole="alert" style={styles.couponListError}>{availableError}</Text> : availableCoupons.length === 0 ? <Text style={styles.couponEmpty}>Hiện không có voucher phù hợp với đơn hàng của bạn.</Text> : availableCoupons.map(item => { const coupon = item.coupon; const selected = coupon.code === appliedCode; return <Pressable key={coupon.id} accessibilityRole="button" accessibilityState={{ selected }} disabled={disabled || busy} onPress={() => { setOpen(false); onChoose(coupon.code); }} style={[styles.couponChoice, selected && styles.couponChoiceSelected]}><View style={styles.couponChoiceTop}><Text style={styles.couponChoiceCode}>{coupon.code}</Text>{selected ? <Text style={styles.couponSelectedBadge}>Đang dùng</Text> : null}</View><Text style={styles.couponChoiceValue}>{couponOffer(coupon)} · Giảm thực tế {formatVnd(item.discountAmount)}</Text><Text style={styles.couponChoiceDescription}>{coupon.description || 'Áp dụng cho đơn hàng đủ điều kiện.'}</Text><Text style={styles.couponChoiceExpiry}>Hạn dùng: {new Date(coupon.endDate).toLocaleDateString('vi-VN')}</Text></Pressable>; })}</View> : null}{error ? <View style={styles.alert}><Ionicons name="alert-circle-outline" size={17} color={colors.danger} /><Text accessibilityRole="alert" style={styles.error}>{error}</Text></View> : null}{appliedCode ? <View style={styles.couponSuccess}><Ionicons name="checkmark-circle" size={19} color={colors.success} /><View style={styles.flex}><Text style={styles.couponSuccessTitle}>Đã áp dụng {appliedCode}</Text><Text style={styles.couponSuccessText}>Giảm {formatVnd(discountAmount)}{total === undefined ? '' : ` · Tổng còn ${formatVnd(total)}`}</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Gỡ mã giảm giá" disabled={disabled || busy} onPress={onRemove} style={styles.couponRemove}><Text style={styles.couponRemoveText}>Gỡ</Text></Pressable></View> : null}</View>;
+}
+
+function couponOffer(coupon: Coupon) {
+  if (coupon.discountType === 'fixed') return `Giảm ${formatVnd(Number(coupon.discountValue))}`;
+  const cap = coupon.maxDiscountAmount === null ? '' : `, tối đa ${formatVnd(Number(coupon.maxDiscountAmount))}`;
+  return `Giảm ${Number(coupon.discountValue)}%${cap}`;
 }
 
 type CheckoutItem = CheckoutQuote['items'][number];
@@ -318,12 +345,20 @@ const styles = {
     couponInput: { flex: 1, minHeight: 44, paddingHorizontal: 12, borderRadius: 9, borderWidth: 1, borderColor: colors.subtle, backgroundColor: colors.white, color: colors.ink, fontSize: 13, fontWeight: '800' },
     couponApply: { minWidth: 92, minHeight: 44, paddingHorizontal: 14, borderRadius: 9, backgroundColor: colors.brand, alignItems: 'center', justifyContent: 'center' },
     couponApplyText: { color: colors.white, fontSize: 11, fontWeight: '900' },
-    couponChoices: { marginTop: 13, gap: 7 },
-    couponChoiceLabel: { color: colors.muted, fontSize: 12, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.4 },
-    couponChoiceRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    couponChoice: { minWidth: 130, flexGrow: 1, padding: 9, borderRadius: 9, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.bg },
-    couponChoiceCode: { color: colors.ink, fontSize: 11, fontWeight: '900' },
-    couponChoiceDescription: { color: colors.muted, fontSize: 12, marginTop: 2 },
+    couponPickerToggle: { minHeight: 42, marginTop: 10, paddingHorizontal: 11, borderRadius: 9, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.bg, flexDirection: 'row', alignItems: 'center', gap: 7 },
+    couponPickerToggleText: { flex: 1, color: colors.ink, fontSize: 12, fontWeight: '800' },
+    couponChoices: { marginTop: 10, gap: 8 },
+    couponLoading: { minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+    couponChoice: { width: '100%', padding: 11, borderRadius: 10, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.bg },
+    couponChoiceSelected: { borderColor: colors.success, backgroundColor: '#F1F7EF' },
+    couponChoiceTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+    couponChoiceCode: { color: colors.ink, fontSize: 12, fontWeight: '900' },
+    couponSelectedBadge: { color: colors.success, fontSize: 11, fontWeight: '900' },
+    couponChoiceValue: { color: colors.ink, fontSize: 11, fontWeight: '800', marginTop: 4 },
+    couponChoiceDescription: { color: colors.muted, fontSize: 11, lineHeight: 17, marginTop: 3 },
+    couponChoiceExpiry: { color: colors.muted, fontSize: 11, marginTop: 4 },
+    couponEmpty: { color: colors.muted, fontSize: 12, lineHeight: 18, textAlign: 'center', paddingVertical: 12 },
+    couponListError: { color: colors.danger, fontSize: 12, lineHeight: 18, paddingVertical: 8 },
     couponSuccess: { marginTop: 13, padding: 11, borderRadius: 10, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#EAF3E8', borderWidth: 1, borderColor: '#C6DCC2' },
     couponSuccessTitle: { color: colors.success, fontSize: 12, fontWeight: '900' },
     couponSuccessText: { color: colors.muted, fontSize: 12, marginTop: 2 },

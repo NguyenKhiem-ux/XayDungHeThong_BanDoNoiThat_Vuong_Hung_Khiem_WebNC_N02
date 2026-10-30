@@ -1,6 +1,6 @@
 import * as SecureStore from 'expo-secure-store';
 import { Alert, Linking, Platform } from 'react-native';
-import type { AdminUser, Cart, ChatAction, ChatResponse, ChatbotKnowledge, ChatIntent, CheckoutQuote, ContactMessage, Coupon, CouponInput, DashboardData, Favorite, KnowledgeInput, KnowledgeListResponse, KnowledgeStatus, OwnReview, Order, PaymentMethod, Product, ProductPage, ProductSort, PromotionAdminResponse, PromotionEvent, PromotionInput, PromotionResponse, RevenueRow, ReviewPage, ReviewSummary, RiskLevel, User, UserAddress } from './types';
+import type { AdminUser, AvailableCoupon, Cart, ChatAction, ChatResponse, ChatbotKnowledge, ChatIntent, CheckoutQuote, ContactMessage, Coupon, CouponInput, DashboardData, Favorite, KnowledgeInput, KnowledgeListResponse, KnowledgeStatus, OwnReview, Order, PaymentMethod, Product, ProductPage, ProductSort, PromotionAdminResponse, PromotionEvent, PromotionInput, PromotionResponse, RevenueRow, ReviewPage, ReviewSummary, RiskLevel, User, UserAddress } from './types';
 
 const WEB_DEV_BACKEND_ORIGIN = 'http://localhost:3000';
 const LOOPBACK_URL = /^https?:\/\/(?:localhost|127\.0\.0\.1|\[::1\])(?=[:/]|$)/i;
@@ -234,6 +234,10 @@ export const orderApi = {
 
 export const couponApi = {
   list: () => request<Coupon[]>('/coupons'),
+  available: (productId?: number) => request<AvailableCoupon[]>('/coupons/available', {
+    method: 'POST',
+    body: JSON.stringify({ productId }),
+  }),
   adminList: (signal?: AbortSignal) => request<Coupon[]>('/coupons/admin/list', { signal }),
   create: (data: CouponInput) => request<Coupon>('/coupons', { method: 'POST', body: JSON.stringify(data) }),
   update: (id: number, data: CouponInput) => request<Coupon>(`/coupons/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
