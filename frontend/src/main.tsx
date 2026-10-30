@@ -5,6 +5,7 @@ import { App } from './App';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { ThemeProvider } from './context/ThemeContext';
+import 'bootstrap/dist/css/bootstrap.min.css';
 import './styles/user.css';
 import './styles/legacy-pages.css';
 import './styles/animations.css';
