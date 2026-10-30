@@ -37,6 +37,7 @@
     "test:favorites": "node scripts/verify-favorites.mjs",
     "test:password-recovery": "node scripts/verify-password-recovery.mjs",
     "test:profile": "node scripts/verify-profile.mjs",
+    "test:product-pagination": "node scripts/verify-product-pagination.mjs",
     "test:admin": "node scripts/verify-admin-dashboard.mjs",
     "test:admin-products": "node scripts/verify-admin-products.mjs",
     "test:admin-orders": "node scripts/verify-admin-orders.mjs",
@@ -48,7 +49,7 @@
     "test:admin-knowledge": "node scripts/verify-admin-knowledge.mjs",
     "export": "expo export --platform web",
     "export:web": "expo export --platform web",
-    "check": "npm run test:assets && npm run test:contact && npm run test:favorites && npm run test:password-recovery && npm run test:profile && npm run test:admin && npm run test:admin-products && npm run test:admin-orders && npm run test:admin-users && npm run test:admin-coupons && npm run test:admin-promotions && npm run test:admin-revenue && npm run test:admin-messages && npm run test:admin-knowledge && npm run typecheck"
+    "check": "npm run test:assets && npm run test:contact && npm run test:favorites && npm run test:password-recovery && npm run test:profile && npm run test:product-pagination && npm run test:admin && npm run test:admin-products && npm run test:admin-orders && npm run test:admin-users && npm run test:admin-coupons && npm run test:admin-promotions && npm run test:admin-revenue && npm run test:admin-messages && npm run test:admin-knowledge && npm run typecheck"
   },
   "private": true
 }

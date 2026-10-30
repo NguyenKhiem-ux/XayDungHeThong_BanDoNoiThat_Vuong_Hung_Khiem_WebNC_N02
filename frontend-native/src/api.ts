@@ -160,11 +160,13 @@ export const productApi = {
   },
   categories: (signal?: AbortSignal) => request<string[]>('/products/categories/list', { signal }),
   detail: (id: number) => request<Product>(`/products/${id}`),
-  page: (query: { page: number; limit: number; keyword?: string; category?: string; sort?: ProductSort }, signal?: AbortSignal) => {
+  page: (query: { page: number; limit: number; keyword?: string; category?: string; sort?: ProductSort; minPrice?: number; maxPrice?: number }, signal?: AbortSignal) => {
     const params = new URLSearchParams({ page: String(query.page), limit: String(query.limit) });
     if (query.keyword) params.set('keyword', query.keyword);
     if (query.category) params.set('category', query.category);
     if (query.sort) params.set('sort', query.sort);
+    if (query.minPrice !== undefined) params.set('minPrice', String(query.minPrice));
+    if (query.maxPrice !== undefined) params.set('maxPrice', String(query.maxPrice));
     return request<ProductPage>(`/products?${params.toString()}`, { signal });
   },
   create: (data: FormData) => request<Product>('/products', { method: 'POST', body: data }),
