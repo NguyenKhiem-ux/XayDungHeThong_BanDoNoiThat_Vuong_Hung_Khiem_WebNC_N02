@@ -95,7 +95,7 @@ export function ForgotPasswordScreen() {
 
   return <PasswordPage icon="mail-outline" title="Quên mật khẩu" subtitle="Nhập email đã đăng ký để nhận mã OTP.">
     <Feedback error={error} />
-    <View style={styles.field}><Text style={styles.label}>Email</Text><TextInput accessibilityLabel="Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoComplete="email" onSubmitEditing={() => void submit()} returnKeyType="send" placeholder="your@email.com" placeholderTextColor="#9B8A7C" style={styles.input} /></View>
+    <View style={styles.field}><Text style={styles.label}>Email</Text><TextInput accessibilityLabel="Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoComplete="email" onSubmitEditing={() => void submit()} returnKeyType="send" placeholder="your@email.com" placeholderTextColor="#6E6E73" style={styles.input} /></View>
     <SubmitButton label="Gửi mã OTP" busy={busy} onPress={submit} />
     <TextLink label="Quay lại đăng nhập" onPress={() => router.replace('/login')} />
   </PasswordPage>;
@@ -146,9 +146,9 @@ export function VerifyOtpScreen() {
   };
 
   return <PasswordPage icon="shield-checkmark-outline" title="Xác thực OTP" subtitle={`Mã xác thực đã được gửi tới ${passwordReset.email}.`}>
-    <View accessibilityLiveRegion="polite" style={[styles.timer, expired && styles.timerExpired]}><Ionicons name="time-outline" size={18} color={expired ? '#9B382F' : '#755036'} /><Text style={[styles.timerText, expired && styles.timerExpiredText]}>{expired ? 'Mã OTP đã hết hạn' : `Mã hết hạn sau ${timerText}`}</Text></View>
+    <View accessibilityLiveRegion="polite" style={[styles.timer, expired && styles.timerExpired]}><Ionicons name="time-outline" size={18} color={expired ? '#9B382F' : '#1D1D1F'} /><Text style={[styles.timerText, expired && styles.timerExpiredText]}>{expired ? 'Mã OTP đã hết hạn' : `Mã hết hạn sau ${timerText}`}</Text></View>
     <Feedback error={error} />
-    <View style={styles.field}><Text style={styles.label}>Mã OTP</Text><TextInput accessibilityLabel="Mã OTP" value={otp} onChangeText={value => setOtp(normalizeOtp(value))} keyboardType="number-pad" inputMode="numeric" autoComplete="one-time-code" textContentType="oneTimeCode" maxLength={6} onSubmitEditing={() => void submit()} returnKeyType="done" placeholder="000000" placeholderTextColor="#9B8A7C" style={[styles.input, styles.otpInput]} /></View>
+    <View style={styles.field}><Text style={styles.label}>Mã OTP</Text><TextInput accessibilityLabel="Mã OTP" value={otp} onChangeText={value => setOtp(normalizeOtp(value))} keyboardType="number-pad" inputMode="numeric" autoComplete="one-time-code" textContentType="oneTimeCode" maxLength={6} onSubmitEditing={() => void submit()} returnKeyType="done" placeholder="000000" placeholderTextColor="#6E6E73" style={[styles.input, styles.otpInput]} /></View>
     <SubmitButton label="Xác nhận OTP" busy={busy} disabled={expired || otp.length !== 6} onPress={submit} />
     <TextLink label="Yêu cầu mã OTP mới" onPress={() => router.replace('/forgot-password')} />
   </PasswordPage>;
@@ -202,12 +202,12 @@ export function ResetPasswordScreen() {
 function PasswordPage({ icon, title, subtitle, children }: { icon: keyof typeof Ionicons.glyphMap; title: string; subtitle: string; children: ReactNode }) {
   const { width } = useWindowDimensions();
   const compact = width < 760;
-  return <View style={styles.page}><PageHeader back /><KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}><ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.scroll, compact && styles.scrollCompact]}><View style={[styles.shell, compact && styles.shellCompact]}><View style={[styles.story, compact && styles.storyCompact]}><View style={styles.storyIcon}><Ionicons name={icon} size={30} color="#FFFCF7" /></View><Text style={styles.eyebrow}>BẢO MẬT TÀI KHOẢN</Text><Text style={[styles.storyTitle, compact && styles.storyTitleCompact]}>An tâm mua sắm cùng Gia dụng Việt.</Text><Text style={styles.storyText}>Thông tin xác thực chỉ được dùng trong phiên thao tác hiện tại và gửi trực tiếp đến hệ thống bảo mật.</Text></View><View style={[styles.card, compact && styles.cardCompact]}><Text style={styles.title}>{title}</Text><Text style={styles.subtitle}>{subtitle}</Text>{children}</View></View></ScrollView></KeyboardAvoidingView></View>;
+  return <View style={styles.page}><PageHeader back /><KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}><ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.scroll, compact && styles.scrollCompact]}><View style={[styles.shell, compact && styles.shellCompact]}><View style={[styles.story, compact && styles.storyCompact]}><View style={styles.storyIcon}><Ionicons name={icon} size={30} color="#FFFFFF" /></View><Text style={styles.eyebrow}>BẢO MẬT TÀI KHOẢN</Text><Text style={[styles.storyTitle, compact && styles.storyTitleCompact]}>An tâm mua sắm cùng Gia dụng Việt.</Text><Text style={styles.storyText}>Thông tin xác thực chỉ được dùng trong phiên thao tác hiện tại và gửi trực tiếp đến hệ thống bảo mật.</Text></View><View style={[styles.card, compact && styles.cardCompact]}><Text style={styles.title}>{title}</Text><Text style={styles.subtitle}>{subtitle}</Text>{children}</View></View></ScrollView></KeyboardAvoidingView></View>;
 }
 
 function PasswordInput({ label, value, onChangeText, autoComplete, onSubmit }: { label: string; value: string; onChangeText: (value: string) => void; autoComplete: 'current-password' | 'new-password'; onSubmit?: () => void }) {
   const [show, setShow] = useState(false);
-  return <View style={styles.field}><Text style={styles.label}>{label}</Text><View style={styles.passwordWrap}><TextInput accessibilityLabel={label} value={value} onChangeText={onChangeText} secureTextEntry={!show} autoCapitalize="none" autoComplete={autoComplete} onSubmitEditing={onSubmit ? () => void onSubmit() : undefined} returnKeyType={onSubmit ? 'done' : 'next'} placeholder="••••••" placeholderTextColor="#9B8A7C" style={[styles.input, styles.passwordInput]} /><Pressable accessibilityRole="button" accessibilityLabel={show ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'} onPress={() => setShow(current => !current)} style={styles.eye}><Ionicons name={show ? 'eye-off-outline' : 'eye-outline'} size={20} color="#755036" /></Pressable></View></View>;
+  return <View style={styles.field}><Text style={styles.label}>{label}</Text><View style={styles.passwordWrap}><TextInput accessibilityLabel={label} value={value} onChangeText={onChangeText} secureTextEntry={!show} autoCapitalize="none" autoComplete={autoComplete} onSubmitEditing={onSubmit ? () => void onSubmit() : undefined} returnKeyType={onSubmit ? 'done' : 'next'} placeholder="••••••" placeholderTextColor="#6E6E73" style={[styles.input, styles.passwordInput]} /><Pressable accessibilityRole="button" accessibilityLabel={show ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'} onPress={() => setShow(current => !current)} style={styles.eye}><Ionicons name={show ? 'eye-off-outline' : 'eye-outline'} size={20} color="#1D1D1F" /></Pressable></View></View>;
 }
 
 function Feedback({ error }: { error: string }) {
@@ -220,50 +220,50 @@ function SubmitButton({ label, busy, disabled = false, onPress }: { label: strin
 }
 
 function TextLink({ label, onPress }: { label: string; onPress: () => void }) {
-  return <Pressable accessibilityRole="link" onPress={onPress} style={styles.link}><Ionicons name="arrow-back" size={15} color="#755036" /><Text style={styles.linkText}>{label}</Text></Pressable>;
+  return <Pressable accessibilityRole="link" onPress={onPress} style={styles.link}><Ionicons name="arrow-back" size={15} color="#1D1D1F" /><Text style={styles.linkText}>{label}</Text></Pressable>;
 }
 
 function Loading() {
-  return <View style={styles.loading}><ActivityIndicator color="#755036" /><Text style={styles.loadingText}>Vui lòng chờ...</Text></View>;
+  return <View style={styles.loading}><ActivityIndicator color="#1D1D1F" /><Text style={styles.loadingText}>Vui lòng chờ...</Text></View>;
 }
 
 const styles = StyleSheet.create(withTypography({
-  page: { flex: 1, backgroundColor: '#F6EFE6' },
+  page: { flex: 1, backgroundColor: '#F5F5F7' },
   flex: { flex: 1 },
   scroll: { flexGrow: 1, padding: 24, justifyContent: 'center' },
   scrollCompact: { paddingHorizontal: 14, paddingVertical: 18 },
-  shell: { width: '100%', maxWidth: 980, minHeight: 560, alignSelf: 'center', flexDirection: 'row', overflow: 'hidden', borderRadius: 24, borderWidth: 1, borderColor: '#E6D8C7', backgroundColor: '#FFFCF7', boxShadow: '0 24px 70px rgba(72, 45, 28, .15)' },
+  shell: { width: '100%', maxWidth: 980, minHeight: 560, alignSelf: 'center', flexDirection: 'row', overflow: 'hidden', borderRadius: 24, borderWidth: 1, borderColor: '#D2D2D7', backgroundColor: '#FFFFFF' },
   shellCompact: { minHeight: 0, flexDirection: 'column' },
-  story: { width: '42%', padding: 44, justifyContent: 'center', backgroundColor: '#755036' },
+  story: { width: '42%', padding: 44, justifyContent: 'center', backgroundColor: '#1D1D1F' },
   storyCompact: { width: '100%', padding: 27 },
-  storyIcon: { width: 58, height: 58, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginBottom: 24, backgroundColor: '#A56E2D' },
-  eyebrow: { color: '#E8D5BA', fontSize: 11, fontWeight: '900', letterSpacing: 1.3 },
-  storyTitle: { color: '#FFFCF7', fontSize: 31, lineHeight: 39, fontWeight: '900', marginTop: 12 },
+  storyIcon: { width: 58, height: 58, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginBottom: 24, backgroundColor: '#1D1D1F' },
+  eyebrow: { color: '#6E6E73', fontSize: 11, fontWeight: '900', letterSpacing: 1.3 },
+  storyTitle: { color: '#FFFFFF', fontSize: 31, lineHeight: 39, fontWeight: '900', marginTop: 12 },
   storyTitleCompact: { fontSize: 25, lineHeight: 32 },
-  storyText: { color: '#F0E4D7', fontSize: 13, lineHeight: 21, marginTop: 16 },
+  storyText: { color: '#E8E8ED', fontSize: 13, lineHeight: 21, marginTop: 16 },
   card: { flex: 1, padding: 46, justifyContent: 'center' },
   cardCompact: { padding: 25 },
-  title: { color: '#30251D', fontSize: 29, fontWeight: '900' },
-  subtitle: { color: '#77685D', fontSize: 13, lineHeight: 20, marginTop: 7, marginBottom: 24 },
+  title: { color: '#1D1D1F', fontSize: 29, fontWeight: '900' },
+  subtitle: { color: '#6E6E73', fontSize: 13, lineHeight: 20, marginTop: 7, marginBottom: 24 },
   field: { gap: 7, marginBottom: 15 },
-  label: { color: '#493629', fontSize: 12, fontWeight: '800' },
-  input: { width: '100%', minHeight: 48, borderRadius: 12, borderWidth: 1, borderColor: '#DCC9B4', backgroundColor: '#fff', color: '#30251D', fontSize: 14, paddingHorizontal: 14 },
+  label: { color: '#1D1D1F', fontSize: 12, fontWeight: '800' },
+  input: { width: '100%', minHeight: 48, borderRadius: 12, borderWidth: 1, borderColor: '#D2D2D7', backgroundColor: '#fff', color: '#1D1D1F', fontSize: 14, paddingHorizontal: 14 },
   passwordWrap: { position: 'relative', justifyContent: 'center' },
   passwordInput: { paddingRight: 48 },
   eye: { position: 'absolute', right: 5, width: 42, height: 42, alignItems: 'center', justifyContent: 'center' },
   otpInput: { textAlign: 'center', fontSize: 24, letterSpacing: 8, fontWeight: '800' },
-  timer: { marginBottom: 17, padding: 12, borderRadius: 11, borderWidth: 1, borderColor: '#E8D5BA', backgroundColor: '#F8EEDF', flexDirection: 'row', alignItems: 'center', gap: 8 },
+  timer: { marginBottom: 17, padding: 12, borderRadius: 11, borderWidth: 1, borderColor: '#D2D2D7', backgroundColor: '#E8E8ED', flexDirection: 'row', alignItems: 'center', gap: 8 },
   timerExpired: { borderColor: '#E8B9B4', backgroundColor: '#FBE8E5' },
-  timerText: { color: '#755036', fontSize: 12, fontWeight: '700' },
+  timerText: { color: '#1D1D1F', fontSize: 12, fontWeight: '700' },
   timerExpiredText: { color: '#9B382F' },
   error: { marginBottom: 17, padding: 12, borderRadius: 11, borderWidth: 1, borderColor: '#E8B9B4', backgroundColor: '#FBE8E5', flexDirection: 'row', alignItems: 'center', gap: 8 },
   errorText: { flex: 1, color: '#8C3028', fontSize: 12, lineHeight: 18, fontWeight: '600' },
-  submit: { minHeight: 50, borderRadius: 12, backgroundColor: '#755036', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9, marginTop: 4 },
+  submit: { minHeight: 50, borderRadius: 999, backgroundColor: '#1D1D1F', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9, marginTop: 4 },
   submitText: { color: '#fff', fontSize: 14, fontWeight: '900' },
   link: { alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 5, padding: 8, marginTop: 15 },
-  linkText: { color: '#755036', fontSize: 12, fontWeight: '900' },
+  linkText: { color: '#1D1D1F', fontSize: 12, fontWeight: '900' },
   loading: { minHeight: 170, alignItems: 'center', justifyContent: 'center', gap: 11 },
-  loadingText: { color: '#77685D', fontSize: 12 },
+  loadingText: { color: '#6E6E73', fontSize: 12 },
   disabled: { opacity: .55 },
   pressed: { opacity: .76 },
 }));

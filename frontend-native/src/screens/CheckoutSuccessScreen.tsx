@@ -115,13 +115,13 @@ export default function CheckoutSuccessScreen() {
     title = 'Chờ xác minh thanh toán';
     accentText = 'Thanh toán thẻ mô phỏng chưa được xác nhận.';
     detailText = 'Vui lòng kiểm tra lại trạng thái và PIN hoặc xem đơn hàng để thực hiện tiếp.';
-    stateColor = '#A56E2D';
+    stateColor = '#1D1D1F';
     stateIcon = 'time-outline';
   } else if (order && isPayOS && !isPaid) {
     title = 'Chờ xác nhận thanh toán';
     accentText = 'Đơn hàng đã được tạo, nhưng thanh toán chưa được xác minh từ cổng thanh toán.';
     detailText = 'Bạn có thể kiểm tra lại đơn hàng hoặc tiếp tục thanh toán nếu cần.';
-    stateColor = '#A56E2D';
+    stateColor = '#1D1D1F';
     stateIcon = 'time-outline';
   } else if (order && isPaid) {
     title = 'Thanh toán thành công';
@@ -154,7 +154,7 @@ export default function CheckoutSuccessScreen() {
 
             {loading && (
               <View style={styles.loadingRow}>
-                <ActivityIndicator color="#755036" />
+                <ActivityIndicator color="#1D1D1F" />
                 <Text style={styles.loadingText}>Đang tải trạng thái đơn hàng...</Text>
               </View>
             )}
@@ -194,26 +194,26 @@ export default function CheckoutSuccessScreen() {
 }
 
 const styles = StyleSheet.create(withTypography({
-  page: { flex: 1, backgroundColor: '#F6EFE6' },
+  page: { flex: 1, backgroundColor: '#F5F5F7' },
   scroll: { flexGrow: 1, paddingHorizontal: 20, paddingTop: 28 },
   scrollCompact: { paddingHorizontal: 12, paddingTop: 16 },
   content: { width: '100%', maxWidth: 850, alignSelf: 'center' },
-  card: { padding: 38, borderRadius: 20, alignItems: 'center', backgroundColor: '#FFFCF7', borderWidth: 1, borderColor: '#E1CFBA' },
+  card: { padding: 38, borderRadius: 20, alignItems: 'center', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D2D2D7' },
   icon: { width: 76, height: 76, borderRadius: 38, alignItems: 'center', justifyContent: 'center' },
-  title: { marginTop: 18, color: '#30251D', fontSize: 28, lineHeight: 35, fontWeight: '900', textAlign: 'center' },
-  order: { marginTop: 8, color: '#755036', fontSize: 16, fontWeight: '900' },
-  description: { maxWidth: 560, marginTop: 9, color: '#756456', fontSize: 13, lineHeight: 20, textAlign: 'center' },
-  orderMeta: { width: '100%', marginTop: 18, padding: 14, borderRadius: 12, backgroundColor: '#F8F2EA', borderWidth: 1, borderColor: '#E6D8C7' },
-  metaRow: { color: '#493629', fontSize: 12, lineHeight: 22 },
+  title: { marginTop: 18, color: '#1D1D1F', fontSize: 28, lineHeight: 35, fontWeight: '900', textAlign: 'center' },
+  order: { marginTop: 8, color: '#1D1D1F', fontSize: 16, fontWeight: '900' },
+  description: { maxWidth: 560, marginTop: 9, color: '#6E6E73', fontSize: 13, lineHeight: 20, textAlign: 'center' },
+  orderMeta: { width: '100%', marginTop: 18, padding: 14, borderRadius: 12, backgroundColor: '#F5F5F7', borderWidth: 1, borderColor: '#D2D2D7' },
+  metaRow: { color: '#1D1D1F', fontSize: 12, lineHeight: 22 },
   metaLabel: { fontWeight: '800' },
   loadingRow: { marginTop: 18, flexDirection: 'row', alignItems: 'center', gap: 8 },
-  loadingText: { color: '#756456', fontSize: 12 },
+  loadingText: { color: '#6E6E73', fontSize: 12 },
   actions: { marginTop: 24, flexDirection: 'row', justifyContent: 'center', flexWrap: 'wrap', gap: 10 },
   actionsCompact: { flexDirection: 'column' },
-  primaryButton: { minHeight: 45, paddingHorizontal: 20, borderRadius: 9, backgroundColor: '#755036', alignItems: 'center', justifyContent: 'center' },
+  primaryButton: { minHeight: 45, paddingHorizontal: 20, borderRadius: 999, backgroundColor: '#1D1D1F', alignItems: 'center', justifyContent: 'center' },
   primaryText: { color: '#fff', fontSize: 12, fontWeight: '800' },
-  secondaryButton: { minHeight: 45, paddingHorizontal: 20, borderRadius: 9, borderWidth: 1, borderColor: '#D6BFA5', alignItems: 'center', justifyContent: 'center' },
-  secondaryText: { color: '#755036', fontSize: 12, fontWeight: '800' },
-  ghostButton: { minHeight: 45, paddingHorizontal: 20, borderRadius: 9, borderWidth: 1, borderColor: '#D6BFA5', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
-  ghostText: { color: '#755036', fontSize: 12, fontWeight: '800' },
+  secondaryButton: { minHeight: 45, paddingHorizontal: 20, borderRadius: 999, borderWidth: 1, borderColor: '#A1A1A6', alignItems: 'center', justifyContent: 'center' },
+  secondaryText: { color: '#1D1D1F', fontSize: 12, fontWeight: '800' },
+  ghostButton: { minHeight: 45, paddingHorizontal: 20, borderRadius: 9, borderWidth: 1, borderColor: '#A1A1A6', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
+  ghostText: { color: '#1D1D1F', fontSize: 12, fontWeight: '800' },
 }));

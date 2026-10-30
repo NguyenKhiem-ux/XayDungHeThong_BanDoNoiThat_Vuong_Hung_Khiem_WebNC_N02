@@ -82,17 +82,17 @@ export function AuthScreen({ mode }: { mode: Mode }) {
         <ScrollView contentContainerStyle={[styles.scroll, compact && styles.scrollCompact]} keyboardShouldPersistTaps="handled">
           <View style={[styles.shell, compact && styles.shellCompact, compact && { width: mobileWidth }]}>
             <View style={[styles.story, compact && styles.storyCompact, compact && { width: mobileWidth }]}>
-              <View style={styles.storyIcon}><Ionicons name={mode === 'login' ? 'key-outline' : 'person-add-outline'} size={29} color="#FFFCF7" /></View>
+              <View style={styles.storyIcon}><Ionicons name={mode === 'login' ? 'key-outline' : 'person-add-outline'} size={29} color="#FFFFFF" /></View>
               <Text style={styles.eyebrow}>GIA DỤNG VIỆT</Text>
               <Text style={[styles.storyTitle, compact && styles.storyTitleCompact]}>{mode === 'login' ? 'Trở lại không gian sống tiện nghi.' : 'Mua sắm dễ dàng hơn mỗi ngày.'}</Text>
               <Text style={styles.storyText}>Đăng nhập để đồng bộ giỏ hàng, sản phẩm yêu thích và theo dõi đơn hàng trên mọi thiết bị.</Text>
               <View style={styles.benefits}>
-                {['JWT được lưu an toàn theo nền tảng', 'Giỏ hàng cập nhật ngay sau đăng nhập', 'Sản phẩm chính hãng, hỗ trợ tận tâm'].map(item => <View key={item} style={styles.benefit}><Ionicons name="checkmark-circle" size={18} color="#E8D5BA" /><Text style={styles.benefitText}>{item}</Text></View>)}
+                {['JWT được lưu an toàn theo nền tảng', 'Giỏ hàng cập nhật ngay sau đăng nhập', 'Sản phẩm chính hãng, hỗ trợ tận tâm'].map(item => <View key={item} style={styles.benefit}><Ionicons name="checkmark-circle" size={18} color="#6E6E73" /><Text style={styles.benefitText}>{item}</Text></View>)}
               </View>
             </View>
 
             <View style={[styles.formCard, compact && styles.formCardCompact, compact && { width: mobileWidth }]}>
-              {!authReady ? <View style={styles.loading}><ActivityIndicator color="#755036" /><Text style={styles.loadingText}>Đang kiểm tra phiên đăng nhập...</Text></View> : user ? <View style={styles.signedIn}>
+              {!authReady ? <View style={styles.loading}><ActivityIndicator color="#1D1D1F" /><Text style={styles.loadingText}>Đang kiểm tra phiên đăng nhập...</Text></View> : user ? <View style={styles.signedIn}>
                 <View style={styles.signedIcon}><Ionicons name="checkmark" size={28} color="#fff" /></View>
                 <Text style={styles.formTitle}>Bạn đã đăng nhập</Text>
                 <Text style={styles.formSubtitle}>Xin chào {user.fullName}. Tài khoản đã sẵn sàng để mua sắm.</Text>
@@ -138,11 +138,11 @@ interface FieldProps {
 }
 
 function Field({ label, ...props }: FieldProps) {
-  return <View style={styles.field}><Text style={styles.label}>{label}</Text><TextInput {...props} accessibilityLabel={label} editable style={styles.input} placeholderTextColor="#9B8A7C" returnKeyType="next" /></View>;
+  return <View style={styles.field}><Text style={styles.label}>{label}</Text><TextInput {...props} accessibilityLabel={label} editable style={styles.input} placeholderTextColor="#6E6E73" returnKeyType="next" /></View>;
 }
 
 function PasswordField({ label, value, onChangeText, show, onToggle, autoComplete, onSubmit }: { label: string; value: string; onChangeText: (value: string) => void; show: boolean; onToggle: () => void; autoComplete: 'current-password' | 'new-password'; onSubmit?: () => void }) {
-  return <View style={styles.field}><Text style={styles.label}>{label}</Text><View style={styles.passwordWrap}><TextInput accessibilityLabel={label} value={value} onChangeText={onChangeText} secureTextEntry={!show} autoCapitalize="none" autoComplete={autoComplete} onSubmitEditing={onSubmit} returnKeyType={onSubmit ? 'done' : 'next'} style={[styles.input, styles.passwordInput]} placeholder="••••••" placeholderTextColor="#9B8A7C" /><Pressable accessibilityRole="button" accessibilityLabel={show ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'} onPress={onToggle} style={styles.eye}><Ionicons name={show ? 'eye-off-outline' : 'eye-outline'} size={20} color="#755036" /></Pressable></View></View>;
+  return <View style={styles.field}><Text style={styles.label}>{label}</Text><View style={styles.passwordWrap}><TextInput accessibilityLabel={label} value={value} onChangeText={onChangeText} secureTextEntry={!show} autoCapitalize="none" autoComplete={autoComplete} onSubmitEditing={onSubmit} returnKeyType={onSubmit ? 'done' : 'next'} style={[styles.input, styles.passwordInput]} placeholder="••••••" placeholderTextColor="#6E6E73" /><Pressable accessibilityRole="button" accessibilityLabel={show ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'} onPress={onToggle} style={styles.eye}><Ionicons name={show ? 'eye-off-outline' : 'eye-outline'} size={20} color="#1D1D1F" /></Pressable></View></View>;
 }
 
 function PrimaryButton({ label, busy, onPress }: { label: string; busy: boolean; onPress: () => void }) {
@@ -150,29 +150,29 @@ function PrimaryButton({ label, busy, onPress }: { label: string; busy: boolean;
 }
 
 const styles = StyleSheet.create(withTypography({
-  page: { flex: 1, backgroundColor: '#F6EFE6' },
+  page: { flex: 1, backgroundColor: '#F5F5F7' },
   flex: { flex: 1 },
   scroll: { flexGrow: 1, padding: 24, justifyContent: 'center' },
   scrollCompact: { paddingHorizontal: 14, paddingVertical: 18 },
-  shell: { width: '100%', maxWidth: 1040, alignSelf: 'center', minHeight: 590, flexDirection: 'row', borderRadius: 24, overflow: 'hidden', backgroundColor: '#FFFCF7', borderWidth: 1, borderColor: '#E1CFBA', boxShadow: '0 24px 70px rgba(72, 45, 28, .15)' },
+  shell: { width: '100%', maxWidth: 1040, alignSelf: 'center', minHeight: 590, flexDirection: 'row', borderRadius: 24, overflow: 'hidden', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D2D2D7' },
   shellCompact: { maxWidth: '100%', alignSelf: 'stretch', flexDirection: 'column', minHeight: 0 },
-  story: { width: '43%', padding: 48, justifyContent: 'center', backgroundColor: '#755036' },
+  story: { width: '43%', padding: 48, justifyContent: 'center', backgroundColor: '#1D1D1F' },
   storyCompact: { maxWidth: '100%', alignSelf: 'stretch', padding: 28 },
-  storyIcon: { width: 58, height: 58, borderRadius: 18, backgroundColor: '#A56E2D', alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
-  eyebrow: { color: '#E8D5BA', fontSize: 11, fontWeight: '900', letterSpacing: 1.4 },
-  storyTitle: { color: '#FFFCF7', fontSize: 34, lineHeight: 41, fontWeight: '900', marginTop: 12 },
+  storyIcon: { width: 58, height: 58, borderRadius: 18, backgroundColor: '#1D1D1F', alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
+  eyebrow: { color: '#6E6E73', fontSize: 11, fontWeight: '900', letterSpacing: 1.4 },
+  storyTitle: { color: '#FFFFFF', fontSize: 34, lineHeight: 41, fontWeight: '900', marginTop: 12 },
   storyTitleCompact: { fontSize: 27, lineHeight: 33, flexShrink: 1 },
-  storyText: { color: '#F0E4D7', fontSize: 14, lineHeight: 22, marginTop: 16 },
+  storyText: { color: '#E8E8ED', fontSize: 14, lineHeight: 22, marginTop: 16 },
   benefits: { marginTop: 28, gap: 12 },
   benefit: { flexDirection: 'row', alignItems: 'center', gap: 9 },
-  benefitText: { flex: 1, color: '#FFFCF7', fontSize: 12, lineHeight: 17, fontWeight: '600' },
+  benefitText: { flex: 1, color: '#FFFFFF', fontSize: 12, lineHeight: 17, fontWeight: '600' },
   formCard: { flex: 1, padding: 48, justifyContent: 'center' },
   formCardCompact: { flexGrow: 0, flexShrink: 0, flexBasis: 'auto', maxWidth: '100%', alignSelf: 'stretch', padding: 25 },
-  formTitle: { color: '#30251D', fontSize: 31, fontWeight: '900' },
-  formSubtitle: { color: '#77685D', fontSize: 13, lineHeight: 20, marginTop: 7, marginBottom: 24 },
+  formTitle: { color: '#1D1D1F', fontSize: 31, fontWeight: '900' },
+  formSubtitle: { color: '#6E6E73', fontSize: 13, lineHeight: 20, marginTop: 7, marginBottom: 24 },
   field: { gap: 7, marginBottom: 15 },
-  label: { color: '#493629', fontSize: 12, fontWeight: '800' },
-  input: { width: '100%', minHeight: 48, borderRadius: 12, borderWidth: 1, borderColor: '#DCC9B4', backgroundColor: '#fff', color: '#30251D', fontSize: 14, paddingHorizontal: 14 },
+  label: { color: '#1D1D1F', fontSize: 12, fontWeight: '800' },
+  input: { width: '100%', minHeight: 48, borderRadius: 12, borderWidth: 1, borderColor: '#D2D2D7', backgroundColor: '#fff', color: '#1D1D1F', fontSize: 14, paddingHorizontal: 14 },
   passwordWrap: { position: 'relative', justifyContent: 'center' },
   passwordInput: { paddingRight: 48 },
   eye: { position: 'absolute', right: 5, width: 42, height: 42, alignItems: 'center', justifyContent: 'center' },
@@ -181,13 +181,13 @@ const styles = StyleSheet.create(withTypography({
   success: { marginBottom: 17, padding: 12, borderRadius: 11, borderWidth: 1, borderColor: '#BFD7BF', backgroundColor: '#EAF2E8', flexDirection: 'row', gap: 8, alignItems: 'center' },
   successText: { flex: 1, color: '#426845', fontSize: 12, lineHeight: 18, fontWeight: '600' },
   forgotLink: { alignSelf: 'flex-end', paddingVertical: 3, marginTop: -7, marginBottom: 13 },
-  submit: { minHeight: 50, borderRadius: 12, backgroundColor: '#755036', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9, marginTop: 4 },
+  submit: { minHeight: 50, borderRadius: 999, backgroundColor: '#1D1D1F', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9, marginTop: 4 },
   submitText: { color: '#fff', fontSize: 14, fontWeight: '900' },
   switchRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: 5, marginTop: 21 },
-  switchText: { color: '#77685D', fontSize: 12 },
-  switchLink: { color: '#755036', fontSize: 12, fontWeight: '900' },
+  switchText: { color: '#6E6E73', fontSize: 12 },
+  switchLink: { color: '#1D1D1F', fontSize: 12, fontWeight: '900' },
   loading: { minHeight: 220, alignItems: 'center', justifyContent: 'center', gap: 13 },
-  loadingText: { color: '#77685D', fontSize: 13 },
+  loadingText: { color: '#6E6E73', fontSize: 13 },
   signedIn: { alignItems: 'center', gap: 13 },
   signedIcon: { width: 58, height: 58, borderRadius: 29, backgroundColor: '#537B55', alignItems: 'center', justifyContent: 'center' },
   disabled: { opacity: 0.58 },

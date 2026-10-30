@@ -156,7 +156,7 @@ export function ChatCheckoutCards({ flow, disabled, onAction }: { flow: ChatChec
         note={view.eligible ? `Giảm ${formatVnd(view.discountAmount ?? 0)}` : view.reason}
         onPress={() => onAction({ ...voucherAction, label: `Áp dụng voucher ${view.coupon.code}`, code: view.coupon.code })} />)}
       <View style={styles.row}>
-        <TextInput accessibilityLabel="Mã voucher" value={code} onChangeText={setCode} maxLength={50} editable={!disabled} autoCapitalize="characters" placeholder="Nhập mã voucher" placeholderTextColor="#9B8A7C" style={[styles.input, styles.flex]} />
+        <TextInput accessibilityLabel="Mã voucher" value={code} onChangeText={setCode} maxLength={50} editable={!disabled} autoCapitalize="characters" placeholder="Nhập mã voucher" placeholderTextColor="#6E6E73" style={[styles.input, styles.flex]} />
         <Pressable disabled={disabled || !code.trim()} onPress={() => onAction({ ...voucherAction, label: 'Áp dụng voucher đã nhập', code: code.trim() })} style={[styles.button, (disabled || !code.trim()) && styles.disabled]}><Text style={styles.buttonText}>Áp dụng</Text></Pressable>
       </View>
     </View>}
@@ -182,7 +182,7 @@ export function ChatCheckoutCards({ flow, disabled, onAction }: { flow: ChatChec
       {order.paymentStatus === 'UNPAID' && order.status !== 'CANCELLED' && <>
         {paymentUrl && <Pressable accessibilityRole="link" onPress={() => void (Platform.OS === 'web' ? globalThis.open(paymentUrl, '_blank', 'noopener') : Linking.openURL(paymentUrl))}><Text style={styles.link}>Mở thanh toán PayOS / QR ↗</Text></Pressable>}
         {order.paymentMethod === 'CARD' && <View style={styles.row}>
-          <TextInput accessibilityLabel="PIN thanh toán mô phỏng" value={pin} onChangeText={value => setPin(value.replace(/\D/g, '').slice(0, 6))} keyboardType="number-pad" secureTextEntry maxLength={6} editable={!disabled} placeholder="PIN 6 số" placeholderTextColor="#9B8A7C" style={[styles.input, styles.flex]} />
+          <TextInput accessibilityLabel="PIN thanh toán mô phỏng" value={pin} onChangeText={value => setPin(value.replace(/\D/g, '').slice(0, 6))} keyboardType="number-pad" secureTextEntry maxLength={6} editable={!disabled} placeholder="PIN 6 số" placeholderTextColor="#6E6E73" style={[styles.input, styles.flex]} />
           <Pressable disabled={disabled} onPress={() => void payCard()} style={[styles.button, styles.primary, disabled && styles.disabled]}><Text style={styles.buttonText}>Thanh toán</Text></Pressable>
         </View>}
         {['QR', 'PAYOS'].includes(order.paymentMethod) && <Text style={styles.muted}>Sau khi thanh toán, bấm Kiểm tra trạng thái. Đóng trang thanh toán không hủy đơn hàng.</Text>}
@@ -195,7 +195,7 @@ export function ChatCheckoutCards({ flow, disabled, onAction }: { flow: ChatChec
 
 function AddressForm({ initial, disabled, submitLabel = 'Lưu địa chỉ', onSubmit, onCancel }: { initial: ChatAddressInput; disabled: boolean; submitLabel?: string; onSubmit: (address: ChatAddressInput) => void; onCancel?: () => void }) {
   const [values, setValues] = useState<ChatAddressInput>(initial);
-  const field = (key: 'fullName' | 'phone' | 'address', label: string, maxLength: number) => <TextInput accessibilityLabel={label} placeholder={label} placeholderTextColor="#9B8A7C" maxLength={maxLength} editable={!disabled}
+  const field = (key: 'fullName' | 'phone' | 'address', label: string, maxLength: number) => <TextInput accessibilityLabel={label} placeholder={label} placeholderTextColor="#6E6E73" maxLength={maxLength} editable={!disabled}
     keyboardType={key === 'phone' ? 'phone-pad' : 'default'} multiline={key === 'address'} value={values[key] ?? ''} onChangeText={value => setValues(current => ({ ...current, [key]: value }))} style={styles.input} />;
   const ready = !!values.fullName?.trim() && !!values.phone?.trim() && !!values.address?.trim();
   return <View style={styles.section}>
@@ -230,32 +230,32 @@ function safePaymentUrl(value?: string) {
 }
 
 const styles = StyleSheet.create(withTypography({
-  card: { padding: 9, gap: 6, borderRadius: 10, backgroundColor: '#fff', borderWidth: 1, borderColor: '#E6D8C7' },
-  cardTitle: { color: '#30251D', fontSize: 12, fontWeight: '900' },
+  card: { padding: 9, gap: 6, borderRadius: 10, backgroundColor: '#fff', borderWidth: 1, borderColor: '#D2D2D7' },
+  cardTitle: { color: '#1D1D1F', fontSize: 12, fontWeight: '900' },
   section: { gap: 6 },
-  body: { color: '#3B2C22', fontSize: 12, lineHeight: 17 },
-  muted: { color: '#7A6858', fontSize: 11, lineHeight: 16 },
-  label: { color: '#5B4637', fontSize: 11, fontWeight: '800' },
-  link: { color: '#755036', fontSize: 12, fontWeight: '900' },
+  body: { color: '#1D1D1F', fontSize: 12, lineHeight: 17 },
+  muted: { color: '#6E6E73', fontSize: 11, lineHeight: 16 },
+  label: { color: '#6E6E73', fontSize: 11, fontWeight: '800' },
+  link: { color: '#1D1D1F', fontSize: 12, fontWeight: '900' },
   error: { color: '#9B382F', fontSize: 11 },
   item: { gap: 5 },
   line: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
-  value: { color: '#30251D', fontSize: 12, fontWeight: '800' },
-  total: { paddingTop: 6, borderTopWidth: 1, borderTopColor: '#EFE3D5', justifyContent: 'space-between' },
-  totalValue: { color: '#755036', fontSize: 13, fontWeight: '900' },
+  value: { color: '#1D1D1F', fontSize: 12, fontWeight: '800' },
+  total: { paddingTop: 6, borderTopWidth: 1, borderTopColor: '#E8E8ED', justifyContent: 'space-between' },
+  totalValue: { color: '#1D1D1F', fontSize: 13, fontWeight: '900' },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 5 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   flex: { flex: 1 },
-  button: { paddingHorizontal: 9, paddingVertical: 7, borderRadius: 8, backgroundColor: '#8A6448' },
-  primary: { backgroundColor: '#755036' },
+  button: { paddingHorizontal: 9, paddingVertical: 7, borderRadius: 8, backgroundColor: '#1D1D1F' },
+  primary: { backgroundColor: '#1D1D1F' },
   danger: { backgroundColor: '#FBE8E5' },
   buttonText: { color: '#fff', fontSize: 11, fontWeight: '800' },
   dangerText: { color: '#9B382F' },
-  chip: { paddingHorizontal: 10, paddingVertical: 7, borderRadius: 999, borderWidth: 1, borderColor: '#CBA779', backgroundColor: '#FFFCF7' },
-  chipText: { color: '#755036', fontSize: 11, fontWeight: '800' },
-  choice: { padding: 8, borderRadius: 8, borderWidth: 1, borderColor: '#E6D8C7', backgroundColor: '#FFFCF7' },
-  choiceSelected: { borderColor: '#755036', backgroundColor: '#F3E9DD' },
-  choiceTitle: { color: '#30251D', fontSize: 12, fontWeight: '700' },
-  input: { minHeight: 38, borderRadius: 8, borderWidth: 1, borderColor: '#DCC9B4', backgroundColor: '#fff', color: '#30251D', paddingHorizontal: 10, fontSize: 12 },
+  chip: { paddingHorizontal: 10, paddingVertical: 7, borderRadius: 999, borderWidth: 1, borderColor: '#A1A1A6', backgroundColor: '#FFFFFF' },
+  chipText: { color: '#1D1D1F', fontSize: 11, fontWeight: '800' },
+  choice: { padding: 8, borderRadius: 8, borderWidth: 1, borderColor: '#D2D2D7', backgroundColor: '#FFFFFF' },
+  choiceSelected: { borderColor: '#1D1D1F', backgroundColor: '#E8E8ED' },
+  choiceTitle: { color: '#1D1D1F', fontSize: 12, fontWeight: '700' },
+  input: { minHeight: 38, borderRadius: 8, borderWidth: 1, borderColor: '#D2D2D7', backgroundColor: '#fff', color: '#1D1D1F', paddingHorizontal: 10, fontSize: 12 },
   disabled: { opacity: 0.45 },
 }));

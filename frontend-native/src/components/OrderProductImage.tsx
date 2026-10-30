@@ -9,10 +9,10 @@ export function OrderProductImage({ uri, style, iconSize = 22 }: { uri?: string 
 
   return <View style={[styles.frame, style]}>{uri && !failed
     ? <Image accessibilityLabel="Ảnh sản phẩm" source={{ uri: imageUrl(uri) }} resizeMode="contain" onError={() => setFailed(true)} style={styles.image} />
-    : <Ionicons name="cube-outline" size={iconSize} color="#A08E80" />}</View>;
+    : <Ionicons name="cube-outline" size={iconSize} color="#6E6E73" />}</View>;
 }
 
 const styles = StyleSheet.create({
-  frame: { alignItems: 'center', justifyContent: 'center', overflow: 'hidden', backgroundColor: '#F8F3EC', borderWidth: 1, borderColor: '#E6D8C7' },
+  frame: { alignItems: 'center', justifyContent: 'center', overflow: 'hidden', backgroundColor: '#F5F5F7', borderWidth: 1, borderColor: '#D2D2D7' },
   image: { width: '90%', height: '90%' },
 });

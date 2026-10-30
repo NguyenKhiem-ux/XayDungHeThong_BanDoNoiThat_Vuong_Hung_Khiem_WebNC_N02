@@ -11,8 +11,8 @@ export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts(fontAssets);
   if (!fontsLoaded && !fontError) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F6EFE6' }}>
-        <ActivityIndicator color="#755036" />
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F5F5F7' }}>
+        <ActivityIndicator color="#1D1D1F" />
       </View>
     );
   }
@@ -21,7 +21,7 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <StoreProvider>
         <StatusBar style="dark" />
-        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#F6EFE6' } }} />
+        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#F5F5F7' } }} />
       </StoreProvider>
     </SafeAreaProvider>
   );
