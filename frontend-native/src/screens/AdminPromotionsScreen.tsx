@@ -13,6 +13,7 @@ import { withTypography } from '../typography';
 import type { Product, PromotionEvent, PromotionInput } from '../types';
 
 const EVENT_PAGE_SIZE = 8;
+const PRODUCT_PAGE_SIZE = 10;
 type PromotionPhase = '' | PromotionEvent['phase'];
 type PromotionForm = { title: string; description: string; bannerDiscountPercent: string; startsAt: string; endsAt: string };
 type PromotionErrors = Partial<Record<keyof PromotionForm | 'items', string>>;
@@ -38,6 +39,7 @@ export default function AdminPromotionsScreen() {
   const [form, setForm] = useState<PromotionForm>(initialForm);
   const [selected, setSelected] = useState<Record<number, number>>({});
   const [productKeyword, setProductKeyword] = useState('');
+  const [productPage, setProductPage] = useState(1);
   const [bulkDiscount, setBulkDiscount] = useState('20');
   const [fieldErrors, setFieldErrors] = useState<PromotionErrors>({});
   const [formError, setFormError] = useState('');
@@ -78,16 +80,19 @@ export default function AdminPromotionsScreen() {
   const selectedProducts = useMemo(() => products.filter(product => selected[product.id] !== undefined), [products, selected]);
   const normalizedProductKeyword = normalizeSearch(productKeyword);
   const foundProducts = useMemo(() => products.filter(product => normalizeSearch(`${product.name} ${product.brand || ''} ${product.category || ''}`).includes(normalizedProductKeyword)), [normalizedProductKeyword, products]);
+  const productPageCount = adminPromotionPageCount(foundProducts.length, PRODUCT_PAGE_SIZE);
+  const visibleProducts = useMemo(() => foundProducts.slice((productPage - 1) * PRODUCT_PAGE_SIZE, productPage * PRODUCT_PAGE_SIZE), [foundProducts, productPage]);
   const filteredEvents = useMemo<PromotionEvent[]>(() => filterAdminPromotions(events, { keyword: eventKeyword, phase: phaseFilter }), [eventKeyword, events, phaseFilter]);
   const pageCount = adminPromotionPageCount(filteredEvents.length, EVENT_PAGE_SIZE);
   const visibleEvents = useMemo(() => filteredEvents.slice((page - 1) * EVENT_PAGE_SIZE, page * EVENT_PAGE_SIZE), [filteredEvents, page]);
 
   useEffect(() => { if (page > pageCount) setPage(pageCount); }, [page, pageCount]);
+  useEffect(() => { if (productPage > productPageCount) setProductPage(productPageCount); }, [productPage, productPageCount]);
 
   if (!isAdmin || !user) return <AdminGateState />;
 
   const signOut = () => { void logout().finally(() => router.replace('/login')); };
-  const resetForm = () => { setEditing(null); setForm(initialForm()); setSelected({}); setProductKeyword(''); setBulkDiscount('20'); setFieldErrors({}); setFormError(''); };
+  const resetForm = () => { setEditing(null); setForm(initialForm()); setSelected({}); setProductKeyword(''); setProductPage(1); setBulkDiscount('20'); setFieldErrors({}); setFormError(''); };
   const closeForm = () => { resetForm(); setShowForm(false); };
   const openCreate = () => { resetForm(); setMessage(''); setShowForm(true); };
   const openEdit = (event: PromotionEvent) => {
@@ -95,6 +100,7 @@ export default function AdminPromotionsScreen() {
     setForm({ title: event.title, description: event.description, bannerDiscountPercent: event.bannerDiscountPercent == null ? '' : String(event.bannerDiscountPercent), startsAt: promotionLocalTime(event.startsAt), endsAt: promotionLocalTime(event.endsAt) });
     setSelected(Object.fromEntries(event.products.map(product => [product.id, Number(product.discountPercent) || 0])));
     setProductKeyword('');
+    setProductPage(1);
     setFieldErrors({});
     setFormError('');
     setMessage('');
@@ -166,7 +172,7 @@ export default function AdminPromotionsScreen() {
 
       {showForm ? <View style={styles.formPanel}><View style={styles.formHeading}><View><Text style={styles.panelEyebrow}>{editing ? `EDIT EVENT #${editing.id}` : 'NEW EVENT'}</Text><Text style={styles.formTitle}>{editing ? 'Chỉnh sửa chương trình' : 'Tạo chương trình khuyến mãi'}</Text></View>{editing ? <PhaseBadge phase={editing.phase} /> : <View style={styles.formIcon}><Ionicons name="flash-outline" size={21} color={colors.accent} /></View>}</View><View style={styles.formGrid}><FormField compact={compact} required label="Tên chương trình" value={form.title} error={fieldErrors.title} maxLength={120} onChangeText={value => setFormValue('title', value)} /><FormField compact={compact} label="Giảm đến trên banner (%)" value={form.bannerDiscountPercent} error={fieldErrors.bannerDiscountPercent} keyboardType="number-pad" placeholder="Tự động theo sản phẩm" onChangeText={value => setFormValue('bannerDiscountPercent', value)} /><FormField compact={compact} required label="Bắt đầu — giờ Việt Nam" value={form.startsAt} error={fieldErrors.startsAt} maxLength={16} placeholder="YYYY-MM-DDTHH:mm" onChangeText={value => setFormValue('startsAt', value)} /><FormField compact={compact} required label="Kết thúc — giờ Việt Nam" value={form.endsAt} error={fieldErrors.endsAt} maxLength={16} placeholder="YYYY-MM-DDTHH:mm" onChangeText={value => setFormValue('endsAt', value)} /></View><FormField label="Mô tả" value={form.description} error={fieldErrors.description} maxLength={300} multiline onChangeText={value => setFormValue('description', value)} />
 
-        <View style={styles.productSection}><View style={styles.sectionHeading}><View><Text style={styles.sectionStep}>SẢN PHẨM THAM GIA</Text><Text style={styles.sectionTitle}>{selectedProducts.length}/200 sản phẩm đã chọn</Text></View><View style={styles.bulkBox}><TextInput accessibilityLabel="Mức giảm hàng loạt" value={bulkDiscount} onChangeText={setBulkDiscount} keyboardType="number-pad" maxLength={2} style={styles.bulkInput} /><Text style={styles.percentText}>%</Text><Pressable accessibilityRole="button" disabled={!selectedProducts.length || saving} onPress={applyBulk} style={[styles.bulkButton, (!selectedProducts.length || saving) && styles.disabled]}><Text style={styles.bulkButtonText}>Áp dụng</Text></Pressable></View></View><View style={styles.productSearch}><Ionicons name="search" size={18} color={colors.subtle} /><TextInput accessibilityLabel="Tìm sản phẩm tham gia" value={productKeyword} onChangeText={setProductKeyword} placeholder="Tên, thương hiệu hoặc danh mục..." placeholderTextColor={colors.subtle} style={styles.productSearchInput} /></View><View style={styles.catalog}>{loading ? <ActivityIndicator color={colors.accent} /> : foundProducts.length ? foundProducts.map(product => <ProductChoice key={product.id} product={product} checked={selected[product.id] !== undefined} disabled={saving || (selectedProducts.length >= 200 && selected[product.id] === undefined)} onPress={() => toggleProduct(product)} />) : <Text style={styles.catalogEmpty}>Không tìm thấy sản phẩm phù hợp.</Text>}</View>{fieldErrors.items ? <Text style={styles.fieldError}>{fieldErrors.items}</Text> : null}
+        <View style={styles.productSection}><View style={styles.sectionHeading}><View><Text style={styles.sectionStep}>SẢN PHẨM THAM GIA</Text><Text style={styles.sectionTitle}>{selectedProducts.length}/200 sản phẩm đã chọn</Text></View><View style={styles.bulkBox}><TextInput accessibilityLabel="Mức giảm hàng loạt" value={bulkDiscount} onChangeText={setBulkDiscount} keyboardType="number-pad" maxLength={2} style={styles.bulkInput} /><Text style={styles.percentText}>%</Text><Pressable accessibilityRole="button" disabled={!selectedProducts.length || saving} onPress={applyBulk} style={[styles.bulkButton, (!selectedProducts.length || saving) && styles.disabled]}><Text style={styles.bulkButtonText}>Áp dụng</Text></Pressable></View></View><View style={styles.productSearch}><Ionicons name="search" size={18} color={colors.subtle} /><TextInput accessibilityLabel="Tìm sản phẩm tham gia" value={productKeyword} onChangeText={value => { setProductKeyword(value); setProductPage(1); }} placeholder="Tên, thương hiệu hoặc danh mục..." placeholderTextColor={colors.subtle} style={styles.productSearchInput} /></View><View style={styles.catalog}>{loading ? <ActivityIndicator color={colors.accent} /> : foundProducts.length ? visibleProducts.map(product => <ProductChoice key={product.id} product={product} checked={selected[product.id] !== undefined} disabled={saving || (selectedProducts.length >= 200 && selected[product.id] === undefined)} onPress={() => toggleProduct(product)} />) : <Text style={styles.catalogEmpty}>Không tìm thấy sản phẩm phù hợp.</Text>}</View>{!loading && foundProducts.length > PRODUCT_PAGE_SIZE ? <View style={[styles.pagination, compact && styles.paginationCompact]}><Text style={styles.pageMeta}>Trang {productPage}/{productPageCount} · {foundProducts.length} sản phẩm</Text><View style={styles.pageActions}><Pressable accessibilityRole="button" disabled={productPage <= 1} onPress={() => setProductPage(value => Math.max(1, value - 1))} style={[styles.pageButton, productPage <= 1 && styles.disabled]}><Ionicons name="chevron-back" size={17} color={colors.ink} /><Text style={styles.pageButtonText}>Trước</Text></Pressable><Pressable accessibilityRole="button" disabled={productPage >= productPageCount} onPress={() => setProductPage(value => Math.min(productPageCount, value + 1))} style={[styles.pageButton, productPage >= productPageCount && styles.disabled]}><Text style={styles.pageButtonText}>Sau</Text><Ionicons name="chevron-forward" size={17} color={colors.ink} /></Pressable></View></View> : null}{fieldErrors.items ? <Text style={styles.fieldError}>{fieldErrors.items}</Text> : null}
 
           {selectedProducts.length ? <View style={styles.selectedList}><Text style={styles.selectedTitle}>Mức giảm từng sản phẩm</Text>{selectedProducts.map(product => <View key={product.id} style={[styles.selectedRow, compact && styles.selectedRowCompact]}><OrderProductImage uri={product.imageUrl} style={styles.selectedImage} /><View style={styles.selectedCopy}><Text numberOfLines={2} style={styles.selectedName}>{product.name}</Text><Text style={styles.selectedMeta}>{formatVnd(Number(product.originalPrice ?? product.price) || 0)} · Tồn {product.stock}</Text></View><View style={styles.discountInputBox}><TextInput accessibilityLabel={`Phần trăm giảm ${product.name}`} value={Number.isFinite(selected[product.id]) ? String(selected[product.id]) : ''} onChangeText={value => setProductDiscount(product.id, value)} keyboardType="number-pad" maxLength={2} style={styles.discountInput} /><Text style={styles.percentText}>%</Text></View><Pressable accessibilityRole="button" accessibilityLabel={`Bỏ chọn ${product.name}`} disabled={saving} onPress={() => toggleProduct(product)} style={styles.removeProduct}><Ionicons name="close" size={18} color={colors.danger} /></Pressable></View>)}</View> : null}
         </View>
