@@ -191,6 +191,14 @@ test('QA-HTTP: cart and orders enforce JWT, ownership, DTOs and repeatable check
       assert.equal((await call('POST', '/coupons/validate', body, 1)).status, 400);
     }
   });
+  await t.test('QA-E02 available coupon API derives eligibility from the authenticated cart', async () => {
+    assert.equal((await call('POST', '/coupons/available', {})).status, 401);
+    assert.equal((await call('POST', '/coupons/available', { productId: 0 }, 1)).status, 400);
+    const response = await call('POST', '/coupons/available', {}, 1);
+    assert.equal(response.status, 200);
+    assert.deepEqual(response.body.map((item: any) => item.coupon.code), ['SALE10']);
+    assert.equal(response.body[0].discountAmount, 100000);
+  });
   await t.test('QA-C01 forged client prices are rejected and server quote controls repeated order creation', async () => {
     const input = { fullName: 'QA Buyer', email: 'buyer@example.test', phone: '0900000000', address: 'QA address', paymentMethod: PaymentMethod.CASH };
     assert.equal((await call('POST', '/orders/preview', { ...input, totalAmount: 1 }, 1)).status, 400);
@@ -524,12 +532,51 @@ test('coupons apply only to regular lines and ignore a client-supplied inflated 
   const f = fixture(); activateSale(f); f.rows(Coupon)[0].minOrderAmount = 0;
   await f.cart.add(1, 10, 1);
   await assert.rejects(f.coupons.validateCoupon('SALE10', 999999999, 1), /không thuộc sự kiện/);
+  assert.deepEqual(await f.coupons.findAvailable(1), []);
   await f.cart.add(1, 20, 2);
   const validated = await f.coupons.validateCoupon('SALE10', 999999999, 1), quote = await f.quote(1, PaymentMethod.CASH, 'SALE10');
+  assert.deepEqual((await f.coupons.findAvailable(1)).map(item => item.coupon.code), ['SALE10']);
   assert.equal(validated.discountAmount, 40000); assert.equal(validated.finalAmount, 660000);
   assert.equal(quote.discountAmount, validated.discountAmount); assert.equal(quote.total, validated.finalAmount);
   const { order } = await f.orders.confirmCheckout(1, quote.id, quote.hash);
   assert.equal(order!.items.find(item => item.productId === 10)!.price, 300000);
+});
+
+test('available coupons are filtered from the current cart by the same rules used at checkout', async () => {
+  const f = fixture();
+  const base = f.rows(Coupon)[0];
+  f.rows(Coupon).push(
+    { ...base, id: 4, code: 'DISABLED', isActive: false },
+    { ...base, id: 5, code: 'FUTURE', startDate: new Date(Date.now() + 86400000) },
+    { ...base, id: 6, code: 'EXHAUSTED', usageLimit: 1, usedCount: 1 },
+  );
+  await f.cart.add(1, 20, 2);
+  assert.deepEqual(await f.coupons.findAvailable(1), []);
+
+  await f.cart.update(1, 20, 3);
+  const available = await f.coupons.findAvailable(1);
+  assert.deepEqual(available.map(item => item.coupon.code), ['SALE10']);
+  assert.equal(available[0].discountAmount, 60000);
+  assert.equal(available[0].finalAmount, 540000);
+  assert.deepEqual((await f.coupons.findAvailable(1, 10)).map(item => item.coupon.code), []);
+  assert.deepEqual((await f.coupons.findAvailable(1, 20)).map(item => item.coupon.code), ['SALE10']);
+
+  base.usedCount = base.usageLimit;
+  assert.deepEqual(await f.coupons.findAvailable(1), []);
+});
+
+test('an available coupon is rechecked if it expires before order creation', async () => {
+  const f = fixture();
+  await f.cart.add(1, 10, 1);
+  assert.deepEqual((await f.coupons.findAvailable(1)).map(item => item.coupon.code), ['SALE10']);
+  const quote = await f.quote(1, PaymentMethod.CASH, 'SALE10');
+  f.rows(Coupon)[0].endDate = new Date(0);
+  await assert.rejects(
+    f.orders.create(1, { addressId: 101, paymentMethod: PaymentMethod.CASH, couponCode: 'SALE10', quoteId: quote.id, quoteHash: quote.hash } as any),
+    /hết hạn/,
+  );
+  assert.equal(f.rows(Order).length, 0);
+  assert.equal(f.rows(Coupon)[0].usedCount, 0);
 });
 
 test('web checkout re-quotes expired/edited promotions, requires another click and persists the confirmed order amount', async () => {

@@ -32,6 +32,32 @@ export class CouponsService {
     return this.couponRepository.find({ order: { createdAt: 'DESC' } });
   }
 
+  async findAvailable(userId: number, productId?: number) {
+    const coupons = await this.findAll(userId);
+    const cart = await this.cart.get(userId);
+    const items = productId === undefined
+      ? cart.items
+      : cart.items.filter((item) => item.productId === productId);
+    if (!items.length) return [];
+
+    const total = items.reduce((sum, item) => sum + item.subtotal, 0);
+    const eligible = items.reduce(
+      (sum, item) => sum + (item.product.discountPercent ? 0 : item.subtotal),
+      0,
+    );
+    if (eligible <= 0) return [];
+
+    return coupons.flatMap((coupon) => {
+      try {
+        const result = evaluateCoupon(coupon, eligible, userId);
+        return [{ ...result, finalAmount: total - result.discountAmount }];
+      } catch (error) {
+        if (error instanceof BadRequestException) return [];
+        throw error;
+      }
+    });
+  }
+
   async findOne(id: number): Promise<Coupon> {
     const coupon = await this.couponRepository.findOne({
       where: { id },

@@ -7,6 +7,7 @@ import { Header } from '../components/Header';
 import { ProductCard, ProductSkeleton } from '../components/ProductCard';
 import { ProductFooter } from '../components/ProductFooter';
 import { PRICE_RANGES, useProductList, type ProductSort } from '../hooks/useProductList';
+import { productPaginationItems } from '../productPagination.mjs';
 import { useStore } from '../store';
 import { withTypography } from '../typography';
 import { ScrollTopButton, useScrollTop } from '../components/ScrollTopButton';
@@ -19,15 +20,21 @@ export default function ProductListScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const compact = width < 900;
-  const twoColumns = width >= 400;
-  const cardWidth = twoColumns ? '48.5%' : '100%';
-  const { category, categories, clearFilters, error, keyword, loading, priceRange, products, retry, setCategory, setKeyword, setPriceRange, setSort, sort } = useProductList();
+  const columns = width >= 900 ? 4 : width >= 600 ? 3 : width >= 400 ? 2 : 1;
+  const cardWidth = (columns === 4 ? '23.8%' : columns === 3 ? '31.8%' : columns === 2 ? '48.5%' : '100%') as `${number}%`;
+  const pageSize = columns * 3;
+  const { category, categories, clearFilters, error, keyword, loading, page, pageCount, priceRange, products, retry, setCategory, setKeyword, setPage, setPriceRange, setSort, sort, total } = useProductList(pageSize);
   const { notice } = useStore();
   const [search, setSearch] = useState(keyword);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [listY, setListY] = useState(0);
 
   useEffect(() => setSearch(keyword), [keyword]);
   const title = keyword ? `Kết quả cho “${keyword}”` : category || 'Tất cả sản phẩm';
+  const goToPage = (nextPage: number) => {
+    setPage(nextPage);
+    requestAnimationFrame(() => top.ref.current?.scrollTo({ y: Math.max(0, listY - 8), animated: true }));
+  };
 
   return <View style={styles.page}>
     <ScrollView ref={top.ref} onScroll={top.onScroll} scrollEventThrottle={100} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
@@ -39,7 +46,7 @@ export default function ProductListScreen() {
         <Pressable accessibilityRole="button" onPress={() => router.back()} style={styles.back}><Ionicons name="arrow-back" size={16} color={colors.ink} /><Text style={styles.backText}>Quay lại</Text></Pressable>
       </View>
 
-      <View style={styles.content}>
+      <View onLayout={event => setListY(event.nativeEvent.layout.y)} style={styles.content}>
         <View style={styles.searchRow}><TextInput accessibilityLabel="Tìm trong danh sách sản phẩm" returnKeyType="search" value={search} onChangeText={setSearch} onSubmitEditing={() => setKeyword(search)} placeholder="Tìm sản phẩm, thương hiệu..." placeholderTextColor={colors.muted} style={styles.searchInput} /><Pressable accessibilityRole="button" accessibilityLabel="Tìm kiếm" onPress={() => setKeyword(search)} style={styles.searchButton}><Ionicons name="search" size={18} color={colors.white} /></Pressable></View>
 
         <Pressable accessibilityRole="button" accessibilityState={{ expanded: filtersOpen }} onPress={() => setFiltersOpen(value => !value)} style={styles.filterToggle}><Ionicons name="options-outline" size={17} color={colors.ink} /><Text style={styles.filterToggleText}>Danh mục</Text><Ionicons name={filtersOpen ? 'chevron-up' : 'chevron-down'} size={16} color={colors.ink} /></Pressable>
@@ -47,11 +54,11 @@ export default function ProductListScreen() {
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sorts}>{sortOptions.map(([value, label]) => <Chip key={label} active={sort === value} label={label} onPress={() => setSort(value)} />)}</ScrollView>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}><Chip active={!priceRange} label="Mọi mức giá" onPress={() => setPriceRange('')} />{PRICE_RANGES.map((range, index) => <Chip key={range.label} active={priceRange === String(index)} label={range.label} onPress={() => setPriceRange(String(index))} />)}</ScrollView>
-        <Text accessibilityRole="summary" style={styles.count}>{loading ? 'Đang tải sản phẩm…' : error ? 'Chưa thể tải sản phẩm' : `Tìm thấy ${products.length} sản phẩm`}</Text>
+        <Text accessibilityRole="summary" style={styles.count}>{loading ? 'Đang tải sản phẩm…' : error ? 'Chưa thể tải sản phẩm' : `Tìm thấy ${total} sản phẩm`}</Text>
 
         {error ? <View style={styles.state}><Ionicons name="alert-circle-outline" size={34} color={colors.danger} /><Text style={styles.stateTitle}>Chưa thể tải sản phẩm</Text><Text style={styles.stateText}>{error}</Text><Pressable onPress={retry} style={styles.retry}><Text style={styles.retryText}>Thử lại</Text></Pressable></View>
-          : loading ? <View style={styles.grid}>{Array.from({ length: 6 }, (_, index) => <ProductSkeleton key={index} style={{ minWidth: 0, width: cardWidth }} />)}</View>
-            : products.length ? <View style={styles.grid}>{products.map(product => <ProductCard key={product.id} product={product} style={{ minWidth: 0, width: cardWidth }} />)}</View>
+          : loading ? <View style={styles.grid}>{Array.from({ length: pageSize }, (_, index) => <ProductSkeleton key={index} style={{ minWidth: 0, width: cardWidth }} />)}</View>
+            : products.length ? <><View style={styles.grid}>{products.map(product => <ProductCard key={product.id} product={product} style={{ minWidth: 0, width: cardWidth }} />)}</View><Pagination page={page} pageCount={pageCount} total={total} onChange={goToPage} /></>
               : <View style={styles.state}><Ionicons name="search-outline" size={34} color={colors.ink} /><Text style={styles.stateTitle}>Không tìm thấy sản phẩm</Text><Text style={styles.stateText}>Hãy thử từ khóa hoặc danh mục khác.</Text><Pressable onPress={() => { setSearch(''); clearFilters(); }} style={styles.retry}><Text style={styles.retryText}>Xem tất cả</Text></Pressable></View>}
         {loading && <ActivityIndicator color={colors.ink} style={styles.loader} />}
         <ProductFooter />
@@ -65,6 +72,14 @@ export default function ProductListScreen() {
 
 function Chip({ active, label, onPress }: { active: boolean; label: string; onPress: () => void }) {
   return <Pressable accessibilityRole="button" accessibilityState={{ selected: active }} onPress={onPress} style={[styles.chip, active && styles.chipActive]}><Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text></Pressable>;
+}
+
+function Pagination({ page, pageCount, total, onChange }: { page: number; pageCount: number; total: number; onChange: (page: number) => void }) {
+  return <View accessibilityRole="toolbar" style={styles.pagination}><Text style={styles.pageMeta}>Trang {page} / {pageCount} · {total} sản phẩm</Text><View style={styles.pageButtons}><PageButton label="Trước" disabled={page <= 1} onPress={() => onChange(page - 1)} />{productPaginationItems(page, pageCount).map(item => typeof item === 'number' ? <PageButton key={item} label={String(item)} active={item === page} onPress={() => onChange(item)} /> : <Text key={item} style={styles.ellipsis}>…</Text>)}<PageButton label="Tiếp" disabled={page >= pageCount} onPress={() => onChange(page + 1)} /></View></View>;
+}
+
+function PageButton({ label, active = false, disabled = false, onPress }: { label: string; active?: boolean; disabled?: boolean; onPress: () => void }) {
+  return <Pressable accessibilityRole="button" accessibilityState={{ selected: active, disabled }} disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.pageButton, active && styles.pageButtonActive, disabled && styles.pageButtonDisabled, pressed && !disabled && styles.pageButtonPressed]}><Text style={[styles.pageButtonText, active && styles.pageButtonTextActive]}>{label}</Text></Pressable>;
 }
 
 const styles = StyleSheet.create(withTypography({
@@ -82,6 +97,12 @@ const styles = StyleSheet.create(withTypography({
   chips: { paddingTop: 9, paddingBottom: 2, gap: 7 }, sorts: { paddingVertical: 10, gap: 7 }, chip: { minHeight: 36, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center' }, chipActive: { borderColor: colors.brand, backgroundColor: colors.brand }, chipText: { color: colors.ink, fontSize: 11, fontWeight: '800' }, chipTextActive: { color: colors.white },
   count: { marginBottom: 9, color: colors.muted, fontSize: 11 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 10 },
+  pagination: { marginTop: 16, paddingTop: 14, borderTopWidth: 1, borderTopColor: colors.line, alignItems: 'center', gap: 10 },
+  pageMeta: { color: colors.muted, fontSize: 11 },
+  pageButtons: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  pageButton: { minWidth: 36, minHeight: 36, paddingHorizontal: 9, borderRadius: 9, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center' },
+  pageButtonActive: { borderColor: colors.brand, backgroundColor: colors.brand }, pageButtonDisabled: { opacity: 0.42 }, pageButtonPressed: { opacity: 0.72 },
+  pageButtonText: { color: colors.ink, fontSize: 11, fontWeight: '900' }, pageButtonTextActive: { color: colors.white }, ellipsis: { width: 22, color: colors.muted, fontSize: 13, textAlign: 'center' },
   state: { minHeight: 320, padding: 22, borderRadius: 16, backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center', gap: 8 }, stateTitle: { color: colors.ink, fontSize: 19, fontWeight: '900' }, stateText: { color: colors.muted, fontSize: 12, textAlign: 'center' }, retry: { marginTop: 5, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 999, backgroundColor: colors.brand }, retryText: { color: colors.white, fontSize: 11, fontWeight: '900' }, loader: { marginTop: 12 },
   toast: { position: 'absolute', left: 22, right: 22, bottom: 24, padding: 12, borderRadius: 11, backgroundColor: colors.brand, alignItems: 'center' }, toastText: { color: colors.white, fontSize: 12, fontWeight: '800' },
 }));

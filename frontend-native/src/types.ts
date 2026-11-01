@@ -13,6 +13,16 @@ export interface User {
   role?: 'USER' | 'ADMIN';
 }
 
+export interface AdminUser {
+  id: number;
+  fullName: string;
+  username: string | null;
+  email: string;
+  phone: string | null;
+  role: 'USER' | 'ADMIN';
+  createdAt: string;
+}
+
 export interface SavedDemoCard {
   holder: string;
   type: 'DOMESTIC' | 'INTERNATIONAL';
@@ -76,6 +86,65 @@ export interface Order {
   items: Array<{ id: number; productId: number | null; productName: string; productImage: string | null; price: number; quantity: number; subtotal: number }>;
 }
 
+export interface DashboardData {
+  revenue: number;
+  orders: number;
+  pendingOrders: number;
+  users: number;
+  products: number;
+  recentOrders: Order[];
+  chartRevenueByDay: Array<{ day: string; value: number }>;
+  chartOrdersByDay: Array<{ day: string; value: number }>;
+}
+
+export interface RevenueRow {
+  period: string;
+  orders: number;
+  revenue: number;
+}
+
+export interface ContactMessage {
+  id: number;
+  name: string;
+  email: string;
+  phone: string | null;
+  message: string;
+  isRead: boolean;
+  createdAt: string;
+}
+
+export type KnowledgeStatus = 'pending_review' | 'approved' | 'rejected';
+export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH';
+export const chatIntents = ['small_talk', 'greeting', 'thanks', 'goodbye', 'product_search', 'product_detail',
+  'product_recommendation', 'product_comparison', 'product_price', 'product_stock', 'product_category',
+  'product_select', 'cart_add', 'cart_remove', 'cart_update_quantity', 'cart_view', 'buy_now', 'checkout_review',
+  'shipping', 'payment', 'promotion', 'warranty', 'return', 'refund', 'order', 'complaint', 'account',
+  'password', 'legal', 'general_store_question', 'general_question', 'unknown'] as const;
+export type ChatIntent = typeof chatIntents[number];
+
+export interface ChatbotKnowledge {
+  id: number;
+  question: string;
+  answer: string;
+  keywords: string;
+  contextHash: string;
+  normalizedQuestion: string;
+  intent: ChatIntent;
+  confidenceScore: number;
+  riskLevel: RiskLevel;
+  source: 'gemini' | 'admin' | 'system';
+  shouldStore: boolean;
+  reviewedBy: number | null;
+  reviewedAt: string | null;
+  status: KnowledgeStatus;
+  usageCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type KnowledgeInput = Pick<ChatbotKnowledge, 'question' | 'answer' | 'keywords'>;
+export interface KnowledgeListResponse { items: ChatbotKnowledge[]; total: number; page: number; limit: number }
+
 export interface Product {
   id: number;
   name: string;
@@ -96,6 +165,15 @@ export interface Product {
   promotionId?: number | null;
   promotionTitle?: string | null;
   saleEndsAt?: string | null;
+}
+
+export type ProductSort = 'newest' | 'price-asc' | 'price-desc' | 'name';
+
+export interface ProductPage {
+  items: Product[];
+  total: number;
+  page: number;
+  limit: number;
 }
 
 export interface ReviewSummary {
@@ -132,9 +210,27 @@ export interface PromotionEvent {
   id: number;
   title: string;
   description: string;
+  status: 'draft' | 'published' | 'paused';
+  phase: 'draft' | 'paused' | 'scheduled' | 'active' | 'ended';
+  startsAt: string;
   endsAt: string;
   maxDiscountPercent: number;
   products: Product[];
+}
+
+export interface PromotionInput {
+  bannerDiscountPercent: number | null;
+  title: string;
+  description: string;
+  status: PromotionEvent['status'];
+  startsAt: string;
+  endsAt: string;
+  items: Array<{ productId: number; discountPercent: number }>;
+}
+
+export interface PromotionAdminResponse {
+  serverTime: string;
+  events: PromotionEvent[];
 }
 
 export interface PromotionResponse {
@@ -158,10 +254,26 @@ export interface Coupon {
   discountType: CouponDiscountType;
   discountValue: number | string;
   minOrderAmount: number | string;
+  maxDiscountAmount: number | string | null;
+  usageLimit: number | null;
+  usedCount: number;
+  startDate: string;
   endDate: string;
   isActive: boolean;
+  userId: number | null;
   freeShipping: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
+
+export interface AvailableCoupon {
+  valid: true;
+  coupon: Coupon;
+  discountAmount: number;
+  finalAmount: number;
+}
+
+export type CouponInput = Omit<Coupon, 'id' | 'usedCount' | 'createdAt' | 'updatedAt'>;
 
 export interface Cart {
   itemCount: number;

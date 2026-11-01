@@ -1,6 +1,7 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { productApi } from '../api';
+import { productPageCount } from '../productPagination.mjs';
 import type { Product } from '../types';
 
 export type ProductSort = '' | 'price-asc' | 'price-desc' | 'name';
@@ -19,12 +20,14 @@ export const PRICE_RANGES: Array<{ label: string; min: number; max: number | nul
 
 const first = (value?: string | string[]) => Array.isArray(value) ? value[0] || '' : value || '';
 
-export function useProductList() {
+export function useProductList(pageSize = 12) {
   const router = useRouter();
   const params = useLocalSearchParams<{ keyword?: string | string[]; category?: string | string[] }>();
   const keyword = first(params.keyword).trim();
   const category = first(params.category).trim();
   const [products, setProducts] = useState<Product[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
   const [categories, setCategories] = useState<string[]>([]);
   const [sort, setSort] = useState<ProductSort>('');
   const [priceRange, setPriceRange] = useState('');
@@ -39,28 +42,45 @@ export function useProductList() {
   }, []);
 
   useEffect(() => {
+    setPage(1);
+  }, [category, keyword, pageSize, priceRange, sort]);
+
+  useEffect(() => {
     const controller = new AbortController();
     setLoading(true);
     setError('');
-    void productApi.list(keyword || undefined, category || undefined, controller.signal)
-      .then(setProducts)
+    const range = priceRange === '' ? undefined : PRICE_RANGES[Number(priceRange)];
+    void productApi.page({
+      page,
+      limit: pageSize,
+      keyword: keyword || undefined,
+      category: category || undefined,
+      sort: sort || undefined,
+      minPrice: range?.min,
+      maxPrice: range?.max ?? undefined,
+    }, controller.signal)
+      .then(result => {
+        const lastPage = productPageCount(result.total, result.limit);
+        if (page > lastPage) {
+          setProducts([]);
+          setTotal(result.total);
+          setPage(lastPage);
+          return;
+        }
+        setProducts(result.items);
+        setTotal(result.total);
+      })
       .catch(reason => {
         if (reason instanceof Error && reason.name === 'AbortError') return;
         setProducts([]);
+        setTotal(0);
         setError(reason instanceof Error ? reason.message : 'Không thể tải danh sách sản phẩm.');
       })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [category, keyword, retryKey]);
+  }, [category, keyword, page, pageSize, priceRange, retryKey, sort]);
 
-  const range = PRICE_RANGES[Number(priceRange)];
-  const visibleProducts = useMemo(() => products.filter(product => !priceRange || (product.price >= range.min && (range.max === null || product.price <= range.max))).sort((a, b) => sort === 'price-asc'
-    ? a.price - b.price
-    : sort === 'price-desc'
-      ? b.price - a.price
-      : sort === 'name'
-        ? a.name.localeCompare(b.name, 'vi')
-        : 0), [priceRange, products, range, sort]);
+  const pageCount = productPageCount(total, pageSize);
 
   const updateUrl = (nextKeyword = keyword, nextCategory = category) => {
     const next: Record<string, string> = {};
@@ -72,17 +92,21 @@ export function useProductList() {
   return {
     category,
     categories,
-    clearFilters: () => { setPriceRange(''); updateUrl('', ''); },
+    clearFilters: () => { setPage(1); setPriceRange(''); setSort(''); updateUrl('', ''); },
     error,
     keyword,
     loading,
+    page,
+    pageCount,
     priceRange,
-    products: visibleProducts,
+    products,
     retry: () => setRetryKey(value => value + 1),
-    setCategory: (value: string) => updateUrl(keyword, value),
-    setKeyword: (value: string) => updateUrl(value, category),
-    setPriceRange,
-    setSort,
+    setCategory: (value: string) => { setPage(1); updateUrl(keyword, value); },
+    setKeyword: (value: string) => { setPage(1); updateUrl(value, category); },
+    setPage: (value: number) => setPage(Math.min(pageCount, Math.max(1, value))),
+    setPriceRange: (value: string) => { setPage(1); setPriceRange(value); },
+    setSort: (value: ProductSort) => { setPage(1); setSort(value); },
     sort,
+    total,
   };
 }

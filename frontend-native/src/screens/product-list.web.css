@@ -25,7 +25,7 @@
 .gdv-list-title > button { display: flex; align-items: center; gap: 6px; border: 1px solid var(--gdv-border); border-radius: 9px; padding: 9px 12px; color: var(--gdv-walnut); background: rgba(255, 255, 255,.75); font-size: 11px; font-weight: 800; }
 .gdv-list-main { padding: 20px 0 32px; }
 .gdv-list-content, .gdv-list-filters { border: 1px solid var(--gdv-border); border-radius: 16px; background: rgba(255, 255, 255,.86); box-shadow: none; }
-.gdv-list-content { min-height: 540px; padding: 12px; }
+.gdv-list-content { min-height: 540px; padding: 12px; scroll-margin-top: 12px; }
 .gdv-list-filters { overflow: hidden; }
 .gdv-list-filters .accordion-item { border: 0; background: transparent; }
 .gdv-list-filters .accordion-button { gap: 8px; color: var(--gdv-text); background: var(--gdv-surface); box-shadow: none; font-size: 13px; font-weight: 900; }
@@ -44,6 +44,14 @@
 .gdv-list-sort label { margin: 0; color: #626c76; font-size: 12px; white-space: nowrap; }
 .gdv-list-sort .form-select { width: 155px; border-color: #dfe6eb; color: var(--gdv-text); background-color: #fff; box-shadow: none; font-size: 11px; }
 .gdv-list-grid > [class*="col-"] { display: flex; }
+.gdv-list-pagination { display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 10px; margin-top: 18px; padding: 15px 8px 4px; border-top: 1px solid var(--gdv-border); }
+.gdv-list-pagination > span { color: #626c76; font-size: 11px; }
+.gdv-list-pagination > div { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 6px; }
+.gdv-list-pagination button { min-width: 36px; min-height: 36px; border: 1px solid var(--gdv-border); border-radius: 9px; padding: 6px 10px; color: var(--gdv-walnut); background: var(--gdv-surface); font-size: 11px; font-weight: 800; transition: border-color .15s ease, background-color .15s ease, color .15s ease, transform .15s ease; }
+.gdv-list-pagination button:hover:not(:disabled) { border-color: var(--gdv-walnut); background: #eaf0f4; transform: translateY(-1px); }
+.gdv-list-pagination button.active { border-color: var(--gdv-walnut); color: #fff; background: var(--gdv-walnut); }
+.gdv-list-pagination button:disabled { cursor: not-allowed; opacity: .42; }
+.gdv-list-ellipsis { display: grid; place-items: center; width: 24px; min-height: 36px; color: #626c76; font-size: 13px; }
 .gdv-list-state { display: flex; min-height: 390px; flex-direction: column; align-items: center; justify-content: center; gap: 8px; margin: 0; border: 0; color: #626c76; background: transparent; text-align: center; }
 .gdv-list-state h2 { margin: 4px 0 0; color: var(--gdv-text); font-family: var(--gdv-font-extrabold); font-size: 21px; line-height: 1.3; font-weight: 400; }
 .gdv-list-state p { margin: 0; font-size: 12px; }
@@ -57,4 +65,5 @@
   .gdv-list-hero { padding: 13px 0 20px; }.gdv-list-title { align-items: flex-start; flex-direction: column; gap: 11px; }.gdv-list-title h1 { font-size: 29px; }.gdv-list-title p { font-size: 11px; }
   .gdv-list-main { padding-top: 12px; }.gdv-list-content { padding: 7px; }.gdv-list-toolbar { display: flex; align-items: stretch; flex-direction: column; gap: 8px; padding: 8px; }.gdv-list-toolbar > span { order: 2; }.gdv-list-sort { order: 3; justify-content: space-between; }.gdv-list-sort .form-select { width: min(72%,210px); }
   .gdv-list-grid { --bs-gutter-x: .45rem; --bs-gutter-y: .45rem; }
+  .gdv-list-pagination { margin-top: 13px; padding-inline: 0; }.gdv-list-pagination button { min-width: 34px; min-height: 34px; padding-inline: 8px; }
 }
