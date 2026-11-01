@@ -187,7 +187,6 @@ export default function ProfileScreen() {
         <View style={[styles.intro, compact && styles.introCompact]}>
           <Avatar uri={avatarPreview || user.avatarUrl} size={compact ? 76 : 86} />
           <View style={styles.introCopy}><Text style={styles.introName}>{user.fullName || user.username || 'Khách hàng'}</Text><Text style={styles.introEmail}>{user.email}</Text><View style={styles.memberBadge}><Ionicons name="sparkles-outline" size={13} color={colors.ink} /><Text style={styles.memberText}>Khách hàng thân thiết</Text></View></View>
-          <Pressable accessibilityRole="button" onPress={() => { scrollTo('profile'); setEditing(true); }} style={styles.outlineButton}><Ionicons name="create-outline" size={16} color={colors.ink} /><Text style={styles.outlineText}>Chỉnh sửa</Text></Pressable>
         </View>
 
         <View style={[styles.body, compact && styles.bodyCompact]}>
